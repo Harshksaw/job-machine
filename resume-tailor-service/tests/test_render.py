@@ -71,6 +71,23 @@ def test_trim_one_item_then_drops_lowest_priority_job_bullet():
     assert trimmed.job_selections[0].bullet_ids == ["acme.bullet.1"]
 
 
+def test_trim_one_item_drops_bullet_from_lowest_priority_job_when_multiple_jobs_have_extra_bullets():
+    # trim_one_item is pure Manifest manipulation and never consults the resume bank,
+    # so the two job ids here don't need to exist in tests/fixtures/sample_bank.yaml.
+    m = _manifest()
+    m.project_selections = []
+    m.achievement_ids = []
+    m.job_selections = [
+        JobSelection(job_id="job_a", bullet_ids=["job_a.bullet.1", "job_a.bullet.2"]),
+        JobSelection(job_id="job_b", bullet_ids=["job_b.bullet.1", "job_b.bullet.2"]),
+    ]
+    m.job_trim_priority = ["job_b", "job_a"]
+    trimmed = trim_one_item(m)
+    by_job = {js.job_id: js.bullet_ids for js in trimmed.job_selections}
+    assert by_job["job_b"] == ["job_b.bullet.1"]
+    assert by_job["job_a"] == ["job_a.bullet.1", "job_a.bullet.2"]
+
+
 def test_trim_one_item_returns_none_when_nothing_left():
     m = _manifest()
     m.project_selections = []

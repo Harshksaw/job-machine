@@ -14,19 +14,29 @@ def compile_pdf(tex_source: str, work_dir: Path, cls_path: Path) -> Path:
     tex_file = work_dir / "resume.tex"
     tex_file.write_text(tex_source)
 
+    pdf_path = work_dir / "resume.pdf"
+    log_path = work_dir / "resume.log"
+    # Remove any stale output from a previous compile attempt in this work_dir so that
+    # pdf_path.exists() below is genuine evidence of *this* run's success, not a leftover
+    # from an earlier trim iteration that pdflatex failed to overwrite.
+    pdf_path.unlink(missing_ok=True)
+    log_path.unlink(missing_ok=True)
+
+    timeout = 30
     result = None
     for _ in range(2):  # twice so hyperref cross-references settle
-        result = subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", tex_file.name],
-            cwd=work_dir,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        try:
+            result = subprocess.run(
+                ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", tex_file.name],
+                cwd=work_dir,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise PdfCompileError(f"pdflatex timed out after {timeout}s") from exc
 
-    pdf_path = work_dir / "resume.pdf"
     if not pdf_path.exists():
-        log_path = work_dir / "resume.log"
         tail = log_path.read_text()[-2000:] if log_path.exists() else (result.stdout[-2000:] if result else "")
         raise PdfCompileError(tail)
     return pdf_path
