@@ -21,4 +21,4 @@ RUN mkdir -p /srv/app/output
 
 EXPOSE 8420
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8420"]
+CMD [".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8420"]
