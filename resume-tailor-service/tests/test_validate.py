@@ -92,3 +92,28 @@ def test_extract_facts_finds_numbers_and_acronyms():
     assert "12K+" in facts
     assert "AWS" in facts
     assert "RAG" in facts
+
+
+def test_summary_with_fabricated_capitalized_tech_is_rejected():
+    bank = load_bank(FIXTURE)
+    m = _valid_manifest()
+    m.summary = "Distributed systems engineer skilled in Rust and Elixir."
+    errors = validate_manifest(m, bank)
+    assert errors
+    assert any("Rust" in e for e in errors)
+
+
+def test_summary_with_real_capitalized_tech_passes():
+    bank = load_bank(FIXTURE)
+    m = _valid_manifest()
+    m.summary = "Backend engineer using Python and Go."
+    assert validate_manifest(m, bank) == []
+
+
+def test_extract_facts_flags_midsentence_capitalized_tech():
+    assert "Rust" in extract_facts("Systems engineer skilled in Rust today.")
+    assert "Elixir" in extract_facts("Built services in Elixir and Go.")
+
+
+def test_extract_facts_ignores_sentence_initial_capital():
+    assert "Backend" not in extract_facts("Backend engineer with cloud experience.")

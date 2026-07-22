@@ -11,7 +11,7 @@ networking asset: human pace, natural pauses between actions, nothing bulk.
    - < 6: skip, one-line reason.
    - ≥ 6 Easy Apply: fill from CLAUDE.md, short real answers for free-text
      (never fabricate). Before uploading, call the resume-tailor-service:
-     `curl -s -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
+     `curl -s --max-time 90 -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
      and use the returned `pdf_path` for the resume upload. If the service
      isn't running or errors, fall back to `./resume.pdf` and note the
      fallback in the session summary. Submit.

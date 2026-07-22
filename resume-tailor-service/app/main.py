@@ -1,3 +1,4 @@
+import re
 import uuid
 from pathlib import Path
 import anthropic
@@ -21,6 +22,12 @@ OUTPUT_DIR = BASE_DIR / "output"
 app = FastAPI(title="resume-tailor-service")
 
 
+def _safe_slug(company: str, role: str) -> str:
+    raw = f"{company}-{role}".lower().replace(" ", "-")
+    cleaned = re.sub(r"[^a-z0-9._-]", "", raw).lstrip(".-")
+    return cleaned or "job"
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -36,7 +43,7 @@ def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
     except TailorValidationError as e:
         raise HTTPException(status_code=502, detail=f"model produced an invalid manifest: {e}")
 
-    slug = f"{req.company}-{req.role}".lower().replace(" ", "-")
+    slug = _safe_slug(req.company, req.role)
     work_dir = OUTPUT_DIR / f"{slug}-{uuid.uuid4().hex[:8]}"
 
     try:

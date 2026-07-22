@@ -7,7 +7,7 @@ Use playwright mcp. My profile, rules, and webhook are in CLAUDE.md — follow t
 3. Per listing: read the job + the company's Wellfound profile. Score fit 1–10.
    - < 6: skip, one-line reason.
    - ≥ 6: apply. Before uploading, call the resume-tailor-service:
-     `curl -s -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
+     `curl -s --max-time 90 -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
      and use the returned `pdf_path` for the resume upload. If the service
      isn't running or errors, fall back to `./resume.pdf` and note the
      fallback in the session summary. Custom note per rule 4 in CLAUDE.md.

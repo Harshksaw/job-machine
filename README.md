@@ -44,7 +44,7 @@ and the API shape.
 
 `RESUME_TAILOR_TOKEN` must be exported in the shell running `claude` (or
 sourced from `resume-tailor-service/.env`) — the run prompts' `curl` calls
-to `/tailor` use it to authenticate. If the service isn't running, the run
+to `/tailor` use it to authenticate. If the service isn't running or errors, the run
 prompts fall back to `./resume.pdf` automatically.
 
 ## 4. One-time login run

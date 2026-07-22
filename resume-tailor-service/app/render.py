@@ -35,6 +35,8 @@ def compile_pdf(tex_source: str, work_dir: Path, cls_path: Path) -> Path:
             )
         except subprocess.TimeoutExpired as exc:
             raise PdfCompileError(f"pdflatex timed out after {timeout}s") from exc
+        except OSError as exc:
+            raise PdfCompileError(f"failed to run pdflatex: {exc}") from exc
 
     if not pdf_path.exists():
         tail = log_path.read_text()[-2000:] if log_path.exists() else (result.stdout[-2000:] if result else "")

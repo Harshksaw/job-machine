@@ -37,6 +37,7 @@ def main() -> int:
         body = resp.json()
         if body["pages"] != 1:
             failures.append(f"{company}/{role}: expected 1 page, got {body['pages']}")
+            continue
         print(f"OK  {company}/{role} -> {body['pdf_path']} ({body['pages']} page)")
 
     if failures:

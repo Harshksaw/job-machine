@@ -73,7 +73,7 @@ def get_manifest(jd_text: str, company: str, role: str, bank: ResumeBank, client
         prompt = build_prompt(jd_text, company, role, bank, previous_errors)
         response = client.messages.create(
             model=MODEL_NAME,
-            max_tokens=2000,
+            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
         raw_text = response.content[0].text

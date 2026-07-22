@@ -6,11 +6,43 @@ from app.bank import (
 from app.models import Manifest
 
 _NUMERIC_RE = re.compile(r"\d[\d,.]*\+?%?[KkMmBb]?\+?")
-_ACRONYM_RE = re.compile(r"\b[A-Z]{2,}\b")
+_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#\-]*")
+_SENTENCE_END = (".", "!", "?")
+
+
+def _bank_word_set(bank: ResumeBank) -> set[str]:
+    return {w.lower() for w in _TOKEN_RE.findall(bank_text_blob(bank))}
 
 
 def extract_facts(text: str) -> set[str]:
-    return set(_NUMERIC_RE.findall(text)) | set(_ACRONYM_RE.findall(text))
+    """Tokens in a summary that MUST be traceable to the resume bank:
+    numbers, all-caps acronyms, tech-looking tokens (internal caps or . + #),
+    and proper-noun-style Capitalized words that appear mid-sentence.
+    Note: lowercase, number-free qualitative claims are intentionally NOT
+    checked here (documented residual — the prompt constrains those, and a
+    persistent validation failure degrades safely to the static resume via
+    the run-prompt fallback)."""
+    facts: set[str] = set(_NUMERIC_RE.findall(text))
+    matches = list(_TOKEN_RE.finditer(text))
+    for i, m in enumerate(matches):
+        # Strip a trailing sentence terminator (".", "!", "?") that the token
+        # regex's continuation class greedily glues onto the last word of a
+        # sentence (e.g. "pipeline." or "Go.") — that punctuation is not part
+        # of the word/tech-token itself, unlike an internal "." in "Node.js".
+        tok = m.group().rstrip(".!?")
+        if not tok or not any(c.isalpha() for c in tok):
+            continue  # pure number, already handled by _NUMERIC_RE
+        preceding = text[: m.start()].rstrip()
+        sentence_initial = (i == 0) or preceding.endswith(_SENTENCE_END)
+        is_all_caps = tok.isupper() and len(tok) >= 2
+        has_internal_cap = any(c.isupper() for c in tok[1:])
+        has_tech_punct = any(c in ".+#" for c in tok)
+        is_capitalized = tok[:1].isupper()
+        if is_all_caps or has_internal_cap or has_tech_punct:
+            facts.add(tok)
+        elif is_capitalized and not sentence_initial:
+            facts.add(tok)
+    return facts
 
 
 def validate_manifest(manifest: Manifest, bank: ResumeBank) -> list[str]:
@@ -50,8 +82,16 @@ def validate_manifest(manifest: Manifest, bank: ResumeBank) -> list[str]:
         )
 
     blob = bank_text_blob(bank)
+    bank_words = _bank_word_set(bank)
     for fact in extract_facts(manifest.summary):
-        if fact not in blob:
-            errors.append(f"untraceable fact in summary: {fact!r}")
+        is_wordlike = any(c.isalpha() for c in fact) and not any(
+            c.isdigit() or c in "%" for c in fact
+        )
+        if is_wordlike:
+            if fact.lower() not in bank_words:
+                errors.append(f"untraceable fact in summary: {fact!r}")
+        else:
+            if fact not in blob:
+                errors.append(f"untraceable fact in summary: {fact!r}")
 
     return errors
