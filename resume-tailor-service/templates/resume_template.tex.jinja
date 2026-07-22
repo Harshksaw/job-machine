@@ -1,0 +1,53 @@
+\documentclass{resume}
+\name{(((contact.name)))}
+\address{(((contact.phone))) $|$ (((contact.location)))}
+\address{\href{mailto:(((contact.email)))}{(((contact.email)))} $|$ \href{(((contact.linkedin_url)))}{LinkedIn} $|$ \href{(((contact.github_url)))}{GitHub} $|$ \href{(((contact.website_url)))}{(((contact.website_display)))}}
+
+\begin{document}
+
+\begin{rSection}{Summary}
+(((summary)))
+\end{rSection}
+
+\begin{rSection}{Education}
+\textbf{(((education.degree)))}, (((education.school))) \hfill (((education.date)))
+\end{rSection}
+
+\begin{rSection}{Experience}
+((* for job in jobs *))
+\begin{rSubsection}{(((job.company)))}{(((job.dates)))}{(((job.title)))}{(((job.location)))}
+((* for bullet in job.bullets *))
+\item (((bullet)))
+((* endfor *))
+\end{rSubsection}
+((* endfor *))
+\end{rSection}
+
+\begin{rSection}{Projects}
+((* for project in projects *))
+\textbf{(((project.name)))} \hfill \textit{(((project.tech)))}
+\begin{list}{$\cdot$}{\leftmargin=1em}
+((* for bullet in project.bullets *))
+\item (((bullet)))
+((* endfor *))
+\end{list}
+((* endfor *))
+\end{rSection}
+
+\begin{rSection}{Technical Skills}
+\begin{tabular}{@{}ll@{}}
+((* for line in skills *))
+\textbf{(((line.category)))} & (((line.items))) \\
+((* endfor *))
+\end{tabular}
+\end{rSection}
+
+\begin{rSection}{Achievements}
+\begin{list}{$\cdot$}{\leftmargin=1em}
+((* for bullet in achievements *))
+\item (((bullet)))
+((* endfor *))
+\end{list}
+\end{rSection}
+
+\end{document}
