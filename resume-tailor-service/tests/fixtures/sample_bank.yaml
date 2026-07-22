@@ -1,0 +1,42 @@
+contact:
+  name: "Test Person"
+  phone: "+1 555-0100"
+  location: "Testville, TS"
+  email: "test@example.com"
+  linkedin_url: "https://linkedin.com/in/testperson"
+  github_url: "https://github.com/testperson"
+  website_url: "https://testperson.dev"
+  website_display: "testperson.dev"
+
+education:
+  degree: "Bachelor of Testing"
+  school: "Test University"
+  date: "Expected Dec 2099"
+
+jobs:
+  - id: acme
+    company: "Acme Corp"
+    location: "Remote"
+    title: "Software Engineer"
+    dates: "Jan 2024 -- Present"
+    bullets:
+      - id: acme.bullet.1
+        text: "Built a widget pipeline processing 500 widgets per hour."
+      - id: acme.bullet.2
+        text: "Reduced widget latency by 40 percent."
+
+projects:
+  - id: widgetizer
+    name: "Widgetizer"
+    tech: "Python, Redis"
+    bullets:
+      - id: project.widgetizer.bullet.1
+        text: "Built a caching layer with Redis cutting load time from 4s to 400ms."
+
+achievements:
+  - id: achievement.1
+    text: "Won the regional Test Hackathon."
+
+skills:
+  - category: "Languages"
+    items: "Python, Go"

@@ -1,0 +1,108 @@
+contact:
+  name: "Harsh Saw"
+  phone: "+1 (778) 583-2260"
+  location: "Kelowna, BC, Canada"
+  email: "mister.harshkumar@gmail.com"
+  linkedin_url: "https://linkedin.com/in/harsh-kumar-s-32727b247"
+  github_url: "https://github.com/Harshksaw"
+  website_url: "https://harshsaw.me"
+  website_display: "harshsaw.me"
+
+education:
+  degree: "Bachelor of Computer Information Systems"
+  school: "Okanagan College"
+  date: "Expected Dec 2026"
+
+jobs:
+  - id: ommuse
+    company: "Ommuse"
+    location: "Seattle, US"
+    title: "Software Engineer Intern"
+    dates: "Nov 2025 -- Present"
+    bullets:
+      - id: ommuse.bullet.1
+        text: "Architecting AI-powered semantic search and natural language chat for enterprise studio workflows using a RAG pipeline (MongoDB Vector Store, AWS Bedrock), enabling producers to query projects, tracks, and collaborators conversationally."
+      - id: ommuse.bullet.2
+        text: "Built HubSpot CRM sync for a 12K+ user music platform in Go -- async batch worker using sync.Map deduplication (30s flush, 100-user chunks) syncing live metrics across 8 API trigger points; platform manages 18K+ tracks and 67 GB of user audio."
+      - id: ommuse.bullet.3
+        text: "Engineered a cross-platform desktop uploader (Electron) with persistent folder-sync engine (chokidar + SQLite WAL), parallelized S3 multipart uploads, OAuth 2.0 PKCE auth flow, and a typed IPC bridge exposing 70+ gRPC service methods to the renderer."
+      - id: ommuse.bullet.4
+        text: "Shipped features across a polyglot monorepo (Go gRPC/protobuf, TypeScript/React, Python) unified by Bazel, owning full deployment infrastructure -- AWS (S3, SQS, ECR), Docker, Pulumi IaC, Envoy proxy, and GitHub Actions CI/CD."
+  - id: morethinks
+    company: "MoreThinks Solutions Ltd."
+    location: "Burnaby, BC"
+    title: "Full-Stack Developer Intern"
+    dates: "Jun 2025 -- Sept 2025"
+    bullets:
+      - id: morethinks.bullet.1
+        text: "Developed full-stack features using Qwik.js and SurrealDB in a monorepo, with CI/CD automation via AWS EKS and API Gateway."
+      - id: morethinks.bullet.2
+        text: "Engineered automated token generation and vector embedding pipelines, producing structured data consumed by ML services for recommendation."
+  - id: bwisher
+    company: "Bwisher Ltd"
+    location: "Remote"
+    title: "Software Engineer Intern"
+    dates: "Dec 2024 -- Jun 2025"
+    bullets:
+      - id: bwisher.bullet.1
+        text: "Architected a multi-channel marketing platform using Apache Kafka and BullMQ, orchestrating personalized SMS, email, and WhatsApp campaigns with custom offers across 30K+ users while feeding real-time CRM and analytics pipelines."
+      - id: bwisher.bullet.2
+        text: "Designed idempotent NestJS and FastAPI microservices for payment and credit workflows with retry and exponential backoff strategies, eliminating duplicate transactions in high-stakes financial operations."
+      - id: bwisher.bullet.3
+        text: "Owned end-to-end deployment infrastructure with Jenkins, Kubernetes, Prometheus, and Grafana; shipped features behind feature flags enabling safe tenant-by-tenant rollouts with instant kill-switch control."
+  - id: jythu
+    company: "Jythu Ltd"
+    location: "Remote"
+    title: "Full-Stack Developer Intern"
+    dates: "Jan 2024 -- Dec 2024"
+    bullets:
+      - id: jythu.bullet.1
+        text: "Shipped two production React Native apps (LMS + admin panel) with Node.js backends serving 2K+ learners; provisioned full AWS infrastructure with Terraform and GitHub Actions CI/CD, with multi-layer anti-piracy controls including device-bound auth."
+      - id: jythu.bullet.2
+        text: "Built an end-to-end video streaming pipeline using FFmpeg HLS transcoding delivered via S3/CloudFront, orchestrated through SQS, Lambda, and SNS -- reducing seek time from 30s to 1.5s and cutting bandwidth by approximately 70%."
+
+projects:
+  - id: docintel
+    name: "Document Intelligence Platform (RAG)"
+    tech: "FastAPI, LangChain, Qdrant, Groq, Google Gemini, AWS ECS Fargate, Docker"
+    bullets:
+      - id: project.docintel.bullet.1
+        text: "Architected a multi-tenant RAG platform with session-isolated Qdrant indexes, enabling semantic search and conversational Q&A over PDF, DOCX, and TXT documents."
+      - id: project.docintel.bullet.2
+        text: "Engineered resilient LLM orchestration using LangChain RunnableWithFallbacks, implementing automatic provider failover (Groq to Gemini) with streaming retrieval pipelines featuring context-aware query rewriting and hybrid document chunking."
+      - id: project.docintel.bullet.3
+        text: "Deployed to AWS ECS Fargate with GitHub Actions CI/CD and multi-worker Uvicorn scaling; designed idempotent ingestion using SHA-256 fingerprinting to deduplicate embeddings and reduce redundant indexing."
+  - id: codexpo
+    name: "CodeExpo -- Browser-Based IDE \\& Sandbox Environment"
+    tech: "React, Node.js, WebSocket, Docker, Nginx, Zustand, xterm.js"
+    bullets:
+      - id: project.codexpo.bullet.1
+        text: "Engineered a full-stack browser-based IDE replicating a local dev environment -- live terminal via xterm.js and WebSocket, real-time code execution with browser preview pane, and Socket.IO file synchronization across the workspace."
+      - id: project.codexpo.bullet.2
+        text: "Architected containerized sandbox environments using Docker with multi-stage builds and Nginx reverse proxy, managing isolated execution contexts and environment lifecycle per session."
+      - id: project.codexpo.bullet.3
+        text: "Delivered a native-feeling developer workspace with a split-pane layout (editor, terminal, live preview) powered by Monaco Editor; managed synchronized file tree and tab state via Zustand with React Query handling optimistic updates for a lag-free editing experience."
+
+achievements:
+  - id: achievement.lms
+    text: "Sole developer of an internal LMS migration platform at Okanagan College, built and deployed end-to-end and relied on daily by 1,500+ staff and instructors for the institution-wide Moodle-to-Brightspace transition -- featuring guided step-by-step migration workflows with progress tracking and complete records, real-time notifications and chat, and AI-powered templating."
+  - id: achievement.stock
+    text: "Built an end-to-end stock prediction pipeline covering 500 S\\&P 500 constituents over 5 years of 15-minute bar data -- XGBoost models trained across 26 intraday horizons on 4x NVIDIA H100 GPUs (DRAC), with automated warm-start retraining every 15 minutes during market hours, served via a FastAPI backend backed by a PostgreSQL data warehouse and a multi-rolling feature pipeline."
+  - id: achievement.freelancer
+    text: "Ranked in the top 2\\% of verified freelancers on Freelancer.com with a 5-star rating, delivering 25+ production-grade projects."
+  - id: achievement.hackathon
+    text: "Won an inter-university college hackathon, demonstrating innovative problem-solving and technical proficiency."
+
+skills:
+  - category: "Languages"
+    items: "JavaScript (ES6+), TypeScript, Python, Go (Golang), Bash"
+  - category: "Frontend \\& Mobile"
+    items: "React, Next.js, React Native, Qwik.js, Electron"
+  - category: "Backend \\& Messaging"
+    items: "NestJS, FastAPI, Express, Fastify, GraphQL, gRPC/Protobuf, Apache Kafka, BullMQ, RabbitMQ"
+  - category: "Databases"
+    items: "PostgreSQL, MongoDB, DynamoDB, Redis, MySQL, SurrealDB, SQLite"
+  - category: "Cloud \\& DevOps"
+    items: "AWS, Azure, Docker, Kubernetes, Terraform, Pulumi, Bazel, Jenkins, GitHub Actions"
+  - category: "AI \\& GenAI"
+    items: "LangChain, LangSmith, AutoGen, RAG, FAISS, Pinecone, Qdrant, AstraDB, AWS Bedrock"
