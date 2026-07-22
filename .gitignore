@@ -1,0 +1,27 @@
+# Sensitive browser session data (LinkedIn/Wellfound login cookies) — never commit
+browser-profile/
+.playwright-mcp/
+
+# Secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Generated tailored resumes
+resume-tailor-service/output/
+
+# OS
+.DS_Store
