@@ -27,9 +27,24 @@ content bank — never fabricated content.
 
 - No rewording of bullet text (facts/numbers/phrasing stay verbatim from the
   content bank — only *selection and ordering* changes per job description).
-- Not a public/network-exposed service — local use only, single user.
 - Not a replacement for the user's manual judgment on borderline applications
   (fit-scoring rules in CLAUDE.md still apply upstream of this tool).
+- Not a multi-tenant product — single user, single resume bank.
+
+## Deployment targets
+
+Two supported modes, same codebase:
+
+1. **Local** — bound to `127.0.0.1`, run manually per session (original
+   design). Auth token still required (see below) so behavior is identical
+   between modes and nothing has to change when moving to mode 2.
+2. **VPS** — same app, containerized with Docker so `pdflatex`/`xelatex` and
+   Python deps travel together, reachable over the network. Because a VPS
+   deployment is network-reachable by definition, **every request must
+   include a shared-secret bearer token** (`RESUME_TAILOR_TOKEN` in `.env`,
+   checked in FastAPI middleware, constant-time compare). No token → `401`,
+   regardless of deployment mode. The Anthropic API key never leaves the
+   server — the token only gates access to this service, not to Anthropic.
 
 ## Architecture
 
@@ -107,6 +122,15 @@ GET /health
 
 8. **`pyproject.toml`** (uv-managed) — deps: `fastapi`, `uvicorn`, `jinja2`,
    `pypdf`, `anthropic`, `pydantic`, `python-dotenv`.
+
+9. **`Dockerfile`** — installs a minimal TeX Live (or reuses a `texlive`
+   base image) + the `uv`-managed Python deps, so the same image runs
+   locally or on a VPS. **`docker-compose.yml`** for one-command local run.
+
+10. **`app/auth.py`** — FastAPI dependency that checks the
+    `Authorization: Bearer <token>` header against `RESUME_TAILOR_TOKEN`
+    from `.env` using a constant-time comparison; applied to `/tailor`.
+    `/health` stays unauthenticated (no secrets in its response).
 
 ## Data flow
 
