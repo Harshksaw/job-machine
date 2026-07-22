@@ -1,4 +1,5 @@
 import json
+from pydantic import ValidationError
 from app.bank import ResumeBank
 from app.errors import TailorValidationError
 from app.models import Manifest
@@ -76,8 +77,12 @@ def get_manifest(jd_text: str, company: str, role: str, bank: ResumeBank, client
             messages=[{"role": "user", "content": prompt}],
         )
         raw_text = response.content[0].text
-        parsed = parse_manifest_json(raw_text)
-        manifest = Manifest.model_validate(parsed)
+        try:
+            parsed = parse_manifest_json(raw_text)
+            manifest = Manifest.model_validate(parsed)
+        except (json.JSONDecodeError, ValidationError) as e:
+            previous_errors = [f"response was not valid JSON matching the manifest schema: {e}"]
+            continue
         errors = validate_manifest(manifest, bank)
         if not errors:
             return manifest

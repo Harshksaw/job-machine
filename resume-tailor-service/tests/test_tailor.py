@@ -83,3 +83,19 @@ def test_get_manifest_raises_after_exhausting_retries():
     with pytest.raises(TailorValidationError):
         get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
     assert client.messages.calls == 2
+
+
+def test_get_manifest_retries_on_malformed_json_then_succeeds():
+    bank = load_bank(FIXTURE)
+    client = _FakeClient(["not json at all", json.dumps(VALID_MANIFEST_DICT)])
+    manifest = get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
+    assert manifest.job_selections[0].job_id == "acme"
+    assert client.messages.calls == 2
+
+
+def test_get_manifest_raises_tailor_validation_error_on_persistent_malformed_json():
+    bank = load_bank(FIXTURE)
+    client = _FakeClient(["not json at all", "still not json"])
+    with pytest.raises(TailorValidationError):
+        get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
+    assert client.messages.calls == 2
