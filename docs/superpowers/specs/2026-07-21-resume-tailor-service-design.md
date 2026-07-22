@@ -1,7 +1,7 @@
 # Resume Tailor Service — Design
 
 Date: 2026-07-21
-Status: Approved by user, pending `.cls` file handoff
+Status: Approved by user. `.cls` file received and in place.
 
 ## Background
 
@@ -150,8 +150,11 @@ company, and role, and use the returned PDF path in place of the static
 8420`, run from `resume-tailor-service/`) becomes a one-time per-session setup
 step, documented in `README.md` alongside the existing Playwright MCP setup.
 
-## Open item
+## Confirmed input
 
-The user's real `resume.cls` file has not yet been provided. It is required
-before `templates/resume.cls` and `resume_template.tex.jinja` can be finalized
-against the real layout (rather than a reconstruction from the PDF).
+The user's real `resume.cls` is in place at
+`resume-tailor-service/templates/resume.cls` — the "Medium Length
+Professional CV" class (Trey Hunner / LaTeXTemplates.com, freely licensed for
+copying/distribution with the copyright notice preserved). It defines
+`\name`, `\address`, `rSection`, and `rSubsection` — `resume_template.tex.jinja`
+will be built directly against these commands/environments.
