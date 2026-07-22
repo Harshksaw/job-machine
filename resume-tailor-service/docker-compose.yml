@@ -1,0 +1,10 @@
+services:
+  resume-tailor:
+    build: .
+    ports:
+      - "8420:8420"
+    env_file:
+      - .env
+    volumes:
+      - ./output:/srv/app/output
+    restart: unless-stopped
