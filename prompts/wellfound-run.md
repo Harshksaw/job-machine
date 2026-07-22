@@ -6,7 +6,11 @@ Use playwright mcp. My profile, rules, and webhook are in CLAUDE.md — follow t
 2. Search: "Software Engineer" then "Backend Engineer" then "AI Engineer" — filters: 1-50 employees preferred, posted this week first.
 3. Per listing: read the job + the company's Wellfound profile. Score fit 1–10.
    - < 6: skip, one-line reason.
-   - ≥ 6: apply. Custom note per rule 4 in CLAUDE.md. Resume = ./resume.pdf.
+   - ≥ 6: apply. Before uploading, call the resume-tailor-service:
+     `curl -s -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
+     and use the returned `pdf_path` for the resume upload. If the service
+     isn't running or errors, fall back to `./resume.pdf` and note the
+     fallback in the session summary. Custom note per rule 4 in CLAUDE.md.
    - Log: status=applied, source=Wellfound, include fit + condensed note in notes.
 4. For every applied company: note the founders shown on the Wellfound company
    profile (names + titles). If fit ≥ 8, also open their website /team or /about

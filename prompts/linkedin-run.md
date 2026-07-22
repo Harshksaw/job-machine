@@ -9,8 +9,12 @@ networking asset: human pace, natural pauses between actions, nothing bulk.
    Prioritize Easy Apply + small companies.
 3. Per listing: score fit 1–10.
    - < 6: skip, one-line reason.
-   - ≥ 6 Easy Apply: fill from CLAUDE.md, resume = ./resume.pdf, short real
-     answers for free-text (never fabricate). Submit.
+   - ≥ 6 Easy Apply: fill from CLAUDE.md, short real answers for free-text
+     (never fabricate). Before uploading, call the resume-tailor-service:
+     `curl -s -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
+     and use the returned `pdf_path` for the resume upload. If the service
+     isn't running or errors, fall back to `./resume.pdf` and note the
+     fallback in the session summary. Submit.
    - ≥ 6 external-redirect: if the external form is quick (Lever/Ashby style),
      complete it; if it's a Workday/Greenhouse marathon, log it with
      status=outreach-queued and notes=portal-queue instead, and move on.
