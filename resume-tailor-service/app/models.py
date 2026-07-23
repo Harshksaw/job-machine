@@ -40,3 +40,27 @@ class TailoredResumeMeta(BaseModel):
     pages: int
     created_at: str
     job_url: str | None = None
+
+
+class Application(BaseModel):
+    """One row of the Google-Sheet application log.
+
+    Every cell arrives as free-form spreadsheet text, so all sheet-sourced
+    fields are plain strings defaulting to "" (missing/blank cells normalize to
+    "" in ``sheets.fetch_applications``). ``tailored_resume_id`` is filled in by
+    the dashboard join (output dir name) and is None when no tailored resume
+    matches.
+    """
+
+    company: str = ""
+    role: str = ""
+    source: str = ""
+    job_url: str = ""
+    status: str = ""
+    fit: str = ""
+    people: str = ""
+    hooks: str = ""
+    outreach: str = ""
+    notes: str = ""
+    timestamp: str = ""
+    tailored_resume_id: str | None = None

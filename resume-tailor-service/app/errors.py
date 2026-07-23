@@ -12,3 +12,11 @@ class PdfCompileError(Exception):
 
 class CannotFitOnePageError(Exception):
     """Raised when the resume still exceeds one page after exhausting all trims."""
+
+
+class SheetsError(Exception):
+    """Raised when the applications sheet cannot be read.
+
+    Its message MUST NOT contain APPS_SCRIPT_URL or APPS_SCRIPT_READ_SECRET —
+    it is surfaced to clients (as a 502) and may be logged.
+    """
