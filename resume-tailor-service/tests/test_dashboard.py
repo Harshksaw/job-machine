@@ -194,18 +194,45 @@ def test_get_tailored_rejects_traversal_via_route(client, bad_id):
 
 def test_get_tailored_pdf_cannot_escape_output_dir(client, tmp_path):
     """Stage a real secret file OUTSIDE OUTPUT_DIR (a sibling of tmp_path) and
-    confirm a crafted traversal id can neither reach it nor leak its content —
-    a positive check beyond just asserting a status code on bad input.
+    confirm crafted traversal ids can neither reach it nor leak its content.
+
+    Two layers are in play, and this test distinguishes them (verified
+    empirically — see task-6-report.md "traversal test fix" section):
+
+    1. Routing layer: a literal ".." path segment is collapsed/rejected by
+       Starlette/httpx URL handling BEFORE the view function ever runs, so
+       it never reaches `_resolve_dir` — a 404, not proof the guard works.
+    2. The guard itself (`app.dashboard._resolve_dir`): ids that are
+       URL-encoded so they arrive as a single `{resume_id}` path segment
+       (e.g. "%2e%2e") reach the view and are rejected there with a real
+       400 ("invalid tailored resume id"). These are the cases that
+       actually exercise the guard.
+
+    Percent-encoded ids containing an encoded slash (e.g. "..%2f<name>")
+    were tried and do NOT reach the guard either in this stack — the
+    decoded "/" splits the URL into extra segments that don't match the
+    single-segment route, so those also 404 at the routing layer. They are
+    therefore excluded from the "proves the guard" set below.
     """
     outside_dir = tmp_path.parent / f"outside-secret-{tmp_path.name}"
     outside_dir.mkdir(exist_ok=True)
     secret_bytes = b"%PDF-1.4 SECRET-OUTSIDE-OUTPUT-DIR"
     (outside_dir / "resume.pdf").write_bytes(secret_bytes)
     try:
-        for bad_id in ("..", f"..%2f{outside_dir.name}", "%2e%2e"):
+        # Guard-reaching cases: single path segment, decode to a string
+        # containing ".." -> `_resolve_dir` itself rejects with 400.
+        guard_reaching_ids = ("%2e%2e", f"%2e%2e{outside_dir.name}")
+        for bad_id in guard_reaching_ids:
             resp = client.get(f"/api/tailored/{bad_id}/pdf", headers=AUTH)
-            assert resp.status_code in (400, 404)
+            assert resp.status_code == 400
+            assert resp.json()["detail"] == "invalid tailored resume id"
             assert resp.content != secret_bytes
+
+        # Defense-in-depth (routing layer, NOT the guard): a literal ".."
+        # segment is blocked before `_resolve_dir` runs at all.
+        resp = client.get("/api/tailored/../pdf", headers=AUTH)
+        assert resp.status_code == 404
+        assert resp.content != secret_bytes
     finally:
         (outside_dir / "resume.pdf").unlink(missing_ok=True)
         outside_dir.rmdir()
