@@ -166,6 +166,30 @@ def test_static_index_served_at_root():
     assert "text/html" in resp.headers["content-type"]
 
 
+def test_static_asset_served():
+    """A real hashed build asset under app/static/assets/ is served as-is.
+
+    This proves StaticFiles is actually serving files (not just falling back
+    to index.html for every path) — the filename hash is discovered via glob
+    at test time so it never goes stale when the frontend is rebuilt.
+    """
+    assets_dir = Path(__file__).resolve().parent.parent / "app" / "static" / "assets"
+    if not assets_dir.is_dir():
+        pytest.skip("app/static/assets not present (dashboard not built in this environment)")
+
+    asset_files = [p for p in assets_dir.glob("*.js") if p.is_file()]
+    if not asset_files:
+        pytest.skip("no built .js assets found under app/static/assets")
+
+    asset_path = asset_files[0]
+    client = TestClient(main_module.app)
+    resp = client.get(f"/assets/{asset_path.name}")
+    assert resp.status_code == 200
+    assert resp.content == asset_path.read_bytes()
+    # A real asset response must not be the index.html SPA fallback.
+    assert "text/html" not in resp.headers["content-type"]
+
+
 def test_safe_slug_strips_path_traversal():
     traversal_slug = safe_slug("../../etc", "x")
     assert "/" not in traversal_slug

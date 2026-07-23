@@ -192,6 +192,25 @@ def test_get_tailored_rejects_traversal_via_route(client, bad_id):
     assert resp.status_code in (400, 404)  # never serves outside OUTPUT_DIR
 
 
+def test_get_tailored_pdf_cannot_escape_output_dir(client, tmp_path):
+    """Stage a real secret file OUTSIDE OUTPUT_DIR (a sibling of tmp_path) and
+    confirm a crafted traversal id can neither reach it nor leak its content —
+    a positive check beyond just asserting a status code on bad input.
+    """
+    outside_dir = tmp_path.parent / f"outside-secret-{tmp_path.name}"
+    outside_dir.mkdir(exist_ok=True)
+    secret_bytes = b"%PDF-1.4 SECRET-OUTSIDE-OUTPUT-DIR"
+    (outside_dir / "resume.pdf").write_bytes(secret_bytes)
+    try:
+        for bad_id in ("..", f"..%2f{outside_dir.name}", "%2e%2e"):
+            resp = client.get(f"/api/tailored/{bad_id}/pdf", headers=AUTH)
+            assert resp.status_code in (400, 404)
+            assert resp.content != secret_bytes
+    finally:
+        (outside_dir / "resume.pdf").unlink(missing_ok=True)
+        outside_dir.rmdir()
+
+
 def test_resume_bank_exposes_text_not_contact(client):
     resp = client.get("/api/resume-bank", headers=AUTH)
     assert resp.status_code == 200
