@@ -30,11 +30,11 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
             continue
         bullet_text = {b.id: b.text for b in job.bullets}
         jobs_ctx.append({
-            "company": job.company,
-            "location": job.location,
-            "title": job.title,
-            "dates": job.dates,
-            "bullets": [bullet_text[bid] for bid in sel.bullet_ids],
+            "company": latex_escape(job.company),
+            "location": latex_escape(job.location),
+            "title": latex_escape(job.title),
+            "dates": latex_escape(job.dates),
+            "bullets": [latex_escape(bullet_text[bid]) for bid in sel.bullet_ids],
         })
 
     project_by_id = {p.id: p for p in bank.projects}
@@ -43,22 +43,46 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
         proj = project_by_id[ps.project_id]
         bullet_text = {b.id: b.text for b in proj.bullets}
         projects_ctx.append({
-            "name": proj.name,
-            "tech": proj.tech,
-            "bullets": [bullet_text[bid] for bid in ps.bullet_ids],
+            "name": latex_escape(proj.name),
+            "tech": latex_escape(proj.tech),
+            "bullets": [latex_escape(bullet_text[bid]) for bid in ps.bullet_ids],
         })
 
     achievement_text = {b.id: b.text for b in bank.achievements}
-    achievements_ctx = [achievement_text[aid] for aid in manifest.achievement_ids]
+    achievements_ctx = [latex_escape(achievement_text[aid]) for aid in manifest.achievement_ids]
+
+    contact = bank.contact
+    contact_ctx = {
+        "name": latex_escape(contact.name),
+        "phone": latex_escape(contact.phone),
+        "location": latex_escape(contact.location),
+        # URL and email fields stay raw: they go inside \href{...} verbatim.
+        "email": contact.email,
+        "linkedin_url": contact.linkedin_url,
+        "github_url": contact.github_url,
+        "website_url": contact.website_url,
+        "website_display": latex_escape(contact.website_display),
+    }
+
+    education_ctx = {
+        "degree": latex_escape(bank.education.degree),
+        "school": latex_escape(bank.education.school),
+        "date": latex_escape(bank.education.date),
+    }
 
     return {
-        "contact": bank.contact.model_dump(),
-        "education": bank.education.model_dump(),
+        "contact": contact_ctx,
+        "education": education_ctx,
         "summary": latex_escape(manifest.summary),
         "jobs": jobs_ctx,
         "projects": projects_ctx,
         "achievements": achievements_ctx,
-        "skills": [s.model_dump() for s in bank.skills],
+        # Named "entries" (not "items") so Jinja's `.` lookup can't resolve
+        # to the dict's built-in `.items()` method instead of this key.
+        "skills": [
+            {"category": latex_escape(s.category), "entries": latex_escape(s.items)}
+            for s in bank.skills
+        ],
     }
 
 

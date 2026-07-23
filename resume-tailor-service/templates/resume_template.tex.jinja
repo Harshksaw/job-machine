@@ -26,7 +26,7 @@
 \begin{rSection}{Projects}
 ((* for project in projects *))
 \textbf{(((project.name)))} \hfill \textit{(((project.tech)))}
-\begin{list}{$\cdot$}{\leftmargin=1em}
+\begin{list}{$\cdot$}{\leftmargin=1em \itemsep -0.3em \parsep 0pt \topsep 0.1em}
 ((* for bullet in project.bullets *))
 \item (((bullet)))
 ((* endfor *))
@@ -35,15 +35,16 @@
 \end{rSection}
 
 \begin{rSection}{Technical Skills}
+{\renewcommand{\arraystretch}{0.8}
 \begin{tabular}{@{}ll@{}}
 ((* for line in skills *))
-\textbf{(((line.category)))} & (((line.items))) \\
+\textbf{(((line.category)))} & (((line.entries))) \\
 ((* endfor *))
-\end{tabular}
+\end{tabular}}
 \end{rSection}
 
 \begin{rSection}{Achievements}
-\begin{list}{$\cdot$}{\leftmargin=1em}
+\begin{list}{$\cdot$}{\leftmargin=1em \itemsep -0.3em \parsep 0pt \topsep 0.1em}
 ((* for bullet in achievements *))
 \item (((bullet)))
 ((* endfor *))

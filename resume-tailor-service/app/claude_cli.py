@@ -2,14 +2,16 @@ import json
 import subprocess
 from app.errors import ClaudeCliError
 
-# "claude-sonnet-5" is a valid, current model id/alias for the `claude` CLI
-# (verified live: `claude -p "..." --model claude-sonnet-5 --output-format json`
-# echoes back `"model":"claude-sonnet-5"` in both the system-init and
-# assistant-message events, and completes successfully).
-MODEL_NAME = "claude-sonnet-5"
+# "claude-haiku-4-5" is a valid, current model id/alias for the `claude` CLI
+# (verified live: `claude -p "Reply with only: ok" --model claude-haiku-4-5
+# --output-format json` succeeds, echoes back `"model":"claude-haiku-4-5"` in
+# the system-init event and resolves to `"claude-haiku-4-5-20251001"` in the
+# assistant-message events). Switched from Sonnet to Haiku because Sonnet was
+# too slow for this workload and was timing out at 120s.
+MODEL_NAME = "claude-haiku-4-5"
 
 
-def run_claude(prompt: str, timeout: int = 120, model: str = MODEL_NAME) -> str:
+def run_claude(prompt: str, timeout: int = 300, model: str = MODEL_NAME) -> str:
     """Run a headless Claude Code query via the `claude` CLI (print mode),
     using the user's Claude Code auth (subscription or configured key) — no
     separate ANTHROPIC_API_KEY required. Returns the assistant's raw text

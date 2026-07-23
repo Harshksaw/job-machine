@@ -20,11 +20,27 @@
 
 \ProvidesClass{resume}[2010/07/10 v0.9 Resume class]
 
-\LoadClass[11pt,letterpaper]{article} % Font size and paper type
+\LoadClass[10pt,letterpaper]{article} % Font size and paper type
 
 \usepackage[parfill]{parskip} % Remove paragraph indentation
 \usepackage{array} % Required for boldface (\bf and \bfseries) tabular columns
 \usepackage{ifthen} % Required for ifthenelse statements
+% Tightened margins so a full one-page resume's worth of real content (all
+% jobs/bullets, both projects, all achievements) fits on a single page --
+% the article class's ~1in default margins waste too much space for that
+% density.
+\usepackage[top=0.3in, bottom=0.3in, left=0.6in, right=0.6in]{geometry}
+
+% Body text at 9pt/10.5pt (rather than the standard 10pt \normalsize) using
+% the kernel's own \@setfontsize -- plain \LoadClass[9pt]{article} isn't
+% valid (article only supports 10/11/12pt), and switching to the extsizes
+% `extarticle` class for a real 9pt option caused pdflatex to hang
+% indefinitely (some interaction with this file's \document redefinition
+% below), so this redefines \normalsize in place instead. Needed, together
+% with the tighter margins/list spacing throughout this file, to fit the
+% full one-page resume's worth of real content on a single page.
+\renewcommand{\normalsize}{\@setfontsize\normalsize{9pt}{10.5pt}}
+\normalsize
 
 \usepackage{hyperref}
 \hypersetup{
@@ -108,6 +124,9 @@
   \hrule % Horizontal line
   \begin{list}{}{ % List for each individual item in the section
     \setlength{\leftmargin}{0em} % Margin within the section
+    \setlength{\itemsep}{0pt} % Compress spacing between items (e.g. projects, achievements)
+    \setlength{\parsep}{0pt}
+    \setlength{\topsep}{0pt}
   }
   \item[]
 }{
@@ -123,17 +142,22 @@
  \ifthenelse{\equal{#3}{}}{}{ % If the third argument is not specified, don't print the job title and location line
   \\
   {\em #3} \hfill {\em #4} % Italic job title and location
-  }\smallskip
-  \begin{list}{$\cdot$}{\leftmargin=0em} % \cdot used for bullets, no indentation
-   \itemsep -0.5em \vspace{-0.5em} % Compress items in list together for aesthetics
+  }
+  \begin{list}{$\cdot$}{\leftmargin=1em} % \cdot used for bullets, no indentation
+   % NOTE: \itemsep/\parsep/\topsep only affect spacing BETWEEN items (and
+   % around the whole list) -- do not add a raw \vspace here as well. An
+   % earlier version stacked a \vspace before this list on top of another
+   % \vspace at the list's start, and the two negative skips compounded to
+   % pull the first bullet up so far it visually overlapped the job
+   % title/location line above it. Keep this purely length-based.
+   \itemsep -0.3em \parsep 0pt \topsep 0.15em % Compress items in list together for aesthetics
   }{
   \end{list}
-  \vspace{0.5em} % Some space after the list of bullet points
 }
 
 % The below commands define the whitespace after certain things in the document - they can be \smallskip, \medskip or \bigskip
-\def\namesize{\LARGE} % Size of the name at the top of the document
-\def\addressskip{\smallskip} % The space between the two address (or phone/email) lines
-\def\sectionlineskip{\medskip} % The space above the horizontal line for each section 
-\def\nameskip{\medskip} % The space after your name at the top
-\def\sectionskip{\medskip} % The space after the heading section
+\def\namesize{\Large} % Size of the name at the top of the document
+\def\addressskip{\vspace{0.02em}} % The space between the two address (or phone/email) lines
+\def\sectionlineskip{\vspace{0.02em}} % The space above the horizontal line for each section
+\def\nameskip{\vspace{0.05em}} % The space after your name at the top
+\def\sectionskip{\vspace{0.15em}} % The space after the heading section
