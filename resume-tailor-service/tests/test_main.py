@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 import app.main as main_module
 from app.main import _safe_slug
 from app.models import Manifest, JobSelection, ProjectSelection
-from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError
+from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
 
 def _fake_manifest():
@@ -83,6 +83,20 @@ def test_tailor_returns_422_when_cannot_fit_one_page(monkeypatch):
         json={"jd_text": "x", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 422
+
+
+def test_tailor_returns_502_on_claude_cli_error(monkeypatch):
+    def _raise(*a, **k):
+        raise ClaudeCliError("claude CLI not found on PATH")
+    monkeypatch.setattr(main_module.tailor, "get_manifest", _raise)
+
+    client = TestClient(main_module.app)
+    resp = client.post(
+        "/tailor",
+        headers={"Authorization": "Bearer test-token"},
+        json={"jd_text": "x", "company": "Acme", "role": "SWE"},
+    )
+    assert resp.status_code == 502
 
 
 def test_tailor_returns_500_on_compile_failure(monkeypatch):

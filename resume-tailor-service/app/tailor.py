@@ -1,11 +1,11 @@
 import json
+from typing import Callable
 from pydantic import ValidationError
 from app.bank import ResumeBank
+from app.claude_cli import MODEL_NAME, run_claude
 from app.errors import TailorValidationError
 from app.models import Manifest
 from app.validate import validate_manifest
-
-MODEL_NAME = "claude-sonnet-5"
 
 
 def _describe_bank(bank: ResumeBank) -> str:
@@ -66,17 +66,19 @@ def parse_manifest_json(raw_text: str) -> dict:
     return json.loads(text)
 
 
-def get_manifest(jd_text: str, company: str, role: str, bank: ResumeBank, client, max_retries: int = 1) -> Manifest:
+def get_manifest(
+    jd_text: str,
+    company: str,
+    role: str,
+    bank: ResumeBank,
+    complete: Callable[[str], str] = run_claude,
+    max_retries: int = 1,
+) -> Manifest:
     previous_errors: list[str] | None = None
     attempts = max_retries + 1
     for attempt in range(attempts):
         prompt = build_prompt(jd_text, company, role, bank, previous_errors)
-        response = client.messages.create(
-            model=MODEL_NAME,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw_text = response.content[0].text
+        raw_text = complete(prompt)
         try:
             parsed = parse_manifest_json(raw_text)
             manifest = Manifest.model_validate(parsed)

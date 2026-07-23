@@ -7,10 +7,16 @@ never fabricating — and compiling a guaranteed one-page PDF with your real
 
 ## Setup
 
+Prerequisite: the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code/overview)
+(`claude`) must be installed and logged in — run `claude` once and complete
+login with your Claude subscription (or configured API key). The service
+shells out to this CLI for its one LLM call, so no separate Anthropic API
+key is needed.
+
 ```bash
 cd resume-tailor-service
 uv sync
-cp .env.example .env   # then fill in ANTHROPIC_API_KEY and RESUME_TAILOR_TOKEN
+cp .env.example .env   # then fill in RESUME_TAILOR_TOKEN
 ```
 
 ## Run locally
@@ -35,6 +41,17 @@ curl -s -X POST http://localhost:8420/tailor \
 ```
 
 Returns `{"pdf_path": "...", "manifest": {...}, "pages": 1}`.
+
+## How it works
+
+The one LLM call — selecting which bank IDs to use for a given job
+description — runs through the `claude` CLI in headless/print mode
+(`claude -p ... --output-format json --model claude-sonnet-5`), authenticated
+with whatever the CLI already resolves (Claude subscription login or a
+configured key). This means the service needs no `ANTHROPIC_API_KEY` of its
+own — only `RESUME_TAILOR_TOKEN`, to authenticate callers of this API.
+See `app/claude_cli.py` for the wrapper and `app/tailor.py` for how its output
+is parsed, validated, and retried.
 
 ## Fidelity guarantee
 

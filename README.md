@@ -32,11 +32,14 @@ Verify: run `claude`, then type `/mcp` — playwright should show ✔ Connected.
 ## 3. Set up resume-tailor-service (one-time)
 Tailors `resume.pdf` per job description before every upload in the run
 prompts, guaranteeing a real, one-page PDF (no fabrication — content comes
-from `resume-tailor-service/content/resume_bank.yaml`).
+from `resume-tailor-service/content/resume_bank.yaml`). It uses the `claude`
+CLI (Claude Code) for its one LLM call — the same login you set up in step 1
+— so no separate Anthropic API key is needed; only `RESUME_TAILOR_TOKEN` must
+be set.
 ```bash
 cd resume-tailor-service
 uv sync
-cp .env.example .env   # fill in ANTHROPIC_API_KEY and RESUME_TAILOR_TOKEN
+cp .env.example .env   # fill in RESUME_TAILOR_TOKEN
 uv run uvicorn app.main:app --port 8420
 ```
 See `resume-tailor-service/README.md` for full setup, the Docker/VPS option,

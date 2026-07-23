@@ -1,7 +1,6 @@
 import re
 import uuid
 from pathlib import Path
-import anthropic
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
 
@@ -9,7 +8,7 @@ from app import tailor, render
 from app.auth import verify_token
 from app.bank import load_bank
 from app.models import TailorRequest, TailorResponse
-from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError
+from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
 load_dotenv()
 
@@ -36,12 +35,13 @@ def health():
 @app.post("/tailor", response_model=TailorResponse)
 def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
     bank = load_bank(BANK_PATH)
-    client = anthropic.Anthropic()
 
     try:
-        manifest = tailor.get_manifest(req.jd_text, req.company, req.role, bank, client)
+        manifest = tailor.get_manifest(req.jd_text, req.company, req.role, bank)
     except TailorValidationError as e:
         raise HTTPException(status_code=502, detail=f"model produced an invalid manifest: {e}")
+    except ClaudeCliError as e:
+        raise HTTPException(status_code=502, detail=f"claude CLI invocation failed: {e}")
 
     slug = _safe_slug(req.company, req.role)
     work_dir = OUTPUT_DIR / f"{slug}-{uuid.uuid4().hex[:8]}"

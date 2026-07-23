@@ -7,4 +7,9 @@ services:
       - .env
     volumes:
       - ./output:/srv/app/output
+      # Reuse the host's Claude Code auth (no ANTHROPIC_API_KEY needed) —
+      # the host must be logged in via `claude` (or have Claude Code auth
+      # otherwise provided, e.g. baked into the image or mounted from a
+      # secrets manager) before starting the container.
+      - ${HOME}/.claude:/root/.claude:ro
     restart: unless-stopped

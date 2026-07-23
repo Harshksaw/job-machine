@@ -20,25 +20,15 @@ VALID_MANIFEST_DICT = {
 INVALID_MANIFEST_DICT = {**VALID_MANIFEST_DICT, "job_selections": [{"job_id": "ghost", "bullet_ids": []}]}
 
 
-class _FakeMessage:
-    def __init__(self, text: str):
-        self.content = [type("Block", (), {"text": text})()]
-
-
-class _FakeMessages:
+class _FakeComplete:
     def __init__(self, responses: list[str]):
         self._responses = list(responses)
         self.calls = 0
 
-    def create(self, **kwargs):
+    def __call__(self, prompt: str) -> str:
         text = self._responses[self.calls]
         self.calls += 1
-        return _FakeMessage(text)
-
-
-class _FakeClient:
-    def __init__(self, responses: list[str]):
-        self.messages = _FakeMessages(responses)
+        return text
 
 
 def test_build_prompt_includes_jd_and_bank_ids():
@@ -63,39 +53,39 @@ def test_parse_manifest_json_handles_fenced_json():
 
 def test_get_manifest_succeeds_on_first_valid_response():
     bank = load_bank(FIXTURE)
-    client = _FakeClient([json.dumps(VALID_MANIFEST_DICT)])
-    manifest = get_manifest("jd text", "Acme", "SWE", bank, client)
+    fake = _FakeComplete([json.dumps(VALID_MANIFEST_DICT)])
+    manifest = get_manifest("jd text", "Acme", "SWE", bank, complete=fake)
     assert manifest.job_selections[0].job_id == "acme"
-    assert client.messages.calls == 1
+    assert fake.calls == 1
 
 
 def test_get_manifest_retries_once_then_succeeds():
     bank = load_bank(FIXTURE)
-    client = _FakeClient([json.dumps(INVALID_MANIFEST_DICT), json.dumps(VALID_MANIFEST_DICT)])
-    manifest = get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
+    fake = _FakeComplete([json.dumps(INVALID_MANIFEST_DICT), json.dumps(VALID_MANIFEST_DICT)])
+    manifest = get_manifest("jd text", "Acme", "SWE", bank, complete=fake, max_retries=1)
     assert manifest.job_selections[0].job_id == "acme"
-    assert client.messages.calls == 2
+    assert fake.calls == 2
 
 
 def test_get_manifest_raises_after_exhausting_retries():
     bank = load_bank(FIXTURE)
-    client = _FakeClient([json.dumps(INVALID_MANIFEST_DICT), json.dumps(INVALID_MANIFEST_DICT)])
+    fake = _FakeComplete([json.dumps(INVALID_MANIFEST_DICT), json.dumps(INVALID_MANIFEST_DICT)])
     with pytest.raises(TailorValidationError):
-        get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
-    assert client.messages.calls == 2
+        get_manifest("jd text", "Acme", "SWE", bank, complete=fake, max_retries=1)
+    assert fake.calls == 2
 
 
 def test_get_manifest_retries_on_malformed_json_then_succeeds():
     bank = load_bank(FIXTURE)
-    client = _FakeClient(["not json at all", json.dumps(VALID_MANIFEST_DICT)])
-    manifest = get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
+    fake = _FakeComplete(["not json at all", json.dumps(VALID_MANIFEST_DICT)])
+    manifest = get_manifest("jd text", "Acme", "SWE", bank, complete=fake, max_retries=1)
     assert manifest.job_selections[0].job_id == "acme"
-    assert client.messages.calls == 2
+    assert fake.calls == 2
 
 
 def test_get_manifest_raises_tailor_validation_error_on_persistent_malformed_json():
     bank = load_bank(FIXTURE)
-    client = _FakeClient(["not json at all", "still not json"])
+    fake = _FakeComplete(["not json at all", "still not json"])
     with pytest.raises(TailorValidationError):
-        get_manifest("jd text", "Acme", "SWE", bank, client, max_retries=1)
-    assert client.messages.calls == 2
+        get_manifest("jd text", "Acme", "SWE", bank, complete=fake, max_retries=1)
+    assert fake.calls == 2
