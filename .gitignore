@@ -23,10 +23,9 @@ venv/
 # Generated tailored resumes
 resume-tailor-service/output/
 
-# Dashboard build output (Task 5 decides whether to commit built assets)
-resume-tailor-service/app/static/
-
-# Node / dashboard tooling
+# Node / dashboard tooling. NOTE: resume-tailor-service/app/static/ (the built
+# dashboard UI) is intentionally NOT ignored — it is committed so `uvicorn
+# app.main:app` serves the dashboard on a fresh checkout with no node build step.
 node_modules/
 
 # OS

@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.staticfiles import StaticFiles
 
-from app import tailor, render
+from app import tailor, render, dashboard
 from app.auth import verify_token
 from app.bank import load_bank
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
@@ -19,6 +20,7 @@ BANK_PATH = BASE_DIR / "content" / "resume_bank.yaml"
 TEMPLATE_DIR = BASE_DIR / "templates"
 CLS_PATH = TEMPLATE_DIR / "resume.cls"
 OUTPUT_DIR = BASE_DIR / "output"
+STATIC_DIR = BASE_DIR / "app" / "static"
 
 app = FastAPI(title="resume-tailor-service")
 
@@ -67,3 +69,13 @@ def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=f"failed to write resume metadata: {e}")
 
     return TailorResponse(pdf_path=str(pdf_path), manifest=final_manifest, pages=pages)
+
+
+app.include_router(dashboard.router)
+
+# Serve the built dashboard SPA (see dashboard/README or resume-tailor-service/README
+# for the rebuild step). Mounted last so it never shadows the API routes above —
+# StaticFiles only handles requests that don't match an already-registered route.
+# Guarded so the API still boots if the frontend hasn't been built.
+if STATIC_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="dashboard")

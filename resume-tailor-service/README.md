@@ -42,6 +42,30 @@ curl -s -X POST http://localhost:8420/tailor \
 
 Returns `{"pdf_path": "...", "manifest": {...}, "pages": 1}`.
 
+## Dashboard UI
+
+A read-only dashboard (applications board/table + tailored-resume inspector)
+is served at **http://localhost:8420/** — the same FastAPI app and port as
+the API above (`GET /health`, `POST /tailor`, `GET /api/*` all still work
+side by side; the UI is mounted last so it never shadows them). It's a token
+gate in front of the `GET /api/*` routes in `app/dashboard.py`; enter the
+same `RESUME_TAILOR_TOKEN` value when prompted.
+
+The built assets live in `app/static/` and are committed to the repo, so a
+fresh checkout serves the dashboard with no Node/npm build step — just
+`uv run uvicorn app.main:app --port 8420` as above. If the built assets are
+ever missing, the API still boots fine (`/` just won't resolve); `/health`,
+`/tailor`, and `/api/*` are unaffected.
+
+To rebuild the UI after changing anything under `dashboard/src`:
+
+```bash
+cd dashboard && npm install && npm run build
+```
+
+This regenerates `app/static/` (`index.html` + hashed `assets/*`), which you
+then commit alongside your source change.
+
 ## How it works
 
 The one LLM call — selecting which bank IDs to use for a given job

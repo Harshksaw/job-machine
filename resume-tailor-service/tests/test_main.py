@@ -148,6 +148,24 @@ def test_tailor_returns_500_on_compile_failure(monkeypatch):
     assert resp.status_code == 500
 
 
+def test_dashboard_router_is_mounted_and_requires_auth():
+    """GET /api/applications with no Authorization header must be 401, not 404.
+
+    A 404 here would mean either the dashboard router isn't included on `app`,
+    or the static SPA mount is shadowing /api/* routes.
+    """
+    client = TestClient(main_module.app)
+    resp = client.get("/api/applications")
+    assert resp.status_code == 401
+
+
+def test_static_index_served_at_root():
+    client = TestClient(main_module.app)
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+
+
 def test_safe_slug_strips_path_traversal():
     traversal_slug = safe_slug("../../etc", "x")
     assert "/" not in traversal_slug
