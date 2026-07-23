@@ -93,7 +93,11 @@ def get_applications() -> list[Application]:
     return applications
 
 
-@router.get("/api/tailored/{resume_id}", response_model=TailoredResumeMeta)
+@router.get(
+    "/api/tailored/{resume_id}",
+    response_model=TailoredResumeMeta,
+    response_model_exclude={"pdf_path"},  # server-absolute path; UI ignores it
+)
 def get_tailored(resume_id: str) -> TailoredResumeMeta:
     meta_path = _resolve_dir(resume_id) / "meta.json"
     if not meta_path.is_file():

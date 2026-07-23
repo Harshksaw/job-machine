@@ -156,6 +156,8 @@ def test_get_tailored_reads_meta(client, tmp_path):
     assert body["job_url"] == "https://j"
     assert body["jd_text"] == "jd text"
     assert body["manifest"]["job_selections"][0]["job_id"] == "ommuse"
+    # server-absolute pdf_path is excluded from this response (internal path)
+    assert "pdf_path" not in body
 
 
 def test_get_tailored_404_when_missing(client):

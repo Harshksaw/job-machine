@@ -59,9 +59,10 @@ def fetch_applications() -> list[Application]:
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
             resp = client.get(url, params={"action": "read", "secret": secret})
-    except httpx.HTTPError as exc:
-        # Do NOT interpolate exc/url — httpx error text embeds the request URL.
-        raise SheetsError("could not reach the applications sheet") from exc
+    except httpx.HTTPError:
+        # Suppress the cause: the httpx exception's .request.url embeds
+        # ?secret=… — retaining it as __cause__ could leak via logger.exception.
+        raise SheetsError("could not reach the applications sheet") from None
 
     if resp.status_code != 200:
         raise SheetsError(f"applications sheet returned HTTP {resp.status_code}")
