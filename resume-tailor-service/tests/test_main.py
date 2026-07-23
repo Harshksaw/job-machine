@@ -63,9 +63,29 @@ def test_tailor_success_returns_pdf_path_and_manifest(monkeypatch, tmp_path):
     assert meta.jd_text == "We need a backend engineer."
     assert meta.pdf_path == body["pdf_path"]
     assert meta.manifest.model_dump() == body["manifest"]
-    assert meta.pages == 1
+    assert meta.pages == body["pages"]
     assert meta.job_url is None
     assert meta.created_at
+
+
+def test_tailor_returns_500_when_meta_write_fails(monkeypatch, tmp_path):
+    fake_pdf = tmp_path / "resume.pdf"
+    fake_pdf.write_bytes(b"%PDF-1.4 fake")
+
+    monkeypatch.setattr(main_module.tailor, "get_manifest", lambda *a, **k: _fake_manifest())
+    monkeypatch.setattr(main_module.render, "render_and_fit", lambda *a, **k: (fake_pdf, _fake_manifest(), 1))
+
+    def _raise(*a, **k):
+        raise OSError("disk full")
+    monkeypatch.setattr(Path, "write_text", _raise)
+
+    client = TestClient(main_module.app)
+    resp = client.post(
+        "/tailor",
+        headers={"Authorization": "Bearer test-token"},
+        json={"jd_text": "We need a backend engineer.", "company": "Acme", "role": "SWE"},
+    )
+    assert resp.status_code == 500
 
 
 def test_tailor_returns_502_on_validation_failure(monkeypatch):

@@ -57,17 +57,17 @@ def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
     except CannotFitOnePageError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
+    meta = TailoredResumeMeta(
+        company=req.company,
+        role=req.role,
+        jd_text=req.jd_text,
+        pdf_path=str(pdf_path),
+        manifest=final_manifest,
+        pages=pages,
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+    meta_path = Path(pdf_path).parent / "meta.json"
     try:
-        meta = TailoredResumeMeta(
-            company=req.company,
-            role=req.role,
-            jd_text=req.jd_text,
-            pdf_path=str(pdf_path),
-            manifest=final_manifest,
-            pages=pages,
-            created_at=datetime.now(timezone.utc).isoformat(),
-        )
-        meta_path = Path(pdf_path).parent / "meta.json"
         meta_path.write_text(json.dumps(meta.model_dump(), indent=2), encoding="utf-8")
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"failed to write resume metadata: {e}")
