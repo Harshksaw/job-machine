@@ -29,3 +29,14 @@ class TailorResponse(BaseModel):
     pdf_path: str
     manifest: Manifest
     pages: int
+
+
+class TailoredResumeMeta(BaseModel):
+    company: str
+    role: str
+    jd_text: str
+    pdf_path: str
+    manifest: Manifest
+    pages: int
+    created_at: str
+    job_url: str | None = None

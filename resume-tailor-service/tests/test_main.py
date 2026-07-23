@@ -1,9 +1,10 @@
+import json
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 import app.main as main_module
 from app.main import _safe_slug
-from app.models import Manifest, JobSelection, ProjectSelection
+from app.models import Manifest, JobSelection, ProjectSelection, TailoredResumeMeta
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
 
@@ -53,6 +54,18 @@ def test_tailor_success_returns_pdf_path_and_manifest(monkeypatch, tmp_path):
     assert body["pages"] == 1
     assert body["pdf_path"] == str(fake_pdf)
     assert body["manifest"]["job_selections"][0]["job_id"] == "ommuse"
+
+    meta_path = Path(body["pdf_path"]).parent / "meta.json"
+    assert meta_path.exists()
+    meta = TailoredResumeMeta.model_validate(json.loads(meta_path.read_text(encoding="utf-8")))
+    assert meta.company == "Acme"
+    assert meta.role == "SWE"
+    assert meta.jd_text == "We need a backend engineer."
+    assert meta.pdf_path == body["pdf_path"]
+    assert meta.manifest.model_dump() == body["manifest"]
+    assert meta.pages == 1
+    assert meta.job_url is None
+    assert meta.created_at
 
 
 def test_tailor_returns_502_on_validation_failure(monkeypatch):

@@ -1,5 +1,7 @@
+import json
 import re
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
@@ -7,7 +9,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from app import tailor, render
 from app.auth import verify_token
 from app.bank import load_bank
-from app.models import TailorRequest, TailorResponse
+from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
 load_dotenv()
@@ -54,5 +56,20 @@ def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=f"LaTeX compile failed: {e}")
     except CannotFitOnePageError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+    try:
+        meta = TailoredResumeMeta(
+            company=req.company,
+            role=req.role,
+            jd_text=req.jd_text,
+            pdf_path=str(pdf_path),
+            manifest=final_manifest,
+            pages=pages,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        meta_path = Path(pdf_path).parent / "meta.json"
+        meta_path.write_text(json.dumps(meta.model_dump(), indent=2), encoding="utf-8")
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"failed to write resume metadata: {e}")
 
     return TailorResponse(pdf_path=str(pdf_path), manifest=final_manifest, pages=pages)
