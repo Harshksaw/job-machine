@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Vite cache & logs
+node_modules/.vite/
+.vite/
+*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store

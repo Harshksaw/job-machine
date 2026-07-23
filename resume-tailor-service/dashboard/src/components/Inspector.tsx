@@ -1,0 +1,365 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  ExternalLink,
+  FileText,
+  Layers,
+  Loader2,
+  Users,
+  X,
+} from "lucide-react";
+import type { Application, ResumeBank, TailoredResumeMeta } from "../types";
+import { fetchTailored, fetchTailoredPdf, loadResumeBank } from "../api";
+
+interface Props {
+  app: Application;
+  onClose: () => void;
+}
+
+type Phase = "loading" | "ready" | "error";
+
+interface ResolvedGroup {
+  heading: string;
+  subheading?: string;
+  bullets: string[];
+}
+
+function resolveManifest(
+  meta: TailoredResumeMeta,
+  bank: ResumeBank
+): { jobs: ResolvedGroup[]; projects: ResolvedGroup[]; achievements: string[] } {
+  const jobById = new Map(bank.jobs.map((j) => [j.id, j]));
+  const projById = new Map(bank.projects.map((p) => [p.id, p]));
+  const achById = new Map(bank.achievements.map((a) => [a.id, a]));
+
+  const jobs = meta.manifest.job_selections.map((sel) => {
+    const job = jobById.get(sel.job_id);
+    const bulletById = new Map((job?.bullets ?? []).map((b) => [b.id, b]));
+    return {
+      heading: job?.title ?? sel.job_id,
+      subheading: job?.company,
+      bullets: sel.bullet_ids.map(
+        (id) => bulletById.get(id)?.text ?? `[missing bullet: ${id}]`
+      ),
+    };
+  });
+
+  const projects = meta.manifest.project_selections.map((sel) => {
+    const proj = projById.get(sel.project_id);
+    const bulletById = new Map((proj?.bullets ?? []).map((b) => [b.id, b]));
+    return {
+      heading: proj?.name ?? sel.project_id,
+      bullets: sel.bullet_ids.map(
+        (id) => bulletById.get(id)?.text ?? `[missing bullet: ${id}]`
+      ),
+    };
+  });
+
+  const achievements = meta.manifest.achievement_ids.map(
+    (id) => achById.get(id)?.text ?? `[missing achievement: ${id}]`
+  );
+
+  return { jobs, projects, achievements };
+}
+
+function ContactsPanel({ app }: { app: Application }) {
+  const people = app.people.trim();
+  const hooks = app.hooks.trim();
+  return (
+    <section className="border-t border-slate-800 p-4">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+        <Users className="h-4 w-4 text-slate-400" aria-hidden />
+        Mined Contacts
+      </h3>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+            People
+          </div>
+          {people ? (
+            <p className="whitespace-pre-wrap break-words text-sm text-slate-300">
+              {people}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-600">None recorded.</p>
+          )}
+        </div>
+        <div>
+          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Hooks
+          </div>
+          {hooks ? (
+            <p className="whitespace-pre-wrap break-words text-sm text-slate-300">
+              {hooks}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-600">None recorded.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ManifestGroup({ group }: { group: ResolvedGroup }) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+      <div className="text-sm font-medium text-slate-200">
+        {group.heading}
+        {group.subheading && (
+          <span className="text-slate-500"> · {group.subheading}</span>
+        )}
+      </div>
+      <ul className="mt-2 space-y-1.5">
+        {group.bullets.map((text, i) => (
+          <li key={i} className="flex gap-2 text-sm text-slate-300">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-indigo-400" aria-hidden />
+            <span className="break-words">{text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function Inspector({ app, onClose }: Props) {
+  const id = app.tailored_resume_id;
+
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [errorMsg, setErrorMsg] = useState<string>("");
+  const [meta, setMeta] = useState<TailoredResumeMeta | null>(null);
+  const [bank, setBank] = useState<ResumeBank | null>(null);
+
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState(false);
+
+  // Close on Escape.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Load metadata + resume bank (bank is cached across opens).
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setPhase("loading");
+    Promise.all([fetchTailored(id), loadResumeBank()])
+      .then(([m, b]) => {
+        if (cancelled) return;
+        setMeta(m);
+        setBank(b);
+        setPhase("ready");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setErrorMsg(err instanceof Error ? err.message : "Failed to load.");
+        setPhase("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  // Fetch the PDF WITH the bearer header, hand the iframe a blob URL (never a
+  // raw /api URL — an iframe GET can't send Authorization), revoke on cleanup.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setPdfError(false);
+    setPdfUrl(null);
+    fetchTailoredPdf(id)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPdfError(true);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id]);
+
+  const resolved = useMemo(
+    () => (meta && bank ? resolveManifest(meta, bank) : null),
+    [meta, bank]
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none border-slate-800 bg-slate-950 shadow-2xl sm:rounded-2xl sm:border"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Resume inspector for ${app.company}`}
+      >
+        {/* Header */}
+        <header className="flex items-center gap-3 border-b border-slate-800 px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-slate-100">
+              {app.company || "Unknown company"}
+            </h2>
+            <p className="truncate text-xs text-slate-400">{app.role || "—"}</p>
+          </div>
+          {meta && (
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
+              <FileText className="h-3.5 w-3.5" aria-hidden />
+              {meta.pages} {meta.pages === 1 ? "page" : "pages"}
+            </span>
+          )}
+          {app.job_url.trim() && (
+            <a
+              href={app.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-300"
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Job
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+            aria-label="Close inspector"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </header>
+
+        {/* Body */}
+        {id == null ? (
+          <div className="flex flex-1 flex-col">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+              <FileText className="h-8 w-8 text-slate-600" aria-hidden />
+              <p className="text-sm text-slate-400">
+                No tailored resume for this row yet.
+              </p>
+              <p className="max-w-sm text-xs text-slate-600">
+                A tailored PDF appears here once the service generates one for{" "}
+                {app.company || "this company"}.
+              </p>
+            </div>
+            <ContactsPanel app={app} />
+          </div>
+        ) : phase === "loading" ? (
+          <div className="flex flex-1 items-center justify-center gap-2 text-slate-400">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            <span className="text-sm">Loading tailored resume…</span>
+          </div>
+        ) : phase === "error" ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+            <AlertTriangle className="h-8 w-8 text-rose-400" aria-hidden />
+            <p className="text-sm text-slate-300">{errorMsg}</p>
+          </div>
+        ) : (
+          meta &&
+          resolved && (
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-2">
+                {/* LEFT: JD + manifest */}
+                <div className="overflow-y-auto border-b border-slate-800 p-4 lg:border-b-0 lg:border-r">
+                  <section className="mb-5">
+                    <div className="mb-2 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
+                      <div className="mb-1 text-xs font-medium uppercase tracking-wide text-indigo-300/80">
+                        Summary
+                      </div>
+                      <p className="break-words text-sm text-slate-200">
+                        {meta.manifest.summary || "—"}
+                      </p>
+                    </div>
+                  </section>
+
+                  <section className="mb-6">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200">
+                      <Layers className="h-4 w-4 text-slate-400" aria-hidden />
+                      Manifest — Bullets Selected
+                    </h3>
+                    <div className="space-y-3">
+                      {resolved.jobs.map((g, i) => (
+                        <ManifestGroup key={`job-${i}`} group={g} />
+                      ))}
+                      {resolved.projects.map((g, i) => (
+                        <ManifestGroup key={`proj-${i}`} group={g} />
+                      ))}
+                      {resolved.achievements.length > 0 && (
+                        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+                          <div className="text-sm font-medium text-slate-200">
+                            Achievements
+                          </div>
+                          <ul className="mt-2 space-y-1.5">
+                            {resolved.achievements.map((text, i) => (
+                              <li
+                                key={i}
+                                className="flex gap-2 text-sm text-slate-300"
+                              >
+                                <span
+                                  className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400"
+                                  aria-hidden
+                                />
+                                <span className="break-words">{text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="mb-2 text-sm font-semibold text-slate-200">
+                      Job Description
+                    </h3>
+                    <pre className="whitespace-pre-wrap break-words rounded-lg border border-slate-800 bg-slate-900/40 p-3 font-sans text-sm leading-relaxed text-slate-300">
+                      {meta.jd_text || "—"}
+                    </pre>
+                  </section>
+                </div>
+
+                {/* RIGHT: PDF */}
+                <div className="flex min-h-[40vh] flex-col overflow-hidden bg-slate-900/40 lg:min-h-0">
+                  {pdfError ? (
+                    <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+                      <AlertTriangle
+                        className="h-8 w-8 text-rose-400"
+                        aria-hidden
+                      />
+                      <p className="text-sm text-slate-300">
+                        Failed to load the PDF.
+                      </p>
+                    </div>
+                  ) : pdfUrl ? (
+                    <iframe
+                      title="Tailored resume PDF"
+                      src={pdfUrl}
+                      className="h-full w-full flex-1 border-0 bg-white"
+                    />
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center gap-2 text-slate-400">
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                      <span className="text-sm">Loading PDF…</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <ContactsPanel app={app} />
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}

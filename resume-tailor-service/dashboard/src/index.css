@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+/* Thin, unobtrusive scrollbars for the command-center panes. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85);
+  border-radius: 9999px;
+}

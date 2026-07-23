@@ -23,5 +23,11 @@ venv/
 # Generated tailored resumes
 resume-tailor-service/output/
 
+# Dashboard build output (Task 5 decides whether to commit built assets)
+resume-tailor-service/app/static/
+
+# Node / dashboard tooling
+node_modules/
+
 # OS
 .DS_Store
