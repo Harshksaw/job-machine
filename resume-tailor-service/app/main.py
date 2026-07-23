@@ -1,5 +1,4 @@
 import json
-import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +9,7 @@ from app import tailor, render
 from app.auth import verify_token
 from app.bank import load_bank
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
+from app.slug import safe_slug
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
 load_dotenv()
@@ -21,12 +21,6 @@ CLS_PATH = TEMPLATE_DIR / "resume.cls"
 OUTPUT_DIR = BASE_DIR / "output"
 
 app = FastAPI(title="resume-tailor-service")
-
-
-def _safe_slug(company: str, role: str) -> str:
-    raw = f"{company}-{role}".lower().replace(" ", "-")
-    cleaned = re.sub(r"[^a-z0-9._-]", "", raw).lstrip(".-")
-    return cleaned or "job"
 
 
 @app.get("/health")
@@ -45,7 +39,7 @@ def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
     except ClaudeCliError as e:
         raise HTTPException(status_code=502, detail=f"claude CLI invocation failed: {e}")
 
-    slug = _safe_slug(req.company, req.role)
+    slug = safe_slug(req.company, req.role)
     work_dir = OUTPUT_DIR / f"{slug}-{uuid.uuid4().hex[:8]}"
 
     try:

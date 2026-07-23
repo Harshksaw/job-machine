@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 import app.main as main_module
-from app.main import _safe_slug
+from app.slug import safe_slug
 from app.models import Manifest, JobSelection, ProjectSelection, TailoredResumeMeta
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
@@ -149,10 +149,10 @@ def test_tailor_returns_500_on_compile_failure(monkeypatch):
 
 
 def test_safe_slug_strips_path_traversal():
-    traversal_slug = _safe_slug("../../etc", "x")
+    traversal_slug = safe_slug("../../etc", "x")
     assert "/" not in traversal_slug
     assert ".." not in traversal_slug
     assert traversal_slug
 
-    assert _safe_slug("Acme Corp", "Backend Engineer") == "acme-corp-backend-engineer"
-    assert _safe_slug("..", "..") == "job"
+    assert safe_slug("Acme Corp", "Backend Engineer") == "acme-corp-backend-engineer"
+    assert safe_slug("..", "..") == "job"
