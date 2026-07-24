@@ -23,6 +23,9 @@ venv/
 # Generated tailored resumes
 resume-tailor-service/output/
 
+# Local people/outreach store (personal runtime data)
+resume-tailor-service/data/
+
 # Node / dashboard tooling. NOTE: resume-tailor-service/app/static/ (the built
 # dashboard UI) is intentionally NOT ignored — it is committed so `uvicorn
 # app.main:app` serves the dashboard on a fresh checkout with no node build step.
