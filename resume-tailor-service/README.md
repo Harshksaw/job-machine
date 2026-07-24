@@ -50,12 +50,12 @@ Returns `{"pdf_path": "...", "manifest": {...}, "pages": 1}`.
 
 ## Dashboard UI
 
-A read-only dashboard (applications board/table + tailored-resume inspector)
-is served at **http://localhost:8420/** — the same FastAPI app and port as
-the API above (`GET /health`, `POST /tailor`, `GET /api/*` all still work
-side by side; the UI is mounted last so it never shadows them). It's a token
-gate in front of the `GET /api/*` routes in `app/dashboard.py`; enter the
-same `RESUME_TAILOR_TOKEN` value when prompted.
+A dashboard (applications board/table, tailored-resume inspector, and a
+People/outreach view) is served at **http://localhost:8420/** — the same
+FastAPI app and port as the API above (`GET /health`, `POST /tailor`,
+`GET /api/*` all still work side by side; the UI is mounted last so it
+never shadows them). The dashboard loads directly with no login or token
+gate — the service is local-only, has no auth, and binds to 127.0.0.1.
 
 The built assets live in `app/static/` and are committed to the repo, so a
 fresh checkout serves the dashboard with no Node/npm build step — just
@@ -72,6 +72,21 @@ cd dashboard && npm install && npm run build
 This regenerates `app/static/` (`index.html` + hashed `assets/*`), which you
 then commit alongside your source change.
 
+## People / Outreach hub
+
+The dashboard's third view (alongside the applications board and table) is
+a central list of people to reach out to: name/title/company, a LinkedIn
+URL plus any extra links, an outreach status (`to-reach`, `queued`, `sent`,
+`replied`, `skip`), a saved outreach message/hook, notes, and an optional
+tie back to a job/application. A person tied to a company also shows up
+under that company's card in the job inspector.
+
+People are stored in `data/people.json` — gitignored and local-only, never
+committed. The list is managed entirely through `GET/POST/PUT/DELETE
+/api/people` (see `app/people.py` and `app/people_store.py`); like the rest
+of the API, these routes have no auth and are only reachable on
+127.0.0.1.
+
 ## How it works
 
 The one LLM call — selecting which bank IDs to use for a given job
@@ -79,7 +94,7 @@ description — runs through the `claude` CLI in headless/print mode
 (`claude -p ... --output-format json --model claude-sonnet-5`), authenticated
 with whatever the CLI already resolves (Claude subscription login or a
 configured key). This means the service needs no `ANTHROPIC_API_KEY` of its
-own — only `RESUME_TAILOR_TOKEN`, to authenticate callers of this API.
+own. The service itself has no auth — it's local-only, bound to 127.0.0.1.
 See `app/claude_cli.py` for the wrapper and `app/tailor.py` for how its output
 is parsed, validated, and retried.
 
