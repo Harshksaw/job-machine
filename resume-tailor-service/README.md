@@ -15,15 +15,22 @@ key is needed.
 
 ```bash
 cd resume-tailor-service
-uv sync
-cp .env.example .env   # then fill in RESUME_TAILOR_TOKEN
+cp .env.example .env   # fill APPS_SCRIPT_URL / APPS_SCRIPT_READ_SECRET, or point
+                        # APPS_SCRIPT_URL at http://127.0.0.1:8799/exec for the mock
 ```
 
 ## Run locally
 
 ```bash
-uv run uvicorn app.main:app --port 8420
+./scripts/start.sh
 ```
+
+This installs dependencies (`uv sync`), starts the mock Google Sheet server
+on port 8799 when `APPS_SCRIPT_URL` points at localhost, and starts the API
+on `http://127.0.0.1:8420`. Ctrl-C tears both down.
+
+*Local-only — the service has no auth and binds to 127.0.0.1. Re-add a
+token dependency before exposing it on a network.*
 
 ## Run via Docker (for VPS deployment)
 
@@ -35,7 +42,6 @@ docker compose up -d
 
 ```bash
 curl -s -X POST http://localhost:8420/tailor \
-  -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jd_text": "...", "company": "Acme", "role": "Backend Engineer"}'
 ```
