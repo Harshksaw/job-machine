@@ -4,16 +4,21 @@ import {
   ExternalLink,
   FileText,
   Layers,
+  Linkedin,
   Loader2,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
-import type { Application, ResumeBank, TailoredResumeMeta } from "../types";
+import type { Application, Person, ResumeBank, TailoredResumeMeta } from "../types";
 import { fetchTailored, loadResumeBank } from "../api";
+import { matchesApplication, safeHref, STATUS_LABEL, STATUS_STYLE } from "../lib/people";
 
 interface Props {
   app: Application;
+  people: Person[];
   onClose: () => void;
+  onAddPerson: (company: string, role: string) => void;
 }
 
 type Phase = "loading" | "ready" | "error";
@@ -62,41 +67,96 @@ function resolveManifest(
   return { jobs, projects, achievements };
 }
 
-function ContactsPanel({ app }: { app: Application }) {
-  const people = app.people.trim();
+function PeoplePanel({
+  app,
+  people,
+  onAddPerson,
+}: {
+  app: Application;
+  people: Person[];
+  onAddPerson: (c: string, r: string) => void;
+}) {
+  const matched = people.filter((p) =>
+    matchesApplication(p, { company: app.company, role: app.role })
+  );
   const hooks = app.hooks.trim();
+  const rawPeople = app.people.trim();
+  const chip =
+    "inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-300 hover:border-indigo-500/40 hover:text-indigo-300";
   return (
     <section className="border-t border-slate-800 p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-        <Users className="h-4 w-4 text-slate-400" aria-hidden />
-        Mined Contacts
-      </h3>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-            People
-          </div>
-          {people ? (
-            <p className="whitespace-pre-wrap break-words text-sm text-slate-300">
-              {people}
-            </p>
-          ) : (
-            <p className="text-sm text-slate-600">None recorded.</p>
-          )}
-        </div>
-        <div>
-          <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Hooks
-          </div>
-          {hooks ? (
-            <p className="whitespace-pre-wrap break-words text-sm text-slate-300">
-              {hooks}
-            </p>
-          ) : (
-            <p className="text-sm text-slate-600">None recorded.</p>
-          )}
-        </div>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+          <Users className="h-4 w-4 text-slate-400" aria-hidden /> People at{" "}
+          {app.company || "this company"}
+        </h3>
+        <button
+          type="button"
+          onClick={() => onAddPerson(app.company, app.role)}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-indigo-500/40 hover:text-indigo-300"
+        >
+          <UserPlus className="h-3.5 w-3.5" /> Add
+        </button>
       </div>
+      {matched.length > 0 ? (
+        <ul className="space-y-2">
+          {matched.map((p) => (
+            <li key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium text-slate-100">{p.name}</span>
+              {p.title && <span className="text-slate-500">· {p.title}</span>}
+              <span
+                className={`inline-flex rounded-md border px-1.5 py-0.5 text-xs ${
+                  STATUS_STYLE[p.status] ?? ""
+                }`}
+              >
+                {STATUS_LABEL[p.status] ?? p.status}
+              </span>
+              {safeHref(p.linkedin_url) && (
+                <a
+                  className={chip}
+                  href={safeHref(p.linkedin_url)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Linkedin className="h-3 w-3" /> LinkedIn
+                </a>
+              )}
+              {p.links.map(
+                (l, i) =>
+                  safeHref(l.url) && (
+                    <a
+                      key={i}
+                      className={chip}
+                      href={safeHref(l.url)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-3 w-3" /> {l.label || "link"}
+                    </a>
+                  )
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-600">No people added for this company yet.</p>
+      )}
+      {(hooks || rawPeople) && (
+        <div className="mt-4 grid gap-3 text-xs text-slate-500 sm:grid-cols-2">
+          {hooks && (
+            <div>
+              <div className="mb-1 uppercase tracking-wide">Hooks (sheet)</div>
+              <p className="whitespace-pre-wrap text-slate-400">{hooks}</p>
+            </div>
+          )}
+          {rawPeople && (
+            <div>
+              <div className="mb-1 uppercase tracking-wide">Raw sheet note</div>
+              <p className="whitespace-pre-wrap text-slate-400">{rawPeople}</p>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -122,7 +182,7 @@ function ManifestGroup({ group }: { group: ResolvedGroup }) {
   );
 }
 
-export default function Inspector({ app, onClose }: Props) {
+export default function Inspector({ app, people, onClose, onAddPerson }: Props) {
   const id = app.tailored_resume_id;
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -226,7 +286,7 @@ export default function Inspector({ app, onClose }: Props) {
                 {app.company || "this company"}.
               </p>
             </div>
-            <ContactsPanel app={app} />
+            <PeoplePanel app={app} people={people} onAddPerson={onAddPerson} />
           </div>
         ) : phase === "loading" ? (
           <div className="flex flex-1 items-center justify-center gap-2 text-slate-400">
@@ -314,7 +374,7 @@ export default function Inspector({ app, onClose }: Props) {
                 </div>
               </div>
 
-              <ContactsPanel app={app} />
+              <PeoplePanel app={app} people={people} onAddPerson={onAddPerson} />
             </div>
           )
         )}

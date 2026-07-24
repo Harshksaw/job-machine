@@ -324,7 +324,7 @@ export default function App() {
                   onResetFilters={handleClearFilters}
                 />
               ) : (
-                <Board apps={filteredApps} onOpen={setSelected} />
+                <Board apps={filteredApps} people={people} onOpen={setSelected} />
               )}
             </>
           )
@@ -332,7 +332,19 @@ export default function App() {
       </main>
 
       {selected && (
-        <Inspector app={selected} onClose={() => setSelected(null)} />
+        <Inspector
+          app={selected}
+          people={people}
+          onClose={() => setSelected(null)}
+          onAddPerson={(company, role) => {
+            setSelected(null);
+            setView("people");
+            // People view exposes its own Add button; the company/role are visible
+            // on the row the user just came from. (A prefilled deep-link is a later nicety.)
+            void role;
+            void company;
+          }}
+        />
       )}
     </div>
   );

@@ -1,13 +1,14 @@
-import type { Application } from "../types";
+import type { Application, Person } from "../types";
 import { groupByStatus } from "../lib/status";
 import AppCard from "./AppCard";
 
 interface Props {
   apps: Application[];
+  people: Person[];
   onOpen: (app: Application) => void;
 }
 
-export default function Board({ apps, onOpen }: Props) {
+export default function Board({ apps, people, onOpen }: Props) {
   const columns = groupByStatus(apps);
 
   return (
@@ -37,6 +38,7 @@ export default function Board({ apps, onOpen }: Props) {
                 <AppCard
                   key={`${app.company}-${app.role}-${i}`}
                   app={app}
+                  people={people}
                   onOpen={onOpen}
                 />
               ))

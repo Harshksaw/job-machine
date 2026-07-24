@@ -1,15 +1,20 @@
-import { ExternalLink, FileCheck2 } from "lucide-react";
-import type { Application } from "../types";
+import { ExternalLink, FileCheck2, Users } from "lucide-react";
+import type { Application, Person } from "../types";
+import { matchesApplication } from "../lib/people";
 import FitBadge from "./FitBadge";
 
 interface Props {
   app: Application;
+  people: Person[];
   onOpen: (app: Application) => void;
 }
 
-export default function AppCard({ app, onOpen }: Props) {
+export default function AppCard({ app, people, onOpen }: Props) {
   const hasPdf = app.tailored_resume_id != null;
   const hasUrl = app.job_url.trim().length > 0;
+  const peopleCount = people.filter((p) =>
+    matchesApplication(p, { company: app.company, role: app.role })
+  ).length;
 
   return (
     <button
@@ -26,7 +31,14 @@ export default function AppCard({ app, onOpen }: Props) {
             {app.role || "—"}
           </div>
         </div>
-        <FitBadge fit={app.fit} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          {peopleCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-xs text-slate-400">
+              <Users className="h-3 w-3" aria-hidden /> {peopleCount}
+            </span>
+          )}
+          <FitBadge fit={app.fit} />
+        </div>
       </div>
 
       <div className="mt-3 flex items-center gap-3 text-xs">
