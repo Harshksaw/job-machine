@@ -79,7 +79,12 @@ def _resolve_dir(resume_id: str) -> Path:
 
 
 @router.get("/api/applications", response_model=list[Application])
-def get_applications() -> list[Application]:
+def get_applications(
+    q: str | None = None,
+    status: str | None = None,
+    min_fit: float | None = None,
+    has_pdf: bool | None = None,
+) -> list[Application]:
     try:
         applications = sheets.fetch_applications()
     except SheetsError:
@@ -90,7 +95,46 @@ def get_applications() -> list[Application]:
     for application in applications:
         key = safe_slug(application.company, application.role)
         application.tailored_resume_id = index.get(key)
+
+    if q:
+        query = q.strip().lower()
+        if query:
+            applications = [
+                app
+                for app in applications
+                if query in app.company.lower()
+                or query in app.role.lower()
+                or query in app.source.lower()
+                or query in app.notes.lower()
+                or query in app.hooks.lower()
+                or query in app.people.lower()
+            ]
+
+    if status:
+        st_query = status.strip().lower()
+        if st_query:
+            applications = [
+                app for app in applications if app.status.strip().lower() == st_query
+            ]
+
+    if min_fit is not None:
+        def _parse_fit(fit_str: str) -> float:
+            try:
+                return float(fit_str)
+            except (ValueError, TypeError):
+                return -1.0
+
+        applications = [
+            app for app in applications if _parse_fit(app.fit) >= min_fit
+        ]
+
+    if has_pdf is not None:
+        applications = [
+            app for app in applications if (app.tailored_resume_id is not None) == has_pdf
+        ]
+
     return applications
+
 
 
 @router.get(

@@ -261,3 +261,57 @@ def test_resume_bank_exposes_text_not_contact(client):
 def test_resume_bank_requires_auth(client):
     resp = client.get("/api/resume-bank")
     assert resp.status_code == 401
+
+
+def test_get_applications_with_filters(client, monkeypatch):
+    test_apps = [
+        Application(
+            company="Acme Corp",
+            role="Backend Engineer",
+            source="LinkedIn",
+            job_url="https://acme.com",
+            status="applied",
+            fit="9",
+            people="",
+            hooks="",
+            outreach="",
+            notes="Great fit for Go and Python",
+            timestamp="2026-07-20",
+        ),
+        Application(
+            company="Beta AI",
+            role="Full Stack Engineer",
+            source="Wellfound",
+            job_url="https://beta.ai",
+            status="interview",
+            fit="7",
+            people="",
+            hooks="",
+            outreach="",
+            notes="React and Node.js position",
+            timestamp="2026-07-21",
+        ),
+    ]
+    monkeypatch.setattr(sheets, "fetch_applications", lambda: test_apps)
+
+    # Search filter 'Acme'
+    resp = client.get("/api/applications?q=Acme", headers=AUTH)
+    assert resp.status_code == 200
+    res = resp.json()
+    assert len(res) == 1
+    assert res[0]["company"] == "Acme Corp"
+
+    # Status filter 'interview'
+    resp = client.get("/api/applications?status=interview", headers=AUTH)
+    assert resp.status_code == 200
+    res = resp.json()
+    assert len(res) == 1
+    assert res[0]["company"] == "Beta AI"
+
+    # Min fit filter 8.0
+    resp = client.get("/api/applications?min_fit=8.0", headers=AUTH)
+    assert resp.status_code == 200
+    res = resp.json()
+    assert len(res) == 1
+    assert res[0]["company"] == "Acme Corp"
+
