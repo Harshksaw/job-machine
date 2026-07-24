@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { Application, ResumeBank, TailoredResumeMeta } from "../types";
-import { fetchTailored, fetchTailoredPdf, loadResumeBank } from "../api";
+import { fetchTailored, loadResumeBank } from "../api";
 
 interface Props {
   app: Application;
@@ -130,9 +130,6 @@ export default function Inspector({ app, onClose }: Props) {
   const [meta, setMeta] = useState<TailoredResumeMeta | null>(null);
   const [bank, setBank] = useState<ResumeBank | null>(null);
 
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfError, setPdfError] = useState(false);
-
   // Close on Escape.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -161,29 +158,6 @@ export default function Inspector({ app, onClose }: Props) {
       });
     return () => {
       cancelled = true;
-    };
-  }, [id]);
-
-  // Fetch the PDF WITH the bearer header, hand the iframe a blob URL (never a
-  // raw /api URL — an iframe GET can't send Authorization), revoke on cleanup.
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    setPdfError(false);
-    setPdfUrl(null);
-    fetchTailoredPdf(id)
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setPdfUrl(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setPdfError(true);
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [id]);
 
@@ -330,27 +304,12 @@ export default function Inspector({ app, onClose }: Props) {
 
                 {/* RIGHT: PDF */}
                 <div className="flex min-h-[40vh] flex-col overflow-hidden bg-slate-900/40 lg:min-h-0">
-                  {pdfError ? (
-                    <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
-                      <AlertTriangle
-                        className="h-8 w-8 text-rose-400"
-                        aria-hidden
-                      />
-                      <p className="text-sm text-slate-300">
-                        Failed to load the PDF.
-                      </p>
-                    </div>
-                  ) : pdfUrl ? (
+                  {id != null && (
                     <iframe
                       title="Tailored resume PDF"
-                      src={pdfUrl}
+                      src={`/api/tailored/${encodeURIComponent(id)}/pdf`}
                       className="h-full w-full flex-1 border-0 bg-white"
                     />
-                  ) : (
-                    <div className="flex flex-1 items-center justify-center gap-2 text-slate-400">
-                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-                      <span className="text-sm">Loading PDF…</span>
-                    </div>
                   )}
                 </div>
               </div>

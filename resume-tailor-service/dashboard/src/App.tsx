@@ -3,22 +3,13 @@ import {
   AlertTriangle,
   Columns3,
   Loader2,
-  LogOut,
   RefreshCw,
   Table2,
   Terminal,
 } from "lucide-react";
 import type { Application } from "./types";
-import {
-  UNAUTHORIZED_EVENT,
-  clearToken,
-  fetchApplications,
-  getToken,
-  resetBankCache,
-  setToken as persistToken,
-} from "./api";
+import { fetchApplications, resetBankCache } from "./api";
 import { normalizeStatus } from "./lib/status";
-import TokenScreen from "./components/TokenScreen";
 import Board from "./components/Board";
 import AppTable from "./components/AppTable";
 import Inspector from "./components/Inspector";
@@ -29,9 +20,6 @@ type View = "board" | "table";
 type LoadPhase = "loading" | "ready" | "error";
 
 export default function App() {
-  const [token, setTokenState] = useState<string | null>(() => getToken());
-  const [authError, setAuthError] = useState<string | null>(null);
-
   const [apps, setApps] = useState<Application[]>([]);
   const [phase, setPhase] = useState<LoadPhase>("loading");
   const [errorMsg, setErrorMsg] = useState("");
@@ -46,49 +34,22 @@ export default function App() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [pdfOnlyFilter, setPdfOnlyFilter] = useState(false);
 
-  // Any 401 clears the token and returns us to the token screen.
-  useEffect(() => {
-    const onUnauthorized = () => {
-      setTokenState(null);
-      setSelected(null);
-      resetBankCache();
-      setAuthError("Your token was rejected. Please enter a valid token.");
-    };
-    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-  }, []);
-
   const load = useCallback(async () => {
     setPhase("loading");
+    resetBankCache();
     try {
       const data = await fetchApplications();
       setApps(data);
       setPhase("ready");
     } catch (err) {
-      // 401 is handled by the global listener (drops to token screen).
       setErrorMsg(err instanceof Error ? err.message : "Failed to load.");
       setPhase("error");
     }
   }, []);
 
   useEffect(() => {
-    if (token) void load();
-  }, [token, load]);
-
-  const handleToken = useCallback((value: string) => {
-    persistToken(value);
-    setAuthError(null);
-    setTokenState(value);
-  }, []);
-
-  const handleSignOut = useCallback(() => {
-    clearToken();
-    resetBankCache();
-    setSelected(null);
-    setApps([]);
-    setTokenState(null);
-    setAuthError(null);
-  }, []);
+    void load();
+  }, [load]);
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery("");
@@ -200,10 +161,6 @@ export default function App() {
     document.body.removeChild(link);
   }, [filteredApps]);
 
-  if (!token) {
-    return <TokenScreen onSubmit={handleToken} error={authError} />;
-  }
-
   return (
     <div className="flex min-h-full flex-col bg-slate-950 text-slate-100">
       {/* Top bar */}
@@ -264,16 +221,6 @@ export default function App() {
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden />
               Refresh
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-rose-500/40 hover:text-rose-300"
-              title="Sign out / change token"
-            >
-              <LogOut className="h-3.5 w-3.5" aria-hidden />
-              Sign out
             </button>
           </div>
         </div>
