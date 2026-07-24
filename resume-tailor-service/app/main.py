@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from app import tailor, render, dashboard
+from app import tailor, render, dashboard, people
 from app.bank import load_bank
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
 from app.slug import safe_slug
@@ -71,6 +71,7 @@ def tailor_resume(req: TailorRequest):
 
 
 app.include_router(dashboard.router)
+app.include_router(people.router)
 
 # Serve the built dashboard SPA (see dashboard/README or resume-tailor-service/README
 # for the rebuild step). Mounted last so it never shadows the API routes above —
