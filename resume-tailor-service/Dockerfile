@@ -31,4 +31,8 @@ RUN mkdir -p /srv/app/output
 
 EXPOSE 8420
 
+# --host 0.0.0.0 is the container-internal bind (required for Docker's port
+# mapping to reach it). Host exposure is controlled by docker-compose.yml,
+# which publishes only on 127.0.0.1. The service has no auth — see the Docker
+# section of README.md before exposing it on a network.
 CMD [".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8420"]

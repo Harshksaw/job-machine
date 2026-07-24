@@ -32,11 +32,19 @@ on `http://127.0.0.1:8420`. Ctrl-C tears both down.
 *Local-only — the service has no auth and binds to 127.0.0.1. Re-add a
 token dependency before exposing it on a network.*
 
-## Run via Docker (for VPS deployment)
+## Run via Docker
 
 ```bash
 docker compose up -d
 ```
+
+> **⚠️ No auth — do NOT expose this on a public network.** The service has no
+> authentication. `docker-compose.yml` publishes the port on `127.0.0.1` only,
+> so a stock `docker compose up` stays local to the host. Before running it on
+> a VPS or forwarding the port, re-add an auth gate — a `Depends(...)` token
+> check on the `/tailor`, `/api/*`, and `/api/people` routes, as the
+> pre-`feat/people-outreach-hub` `app/auth.py` did — otherwise `/tailor`, the
+> people-store CRUD, and PDF serving are open to anyone who can reach the port.
 
 ## Call it
 

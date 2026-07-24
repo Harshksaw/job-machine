@@ -2,7 +2,9 @@ services:
   resume-tailor:
     build: .
     ports:
-      - "8420:8420"
+      # Loopback-only: the service has NO auth (local-only). Do NOT change to
+      # "8420:8420" (all interfaces) without re-adding an auth gate first.
+      - "127.0.0.1:8420:8420"
     env_file:
       - .env
     volumes:
