@@ -18,22 +18,11 @@ def _fake_manifest():
     )
 
 
-@pytest.fixture(autouse=True)
-def _token(monkeypatch):
-    monkeypatch.setenv("RESUME_TAILOR_TOKEN", "test-token")
-
-
 def test_health_requires_no_auth():
     client = TestClient(main_module.app)
     resp = client.get("/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
-
-
-def test_tailor_rejects_missing_token():
-    client = TestClient(main_module.app)
-    resp = client.post("/tailor", json={"jd_text": "x", "company": "Acme", "role": "SWE"})
-    assert resp.status_code == 401
 
 
 def test_tailor_success_returns_pdf_path_and_manifest(monkeypatch, tmp_path):
@@ -46,7 +35,6 @@ def test_tailor_success_returns_pdf_path_and_manifest(monkeypatch, tmp_path):
     client = TestClient(main_module.app)
     resp = client.post(
         "/tailor",
-        headers={"Authorization": "Bearer test-token"},
         json={"jd_text": "We need a backend engineer.", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 200
@@ -82,7 +70,6 @@ def test_tailor_returns_500_when_meta_write_fails(monkeypatch, tmp_path):
     client = TestClient(main_module.app)
     resp = client.post(
         "/tailor",
-        headers={"Authorization": "Bearer test-token"},
         json={"jd_text": "We need a backend engineer.", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 500
@@ -96,7 +83,6 @@ def test_tailor_returns_502_on_validation_failure(monkeypatch):
     client = TestClient(main_module.app)
     resp = client.post(
         "/tailor",
-        headers={"Authorization": "Bearer test-token"},
         json={"jd_text": "x", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 502
@@ -112,7 +98,6 @@ def test_tailor_returns_422_when_cannot_fit_one_page(monkeypatch):
     client = TestClient(main_module.app)
     resp = client.post(
         "/tailor",
-        headers={"Authorization": "Bearer test-token"},
         json={"jd_text": "x", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 422
@@ -126,7 +111,6 @@ def test_tailor_returns_502_on_claude_cli_error(monkeypatch):
     client = TestClient(main_module.app)
     resp = client.post(
         "/tailor",
-        headers={"Authorization": "Bearer test-token"},
         json={"jd_text": "x", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 502
@@ -142,21 +126,18 @@ def test_tailor_returns_500_on_compile_failure(monkeypatch):
     client = TestClient(main_module.app)
     resp = client.post(
         "/tailor",
-        headers={"Authorization": "Bearer test-token"},
         json={"jd_text": "x", "company": "Acme", "role": "SWE"},
     )
     assert resp.status_code == 500
 
 
-def test_dashboard_router_is_mounted_and_requires_auth():
-    """GET /api/applications with no Authorization header must be 401, not 404.
-
-    A 404 here would mean either the dashboard router isn't included on `app`,
-    or the static SPA mount is shadowing /api/* routes.
-    """
-    client = TestClient(main_module.app)
-    resp = client.get("/api/applications")
-    assert resp.status_code == 401
+def test_dashboard_router_is_mounted():
+    """GET /api/applications must resolve to the router (not 404). With no
+    sheet configured it fails as a 502, which still proves it is mounted."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    resp = TestClient(app).get("/api/applications")
+    assert resp.status_code != 404
 
 
 def test_static_index_served_at_root():

@@ -15,8 +15,6 @@ from app.models import (
     TailoredResumeMeta,
 )
 
-AUTH = {"Authorization": "Bearer test-token"}
-
 
 def _meta(company, role, created_at, job_url=None):
     return TailoredResumeMeta(
@@ -105,7 +103,6 @@ def test_resolve_dir_accepts_valid_id(monkeypatch, tmp_path):
 
 @pytest.fixture
 def client(monkeypatch, tmp_path):
-    monkeypatch.setenv("RESUME_TAILOR_TOKEN", "test-token")
     monkeypatch.setattr(dashboard, "OUTPUT_DIR", tmp_path)
     app = FastAPI()
     app.include_router(dashboard.router)
@@ -123,7 +120,7 @@ def test_applications_join_sets_tailored_resume_id(client, monkeypatch, tmp_path
         ]
 
     monkeypatch.setattr(sheets, "fetch_applications", fake_fetch)
-    resp = client.get("/api/applications", headers=AUTH)
+    resp = client.get("/api/applications")
     assert resp.status_code == 200
     rows = resp.json()
     assert rows[0]["tailored_resume_id"] == "flowline-backend-engineer-abc123"
@@ -135,20 +132,14 @@ def test_applications_returns_502_on_sheets_error(client, monkeypatch):
         raise SheetsError("upstream unavailable")
 
     monkeypatch.setattr(sheets, "fetch_applications", boom)
-    resp = client.get("/api/applications", headers=AUTH)
+    resp = client.get("/api/applications")
     assert resp.status_code == 502
-
-
-def test_applications_requires_auth(client, monkeypatch):
-    monkeypatch.setattr(sheets, "fetch_applications", lambda: [])
-    resp = client.get("/api/applications")  # no auth header
-    assert resp.status_code == 401
 
 
 def test_get_tailored_reads_meta(client, tmp_path):
     _write_meta(tmp_path, "flowline-backend-engineer-abc123",
                 _meta("Flowline", "Backend Engineer", "2026-01-01T00:00:00+00:00", job_url="https://j"))
-    resp = client.get("/api/tailored/flowline-backend-engineer-abc123", headers=AUTH)
+    resp = client.get("/api/tailored/flowline-backend-engineer-abc123")
     assert resp.status_code == 200
     body = resp.json()
     assert body["company"] == "Flowline"
@@ -161,20 +152,15 @@ def test_get_tailored_reads_meta(client, tmp_path):
 
 
 def test_get_tailored_404_when_missing(client):
-    resp = client.get("/api/tailored/nonexistent-dir", headers=AUTH)
+    resp = client.get("/api/tailored/nonexistent-dir")
     assert resp.status_code == 404
-
-
-def test_get_tailored_requires_auth(client):
-    resp = client.get("/api/tailored/whatever")
-    assert resp.status_code == 401
 
 
 def test_get_tailored_pdf_streams(client, tmp_path):
     d = _write_meta(tmp_path, "flowline-backend-engineer-abc123",
                     _meta("Flowline", "Backend Engineer", "2026-01-01T00:00:00+00:00"))
     (d / "resume.pdf").write_bytes(b"%PDF-1.4 fake pdf")
-    resp = client.get("/api/tailored/flowline-backend-engineer-abc123/pdf", headers=AUTH)
+    resp = client.get("/api/tailored/flowline-backend-engineer-abc123/pdf")
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
     assert resp.content == b"%PDF-1.4 fake pdf"
@@ -184,13 +170,13 @@ def test_get_tailored_pdf_404_when_missing(client, tmp_path):
     _write_meta(tmp_path, "flowline-backend-engineer-abc123",
                 _meta("Flowline", "Backend Engineer", "2026-01-01T00:00:00+00:00"))
     # dir + meta exist, but resume.pdf does not
-    resp = client.get("/api/tailored/flowline-backend-engineer-abc123/pdf", headers=AUTH)
+    resp = client.get("/api/tailored/flowline-backend-engineer-abc123/pdf")
     assert resp.status_code == 404
 
 
 @pytest.mark.parametrize("bad_id", ["..", "%2e%2e", "..%2f.."])
 def test_get_tailored_rejects_traversal_via_route(client, bad_id):
-    resp = client.get(f"/api/tailored/{bad_id}", headers=AUTH)
+    resp = client.get(f"/api/tailored/{bad_id}")
     assert resp.status_code in (400, 404)  # never serves outside OUTPUT_DIR
 
 
@@ -225,14 +211,14 @@ def test_get_tailored_pdf_cannot_escape_output_dir(client, tmp_path):
         # containing ".." -> `_resolve_dir` itself rejects with 400.
         guard_reaching_ids = ("%2e%2e", f"%2e%2e{outside_dir.name}")
         for bad_id in guard_reaching_ids:
-            resp = client.get(f"/api/tailored/{bad_id}/pdf", headers=AUTH)
+            resp = client.get(f"/api/tailored/{bad_id}/pdf")
             assert resp.status_code == 400
             assert resp.json()["detail"] == "invalid tailored resume id"
             assert resp.content != secret_bytes
 
         # Defense-in-depth (routing layer, NOT the guard): a literal ".."
         # segment is blocked before `_resolve_dir` runs at all.
-        resp = client.get("/api/tailored/../pdf", headers=AUTH)
+        resp = client.get("/api/tailored/../pdf")
         assert resp.status_code == 404
         assert resp.content != secret_bytes
     finally:
@@ -241,7 +227,7 @@ def test_get_tailored_pdf_cannot_escape_output_dir(client, tmp_path):
 
 
 def test_resume_bank_exposes_text_not_contact(client):
-    resp = client.get("/api/resume-bank", headers=AUTH)
+    resp = client.get("/api/resume-bank")
     assert resp.status_code == 200
     body = resp.json()
     assert set(body.keys()) == {"jobs", "projects", "achievements"}
@@ -256,11 +242,6 @@ def test_resume_bank_exposes_text_not_contact(client):
         assert set(proj.keys()) == {"id", "name", "bullets"}
     for ach in body["achievements"]:
         assert set(ach.keys()) == {"id", "text"}
-
-
-def test_resume_bank_requires_auth(client):
-    resp = client.get("/api/resume-bank")
-    assert resp.status_code == 401
 
 
 def test_get_applications_with_filters(client, monkeypatch):
@@ -295,21 +276,21 @@ def test_get_applications_with_filters(client, monkeypatch):
     monkeypatch.setattr(sheets, "fetch_applications", lambda: test_apps)
 
     # Search filter 'Acme'
-    resp = client.get("/api/applications?q=Acme", headers=AUTH)
+    resp = client.get("/api/applications?q=Acme")
     assert resp.status_code == 200
     res = resp.json()
     assert len(res) == 1
     assert res[0]["company"] == "Acme Corp"
 
     # Status filter 'interview'
-    resp = client.get("/api/applications?status=interview", headers=AUTH)
+    resp = client.get("/api/applications?status=interview")
     assert resp.status_code == 200
     res = resp.json()
     assert len(res) == 1
     assert res[0]["company"] == "Beta AI"
 
     # Min fit filter 8.0
-    resp = client.get("/api/applications?min_fit=8.0", headers=AUTH)
+    resp = client.get("/api/applications?min_fit=8.0")
     assert resp.status_code == 200
     res = resp.json()
     assert len(res) == 1

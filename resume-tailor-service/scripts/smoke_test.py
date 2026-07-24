@@ -20,14 +20,11 @@ SAMPLE_JDS = [
 
 def main() -> int:
     base_url = os.environ.get("RESUME_TAILOR_URL", "http://localhost:8420")
-    token = os.environ["RESUME_TAILOR_TOKEN"]
-    headers = {"Authorization": f"Bearer {token}"}
 
     failures = []
     for company, role, jd_text in SAMPLE_JDS:
         resp = httpx.post(
             f"{base_url}/tailor",
-            headers=headers,
             json={"jd_text": jd_text, "company": company, "role": role},
             timeout=60,
         )

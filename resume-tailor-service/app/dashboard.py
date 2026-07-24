@@ -13,11 +13,10 @@ referenced at module level so tests can monkeypatch them.
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from app import sheets
-from app.auth import verify_token
 from app.bank import load_bank
 from app.errors import SheetsError
 from app.models import Application, TailoredResumeMeta
@@ -29,7 +28,7 @@ OUTPUT_DIR = BASE_DIR / "output"
 
 _ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
-router = APIRouter(dependencies=[Depends(verify_token)])
+router = APIRouter()
 
 
 def index_tailored(output_dir: Path) -> dict[str, str]:

@@ -3,11 +3,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 from app import tailor, render, dashboard
-from app.auth import verify_token
 from app.bank import load_bank
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
 from app.slug import safe_slug
@@ -31,7 +30,7 @@ def health():
 
 
 @app.post("/tailor", response_model=TailorResponse)
-def tailor_resume(req: TailorRequest, _auth: None = Depends(verify_token)):
+def tailor_resume(req: TailorRequest):
     bank = load_bank(BANK_PATH)
 
     try:
