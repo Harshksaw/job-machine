@@ -24,7 +24,9 @@ def _read() -> list[dict]:
         data = json.loads(STORE_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return []
-    return data if isinstance(data, list) else []
+    if not isinstance(data, list):
+        return []
+    return [row for row in data if isinstance(row, dict)]
 
 
 def _write(items: list[dict]) -> None:
