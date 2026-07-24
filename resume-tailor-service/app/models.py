@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class TailorRequest(BaseModel):
@@ -64,3 +64,44 @@ class Application(BaseModel):
     notes: str = ""
     timestamp: str = ""
     tailored_resume_id: str | None = None
+
+
+PERSON_STATUSES = ("to-reach", "queued", "sent", "replied", "skip")
+
+
+class Link(BaseModel):
+    label: str = ""
+    url: str = ""
+
+
+class PersonInput(BaseModel):
+    name: str
+    title: str = ""
+    company: str
+    role: str | None = None
+    linkedin_url: str = ""
+    links: list[Link] = []
+    status: str = "to-reach"
+    hook: str = ""
+    message: str = ""
+    notes: str = ""
+
+    @field_validator("name", "company")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("must not be blank")
+        return v.strip()
+
+    @field_validator("status")
+    @classmethod
+    def _known_status(cls, v: str) -> str:
+        if v not in PERSON_STATUSES:
+            raise ValueError(f"status must be one of {PERSON_STATUSES}")
+        return v
+
+
+class Person(PersonInput):
+    id: str
+    created_at: str
+    updated_at: str
