@@ -6,23 +6,27 @@ import {
   RefreshCw,
   Table2,
   Terminal,
+  Users,
 } from "lucide-react";
-import type { Application } from "./types";
-import { fetchApplications, resetBankCache } from "./api";
+import type { Application, Person } from "./types";
+import { fetchApplications, listPeople, resetBankCache } from "./api";
 import { normalizeStatus } from "./lib/status";
 import Board from "./components/Board";
 import AppTable from "./components/AppTable";
 import Inspector from "./components/Inspector";
 import StatsHeader from "./components/StatsHeader";
 import FilterBar from "./components/FilterBar";
+import People from "./components/People";
 
-type View = "board" | "table";
+type View = "board" | "table" | "people";
 type LoadPhase = "loading" | "ready" | "error";
 
 export default function App() {
   const [apps, setApps] = useState<Application[]>([]);
   const [phase, setPhase] = useState<LoadPhase>("loading");
   const [errorMsg, setErrorMsg] = useState("");
+
+  const [people, setPeople] = useState<Person[]>([]);
 
   const [view, setView] = useState<View>("table");
   const [selected, setSelected] = useState<Application | null>(null);
@@ -50,6 +54,23 @@ export default function App() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadPeople = useCallback(async () => {
+    try {
+      setPeople(await listPeople());
+    } catch {
+      /* non-fatal for the board */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPeople();
+  }, [loadPeople]);
+
+  const companies = useMemo(
+    () => Array.from(new Set(apps.map((a) => a.company).filter(Boolean))).sort(),
+    [apps]
+  );
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery("");
@@ -211,6 +232,19 @@ export default function App() {
                 <Columns3 className="h-3.5 w-3.5" aria-hidden />
                 Board
               </button>
+              <button
+                type="button"
+                onClick={() => setView("people")}
+                aria-pressed={view === "people"}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                  view === "people"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                <Users className="h-3.5 w-3.5" aria-hidden />
+                People
+              </button>
             </div>
 
             <button
@@ -251,45 +285,49 @@ export default function App() {
         )}
 
         {phase === "ready" && (
-          <>
-            {/* Analytics Stats Header */}
-            <StatsHeader
-              apps={apps}
-              activeStatusFilter={statusFilter}
-              activeMinFit={minFitFilter}
-              onSelectStatusFilter={setStatusFilter}
-              onSelectMinFit={setMinFitFilter}
-            />
-
-            {/* Filter and Control Bar */}
-            <FilterBar
-              apps={apps}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              statusFilter={statusFilter}
-              onStatusChange={setStatusFilter}
-              minFitFilter={minFitFilter}
-              onMinFitChange={setMinFitFilter}
-              sourceFilter={sourceFilter}
-              onSourceChange={setSourceFilter}
-              pdfOnlyFilter={pdfOnlyFilter}
-              onPdfOnlyChange={setPdfOnlyFilter}
-              onExportCSV={handleExportCSV}
-              onExportJSON={handleExportJSON}
-              onClearFilters={handleClearFilters}
-            />
-
-            {/* Main Data Display */}
-            {view === "table" ? (
-              <AppTable
-                apps={filteredApps}
-                onOpen={setSelected}
-                onResetFilters={handleClearFilters}
+          view === "people" ? (
+            <People people={people} companies={companies} onChanged={loadPeople} />
+          ) : (
+            <>
+              {/* Analytics Stats Header */}
+              <StatsHeader
+                apps={apps}
+                activeStatusFilter={statusFilter}
+                activeMinFit={minFitFilter}
+                onSelectStatusFilter={setStatusFilter}
+                onSelectMinFit={setMinFitFilter}
               />
-            ) : (
-              <Board apps={filteredApps} onOpen={setSelected} />
-            )}
-          </>
+
+              {/* Filter and Control Bar */}
+              <FilterBar
+                apps={apps}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+                minFitFilter={minFitFilter}
+                onMinFitChange={setMinFitFilter}
+                sourceFilter={sourceFilter}
+                onSourceChange={setSourceFilter}
+                pdfOnlyFilter={pdfOnlyFilter}
+                onPdfOnlyChange={setPdfOnlyFilter}
+                onExportCSV={handleExportCSV}
+                onExportJSON={handleExportJSON}
+                onClearFilters={handleClearFilters}
+              />
+
+              {/* Main Data Display */}
+              {view === "table" ? (
+                <AppTable
+                  apps={filteredApps}
+                  onOpen={setSelected}
+                  onResetFilters={handleClearFilters}
+                />
+              ) : (
+                <Board apps={filteredApps} onOpen={setSelected} />
+              )}
+            </>
+          )
         )}
       </main>
 

@@ -68,3 +68,27 @@ export interface ResumeBank {
   projects: BankProject[];
   achievements: BankBullet[];
 }
+
+export interface Link {
+  label: string;
+  url: string;
+}
+
+export interface PersonInput {
+  name: string;
+  title: string;
+  company: string;
+  role: string | null;
+  linkedin_url: string;
+  links: Link[];
+  status: string;
+  hook: string;
+  message: string;
+  notes: string;
+}
+
+export interface Person extends PersonInput {
+  id: string;
+  created_at: string;
+  updated_at: string;
+}
