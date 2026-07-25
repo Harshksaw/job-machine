@@ -230,7 +230,7 @@ def test_resume_bank_exposes_text_not_contact(client):
     resp = client.get("/api/resume-bank")
     assert resp.status_code == 200
     body = resp.json()
-    assert set(body.keys()) == {"jobs", "projects", "achievements"}
+    assert set(body.keys()) == {"jobs", "projects", "achievements", "skills"}
     assert "contact" not in body
     assert "education" not in body
     assert body["jobs"], "expected at least one job from the real bank"
@@ -242,6 +242,8 @@ def test_resume_bank_exposes_text_not_contact(client):
         assert set(proj.keys()) == {"id", "name", "bullets"}
     for ach in body["achievements"]:
         assert set(ach.keys()) == {"id", "text"}
+    for skill in body["skills"]:
+        assert set(skill.keys()) == {"id", "category", "items"}
 
 
 def test_get_applications_with_filters(client, monkeypatch):
@@ -295,4 +297,3 @@ def test_get_applications_with_filters(client, monkeypatch):
     res = resp.json()
     assert len(res) == 1
     assert res[0]["company"] == "Acme Corp"
-

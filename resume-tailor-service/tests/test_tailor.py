@@ -14,6 +14,7 @@ VALID_MANIFEST_DICT = {
         {"project_id": "widgetizer", "bullet_ids": ["project.widgetizer.bullet.1"]}
     ],
     "achievement_ids": ["achievement.1"],
+    "skill_ids": ["skill.languages"],
     "job_trim_priority": ["acme"],
 }
 
@@ -38,6 +39,7 @@ def test_build_prompt_includes_jd_and_bank_ids():
     assert "acme.bullet.1" in prompt
     assert "project.widgetizer.bullet.1" in prompt
     assert "achievement.1" in prompt
+    assert "skill.languages" in prompt
 
 
 def test_parse_manifest_json_handles_plain_json():
@@ -56,6 +58,7 @@ def test_get_manifest_succeeds_on_first_valid_response():
     fake = _FakeComplete([json.dumps(VALID_MANIFEST_DICT)])
     manifest = get_manifest("jd text", "Acme", "SWE", bank, complete=fake)
     assert manifest.job_selections[0].job_id == "acme"
+    assert manifest.skill_ids == ["skill.languages"]
     assert fake.calls == 1
 
 

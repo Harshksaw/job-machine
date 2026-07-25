@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Bullet(BaseModel):
@@ -43,6 +43,7 @@ class Education(BaseModel):
 
 
 class SkillLine(BaseModel):
+    id: str = ""
     category: str
     items: str
 
@@ -54,6 +55,7 @@ class ResumeBank(BaseModel):
     projects: list[Project]
     achievements: list[Bullet]
     skills: list[SkillLine]
+    profile_facts: list[Bullet] = Field(default_factory=list)
 
 
 def load_bank(path: Path) -> ResumeBank:
@@ -75,6 +77,10 @@ def all_achievement_ids(bank: ResumeBank) -> set[str]:
     return {bullet.id for bullet in bank.achievements}
 
 
+def all_skill_ids(bank: ResumeBank) -> set[str]:
+    return {skill.id for skill in bank.skills if skill.id}
+
+
 def all_job_bullet_ids(bank: ResumeBank) -> dict[str, set[str]]:
     return {job.id: {b.id for b in job.bullets} for job in bank.jobs}
 
@@ -91,4 +97,5 @@ def bank_text_blob(bank: ResumeBank) -> str:
         parts.extend(b.text for b in proj.bullets)
     parts.extend(b.text for b in bank.achievements)
     parts.extend(s.items for s in bank.skills)
+    parts.extend(fact.text for fact in bank.profile_facts)
     return " ".join(parts)

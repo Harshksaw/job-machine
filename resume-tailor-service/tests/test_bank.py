@@ -18,6 +18,8 @@ def test_load_bank_parses_all_sections():
     assert len(bank.projects) == 1
     assert len(bank.achievements) == 1
     assert len(bank.skills) == 1
+    assert bank.skills[0].id == "skill.languages"
+    assert bank.profile_facts == []
 
 
 def test_all_job_ids():

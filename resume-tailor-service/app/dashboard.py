@@ -186,4 +186,8 @@ def get_resume_bank() -> dict:
             for project in bank.projects
         ],
         "achievements": [{"id": b.id, "text": b.text} for b in bank.achievements],
+        "skills": [
+            {"id": skill.id, "category": skill.category, "items": skill.items}
+            for skill in bank.skills
+        ],
     }

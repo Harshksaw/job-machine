@@ -4,7 +4,13 @@ import pytest
 from fastapi.testclient import TestClient
 import app.main as main_module
 from app.slug import safe_slug
-from app.models import Manifest, JobSelection, ProjectSelection, TailoredResumeMeta
+from app.models import (
+    JobSelection,
+    JobWorkspaceInput,
+    Manifest,
+    ProjectSelection,
+    TailoredResumeMeta,
+)
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
 
 
@@ -54,6 +60,46 @@ def test_tailor_success_returns_pdf_path_and_manifest(monkeypatch, tmp_path):
     assert meta.pages == body["pages"]
     assert meta.job_url is None
     assert meta.created_at
+
+
+def test_tailor_links_context_and_artifact_to_dossier(monkeypatch, tmp_path):
+    monkeypatch.setattr(main_module.job_store, "STORE_PATH", tmp_path / "jobs.json")
+    job = main_module.job_store.add_job(
+        JobWorkspaceInput(company="Acme", role="SWE")
+    )
+    artifact_dir = tmp_path / "acme-swe-artifact"
+    artifact_dir.mkdir()
+    fake_pdf = artifact_dir / "resume.pdf"
+    fake_pdf.write_bytes(b"%PDF-1.4 fake")
+    monkeypatch.setattr(
+        main_module.tailor,
+        "get_manifest",
+        lambda *args, **kwargs: _fake_manifest(),
+    )
+    monkeypatch.setattr(
+        main_module.render,
+        "render_and_fit",
+        lambda *args, **kwargs: (fake_pdf, _fake_manifest(), 1),
+    )
+
+    response = TestClient(main_module.app).post(
+        "/tailor",
+        json={
+            "jd_text": "Complete backend role description.",
+            "company": "Acme",
+            "role": "SWE",
+            "job_url": "https://example.com/job",
+            "job_id": job.id,
+            "session": "LinkedIn 2026-07-23",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["resume_id"] == "acme-swe-artifact"
+    linked = main_module.job_store.get_job(job.id)
+    assert linked is not None
+    assert linked.jd_text == "Complete backend role description."
+    assert linked.job_url == "https://example.com/job"
+    assert linked.tailored_resume_id == "acme-swe-artifact"
 
 
 def test_tailor_returns_500_when_meta_write_fails(monkeypatch, tmp_path):

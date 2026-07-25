@@ -46,6 +46,9 @@ docker compose up -d
 > pre-`feat/people-outreach-hub` `app/auth.py` did — otherwise `/tailor`, the
 > people-store CRUD, and PDF serving are open to anyone who can reach the port.
 
+The Compose setup mounts both `./output` and `./data`, so generated PDFs,
+dossiers, revisions, answers, and People records survive container recreation.
+
 ## Call it
 
 ```bash
@@ -58,8 +61,8 @@ Returns `{"pdf_path": "...", "manifest": {...}, "pages": 1}`.
 
 ## Dashboard UI
 
-A dashboard (applications board/table, tailored-resume inspector, and a
-People/outreach view) is served at **http://localhost:8420/** — the same
+A dashboard (job dossiers, applications board/table, tailored-resume inspector,
+and a People/outreach view) is served at **http://localhost:8420/** — the same
 FastAPI app and port as the API above (`GET /health`, `POST /tailor`,
 `GET /api/*` all still work side by side; the UI is mounted last so it
 never shadows them). The dashboard loads directly with no login or token
@@ -80,10 +83,52 @@ cd dashboard && npm install && npm run build
 This regenerates `app/static/` (`index.html` + hashed `assets/*`), which you
 then commit alongside your source change.
 
+## Job dossiers
+
+The default dashboard view is the canonical per-listing workspace. Each dossier
+stores the complete JD, company research, fit score, evidence and gaps, exact
+source IDs, positioning, next action, deadline, cover letter, unusual form
+answers, tailored-resume ID, session activity, and complete restorable
+revisions.
+
+Dossiers live in `data/jobs.json`, which is local and gitignored. Google Sheets
+is still supported as a compact pipeline log; **Import** merges its rows into
+dossiers and deduplicates imported events. The same listing can also be
+captured from an agent/browser session with:
+
+```bash
+curl -s -X POST http://127.0.0.1:8420/api/jobs/capture \
+  -H "Content-Type: application/json" \
+  -d '{"company":"Acme","role":"Backend Engineer","job_url":"https://example.com/job","source":"LinkedIn","fit_score":8,"jd_text":"...","session":"LinkedIn 2026-07-23"}'
+```
+
+Important routes:
+
+```text
+GET/POST       /api/jobs
+GET/PUT/DELETE /api/jobs/{id}
+POST           /api/jobs/capture
+POST           /api/jobs/import-sheet
+POST           /api/jobs/{id}/activity
+POST           /api/jobs/{id}/generate-kit
+POST           /api/jobs/{id}/answers/generate
+POST           /api/jobs/{id}/restore/{revision_id}
+```
+
+`generate-kit` produces a structured fit decision plus a cover letter. Every
+candidate evidence row cites IDs from `resume_bank.yaml`; IDs and traceable
+facts are validated before storage. The answer endpoint follows the same
+source-ledger rule and deterministically refuses to guess salary,
+authorization/sponsorship, start-date, demographic, and similar personal
+answers. Generated drafts remain editable and are revisioned on save.
+
+Pass `job_id`, `job_url`, and `session` to `POST /tailor` to attach the PDF to
+the dossier and add the resume event automatically.
+
 ## People / Outreach hub
 
-The dashboard's third view (alongside the applications board and table) is
-a central list of people to reach out to: name/title/company, a LinkedIn
+The dashboard's People view is a central list of people to reach out to:
+name/title/company, a LinkedIn
 URL plus any extra links, an outreach status (`to-reach`, `queued`, `sent`,
 `replied`, `skip`), a saved outreach message/hook, notes, and an optional
 tie back to a job/application. A person tied to a company also shows up

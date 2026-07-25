@@ -15,6 +15,7 @@ def _manifest():
             ProjectSelection(project_id="widgetizer", bullet_ids=["project.widgetizer.bullet.1"])
         ],
         achievement_ids=["achievement.1"],
+        skill_ids=["skill.languages"],
         job_trim_priority=["acme"],
     )
 
@@ -53,6 +54,16 @@ def test_render_tex_skills_render_actual_values_not_dict_items_method():
     tex = render_tex(_manifest(), bank, TEMPLATE_DIR)
     assert "built-in method" not in tex
     assert "Python, Go" in tex
+
+
+def test_render_tex_uses_only_selected_skill_categories():
+    bank = load_bank(FIXTURE)
+    bank.skills.append(
+        SkillLine(id="skill.cloud", category="Cloud", items="AWS, Docker")
+    )
+    tex = render_tex(_manifest(), bank, TEMPLATE_DIR)
+    assert "Python, Go" in tex
+    assert "AWS, Docker" not in tex
 
 
 def test_render_tex_escapes_special_characters_in_bank_fields():

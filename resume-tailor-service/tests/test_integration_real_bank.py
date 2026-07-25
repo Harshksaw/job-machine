@@ -87,6 +87,14 @@ def _full_manifest() -> Manifest:
             "achievement.freelancer",
             "achievement.hackathon",
         ],
+        skill_ids=[
+            "skill.languages",
+            "skill.frontend_mobile",
+            "skill.backend_messaging",
+            "skill.databases",
+            "skill.cloud_devops",
+            "skill.ai_genai",
+        ],
         job_trim_priority=["ommuse", "morethinks", "bwisher", "jythu"],
     )
 

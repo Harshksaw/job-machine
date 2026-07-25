@@ -20,3 +20,11 @@ class SheetsError(Exception):
     Its message MUST NOT contain APPS_SCRIPT_URL or APPS_SCRIPT_READ_SECRET —
     it is surfaced to clients (as a 502) and may be logged.
     """
+
+
+class JobGenerationError(Exception):
+    """Raised when a generated application kit or answer fails validation."""
+
+
+class JobStoreError(Exception):
+    """Raised when the dossier store cannot be read without risking data loss."""

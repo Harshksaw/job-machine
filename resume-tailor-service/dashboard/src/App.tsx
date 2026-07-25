@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   Columns3,
   Loader2,
   RefreshCw,
   Table2,
-  Terminal,
   Users,
 } from "lucide-react";
 import type { Application, Person } from "./types";
-import { fetchApplications, listPeople, resetBankCache } from "./api";
+import {
+  createJobFromApplication,
+  fetchApplications,
+  listPeople,
+  resetBankCache,
+} from "./api";
 import { normalizeStatus } from "./lib/status";
 import Board from "./components/Board";
 import AppTable from "./components/AppTable";
@@ -17,9 +22,17 @@ import Inspector from "./components/Inspector";
 import StatsHeader from "./components/StatsHeader";
 import FilterBar from "./components/FilterBar";
 import People from "./components/People";
+import JobWorkspace from "./components/JobWorkspace";
 
-type View = "board" | "table" | "people";
+type View = "workspace" | "board" | "table" | "people";
 type LoadPhase = "loading" | "ready" | "error";
+
+const NAV_ITEMS = [
+  { id: "workspace" as const, label: "Dossiers", icon: BriefcaseBusiness },
+  { id: "table" as const, label: "Pipeline", icon: Table2 },
+  { id: "board" as const, label: "Board", icon: Columns3 },
+  { id: "people" as const, label: "People", icon: Users },
+];
 
 export default function App() {
   const [apps, setApps] = useState<Application[]>([]);
@@ -28,8 +41,9 @@ export default function App() {
 
   const [people, setPeople] = useState<Person[]>([]);
 
-  const [view, setView] = useState<View>("table");
+  const [view, setView] = useState<View>("workspace");
   const [selected, setSelected] = useState<Application | null>(null);
+  const [workspaceFocusId, setWorkspaceFocusId] = useState<string | null>(null);
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,6 +80,24 @@ export default function App() {
   useEffect(() => {
     void loadPeople();
   }, [loadPeople]);
+
+  const openWorkspaceForApplication = useCallback(
+    async (application: Application) => {
+      const job = await createJobFromApplication(application, "Pipeline");
+      setWorkspaceFocusId(job.id);
+      setSelected(null);
+      setView("workspace");
+    },
+    []
+  );
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([load(), loadPeople()]);
+  }, [load, loadPeople]);
+
+  const consumeWorkspaceFocus = useCallback(() => {
+    setWorkspaceFocusId(null);
+  }, []);
 
   const companies = useMemo(
     () => Array.from(new Set(apps.map((a) => a.company).filter(Boolean))).sort(),
@@ -183,151 +215,132 @@ export default function App() {
   }, [filteredApps]);
 
   return (
-    <div className="flex min-h-full flex-col bg-slate-950 text-slate-100">
-      {/* Top bar */}
-      <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-300">
-            <Terminal className="h-4 w-4" aria-hidden />
+    <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">
+      <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center gap-3 px-3 py-2.5 sm:px-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-teal-800/70 bg-teal-950/40 text-teal-300">
+            <BriefcaseBusiness className="h-4 w-4" aria-hidden />
           </span>
-          <div>
-            <h1 className="text-sm font-semibold leading-tight text-slate-100">
-              Command Center
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold leading-tight text-zinc-100">
+              Job Machine
             </h1>
-            <p className="text-xs text-slate-500">
-              {phase === "ready"
-                ? `${filteredApps.length} of ${apps.length} application${
-                    apps.length === 1 ? "" : "s"
-                  }`
-                : "Job Machine dashboard"}
+            <p className="truncate text-xs text-zinc-600">
+              {view === "workspace"
+                ? "Private application workspace"
+                : view === "people"
+                  ? `${people.length} outreach contact${people.length === 1 ? "" : "s"}`
+                  : phase === "ready"
+                    ? `${filteredApps.length} of ${apps.length} application${
+                        apps.length === 1 ? "" : "s"
+                      }`
+                    : "Application pipeline"}
             </p>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex rounded-lg border border-slate-800 bg-slate-900 p-0.5">
-              <button
-                type="button"
-                onClick={() => setView("table")}
-                aria-pressed={view === "table"}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                  view === "table"
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Table2 className="h-3.5 w-3.5" aria-hidden />
-                Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("board")}
-                aria-pressed={view === "board"}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                  view === "board"
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Columns3 className="h-3.5 w-3.5" aria-hidden />
-                Board
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("people")}
-                aria-pressed={view === "people"}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
-                  view === "people"
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Users className="h-3.5 w-3.5" aria-hidden />
-                People
-              </button>
+          <div className="order-3 flex w-full items-center gap-2 sm:order-none sm:ml-auto sm:w-auto">
+            <div className="flex min-w-0 flex-1 overflow-x-auto rounded-md border border-zinc-800 bg-zinc-900 p-0.5 sm:flex-none">
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setView(item.id)}
+                    aria-pressed={view === item.id}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                      view === item.id
+                        ? "bg-teal-700 text-white"
+                        : "text-zinc-500 hover:text-zinc-200"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
-
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-700 hover:text-slate-100"
-              title="Refresh"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-              Refresh
-            </button>
+            {view !== "workspace" && (
+              <button
+                type="button"
+                onClick={() => void refreshAll()}
+                className="rounded-md border border-zinc-800 bg-zinc-900 p-2 text-zinc-500 hover:border-zinc-700 hover:text-zinc-100"
+                title="Refresh"
+                aria-label="Refresh"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-5 space-y-4">
-        {phase === "loading" && (
-          <div className="flex items-center justify-center gap-2 py-24 text-slate-400">
+      <main
+        className={`mx-auto w-full max-w-[1680px] flex-1 px-3 sm:px-4 ${
+          view === "workspace" ? "py-3" : "space-y-4 py-5"
+        }`}
+      >
+        {view === "workspace" ? (
+          <JobWorkspace
+            people={people}
+            focusJobId={workspaceFocusId}
+            onFocusConsumed={consumeWorkspaceFocus}
+          />
+        ) : view === "people" ? (
+          <People people={people} companies={companies} onChanged={loadPeople} />
+        ) : phase === "loading" ? (
+          <div className="flex items-center justify-center gap-2 py-24 text-zinc-500">
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            <span className="text-sm">Loading applications…</span>
+            <span className="text-sm">Loading applications...</span>
           </div>
-        )}
-
-        {phase === "error" && (
+        ) : phase === "error" ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
             <AlertTriangle className="h-8 w-8 text-rose-400" aria-hidden />
-            <p className="text-sm text-slate-300">{errorMsg}</p>
+            <p className="text-sm text-zinc-300">{errorMsg}</p>
             <button
               type="button"
               onClick={() => void load()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 hover:border-slate-600"
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 hover:border-zinc-600"
             >
               <RefreshCw className="h-4 w-4" aria-hidden />
               Retry
             </button>
           </div>
-        )}
-
-        {phase === "ready" && (
-          view === "people" ? (
-            <People people={people} companies={companies} onChanged={loadPeople} />
-          ) : (
-            <>
-              {/* Analytics Stats Header */}
-              <StatsHeader
-                apps={apps}
-                activeStatusFilter={statusFilter}
-                activeMinFit={minFitFilter}
-                onSelectStatusFilter={setStatusFilter}
-                onSelectMinFit={setMinFitFilter}
+        ) : (
+          <>
+            <StatsHeader
+              apps={apps}
+              activeStatusFilter={statusFilter}
+              activeMinFit={minFitFilter}
+              onSelectStatusFilter={setStatusFilter}
+              onSelectMinFit={setMinFitFilter}
+            />
+            <FilterBar
+              apps={apps}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusChange={setStatusFilter}
+              minFitFilter={minFitFilter}
+              onMinFitChange={setMinFitFilter}
+              sourceFilter={sourceFilter}
+              onSourceChange={setSourceFilter}
+              pdfOnlyFilter={pdfOnlyFilter}
+              onPdfOnlyChange={setPdfOnlyFilter}
+              onExportCSV={handleExportCSV}
+              onExportJSON={handleExportJSON}
+              onClearFilters={handleClearFilters}
+            />
+            {view === "table" ? (
+              <AppTable
+                apps={filteredApps}
+                onOpen={setSelected}
+                onResetFilters={handleClearFilters}
               />
-
-              {/* Filter and Control Bar */}
-              <FilterBar
-                apps={apps}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                statusFilter={statusFilter}
-                onStatusChange={setStatusFilter}
-                minFitFilter={minFitFilter}
-                onMinFitChange={setMinFitFilter}
-                sourceFilter={sourceFilter}
-                onSourceChange={setSourceFilter}
-                pdfOnlyFilter={pdfOnlyFilter}
-                onPdfOnlyChange={setPdfOnlyFilter}
-                onExportCSV={handleExportCSV}
-                onExportJSON={handleExportJSON}
-                onClearFilters={handleClearFilters}
-              />
-
-              {/* Main Data Display */}
-              {view === "table" ? (
-                <AppTable
-                  apps={filteredApps}
-                  onOpen={setSelected}
-                  onResetFilters={handleClearFilters}
-                />
-              ) : (
-                <Board apps={filteredApps} people={people} onOpen={setSelected} />
-              )}
-            </>
-          )
+            ) : (
+              <Board apps={filteredApps} people={people} onOpen={setSelected} />
+            )}
+          </>
         )}
       </main>
 
@@ -336,6 +349,7 @@ export default function App() {
           app={selected}
           people={people}
           onClose={() => setSelected(null)}
+          onOpenWorkspace={() => openWorkspaceForApplication(selected)}
           onAddPerson={(company, role) => {
             setSelected(null);
             setView("people");

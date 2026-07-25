@@ -9,6 +9,7 @@ services:
       - .env
     volumes:
       - ./output:/srv/app/output
+      - ./data:/srv/app/data
       # Reuse the host's Claude Code auth (no ANTHROPIC_API_KEY needed) —
       # the host must be logged in via `claude` (or have Claude Code auth
       # otherwise provided, e.g. baked into the image or mounted from a

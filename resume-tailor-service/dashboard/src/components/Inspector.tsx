@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   ExternalLink,
   FileText,
   Layers,
@@ -19,6 +20,7 @@ interface Props {
   people: Person[];
   onClose: () => void;
   onAddPerson: (company: string, role: string) => void;
+  onOpenWorkspace: () => Promise<void>;
 }
 
 type Phase = "loading" | "ready" | "error";
@@ -32,7 +34,12 @@ interface ResolvedGroup {
 function resolveManifest(
   meta: TailoredResumeMeta,
   bank: ResumeBank
-): { jobs: ResolvedGroup[]; projects: ResolvedGroup[]; achievements: string[] } {
+): {
+  jobs: ResolvedGroup[];
+  projects: ResolvedGroup[];
+  achievements: string[];
+  skills: string[];
+} {
   const jobById = new Map(bank.jobs.map((j) => [j.id, j]));
   const projById = new Map(bank.projects.map((p) => [p.id, p]));
   const achById = new Map(bank.achievements.map((a) => [a.id, a]));
@@ -63,8 +70,17 @@ function resolveManifest(
   const achievements = meta.manifest.achievement_ids.map(
     (id) => achById.get(id)?.text ?? `[missing achievement: ${id}]`
   );
+  const skillById = new Map(bank.skills.map((skill) => [skill.id, skill]));
+  const skillIds =
+    meta.manifest.skill_ids.length > 0
+      ? meta.manifest.skill_ids
+      : bank.skills.map((skill) => skill.id);
+  const skills = skillIds.map((id) => {
+    const skill = skillById.get(id);
+    return skill ? `${skill.category}: ${skill.items}` : `[missing skill: ${id}]`;
+  });
 
-  return { jobs, projects, achievements };
+  return { jobs, projects, achievements, skills };
 }
 
 function PeoplePanel({
@@ -182,13 +198,21 @@ function ManifestGroup({ group }: { group: ResolvedGroup }) {
   );
 }
 
-export default function Inspector({ app, people, onClose, onAddPerson }: Props) {
+export default function Inspector({
+  app,
+  people,
+  onClose,
+  onAddPerson,
+  onOpenWorkspace,
+}: Props) {
   const id = app.tailored_resume_id;
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [meta, setMeta] = useState<TailoredResumeMeta | null>(null);
   const [bank, setBank] = useState<ResumeBank | null>(null);
+  const [openingWorkspace, setOpeningWorkspace] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState("");
 
   // Close on Escape.
   useEffect(() => {
@@ -226,13 +250,26 @@ export default function Inspector({ app, people, onClose, onAddPerson }: Props) 
     [meta, bank]
   );
 
+  const openWorkspace = async () => {
+    setOpeningWorkspace(true);
+    setWorkspaceError("");
+    try {
+      await onOpenWorkspace();
+    } catch (err) {
+      setWorkspaceError(
+        err instanceof Error ? err.message : "Failed to open job dossier."
+      );
+      setOpeningWorkspace(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/70 p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none border-slate-800 bg-slate-950 shadow-2xl sm:rounded-2xl sm:border"
+        className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-none border-slate-800 bg-slate-950 shadow-2xl sm:rounded-lg sm:border"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -252,9 +289,9 @@ export default function Inspector({ app, people, onClose, onAddPerson }: Props) 
               {meta.pages} {meta.pages === 1 ? "page" : "pages"}
             </span>
           )}
-          {app.job_url.trim() && (
+          {safeHref(app.job_url) && (
             <a
-              href={app.job_url}
+              href={safeHref(app.job_url)!}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-300"
@@ -265,6 +302,19 @@ export default function Inspector({ app, people, onClose, onAddPerson }: Props) 
           )}
           <button
             type="button"
+            onClick={() => void openWorkspace()}
+            disabled={openingWorkspace}
+            className="inline-flex items-center gap-1.5 rounded-md bg-teal-700 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-teal-600 disabled:opacity-50"
+          >
+            {openingWorkspace ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <BriefcaseBusiness className="h-3.5 w-3.5" />
+            )}
+            Dossier
+          </button>
+          <button
+            type="button"
             onClick={onClose}
             className="ml-auto rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
             aria-label="Close inspector"
@@ -272,6 +322,12 @@ export default function Inspector({ app, people, onClose, onAddPerson }: Props) 
             <X className="h-5 w-5" aria-hidden />
           </button>
         </header>
+
+        {workspaceError && (
+          <div className="border-b border-rose-900/60 bg-rose-950/30 px-4 py-2 text-xs text-rose-300">
+            {workspaceError}
+          </div>
+        )}
 
         {/* Body */}
         {id == null ? (
@@ -344,6 +400,23 @@ export default function Inspector({ app, people, onClose, onAddPerson }: Props) 
                                   aria-hidden
                                 />
                                 <span className="break-words">{text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {resolved.skills.length > 0 && (
+                        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+                          <div className="text-sm font-medium text-slate-200">
+                            Skills
+                          </div>
+                          <ul className="mt-2 space-y-1.5">
+                            {resolved.skills.map((text) => (
+                              <li
+                                key={text}
+                                className="border-l-2 border-cyan-800 pl-2 text-sm text-slate-300"
+                              >
+                                {text}
                               </li>
                             ))}
                           </ul>

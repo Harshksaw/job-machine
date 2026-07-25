@@ -21,6 +21,9 @@ def _describe_bank(bank: ResumeBank) -> str:
     lines.append("ACHIEVEMENTS:")
     for b in bank.achievements:
         lines.append(f"  - {b.id}: {b.text}")
+    lines.append("SKILL CATEGORIES:")
+    for skill in bank.skills:
+        lines.append(f"  - {skill.id}: {skill.category}: {skill.items}")
     return "\n".join(lines)
 
 
@@ -50,6 +53,7 @@ Respond with ONLY a JSON object (no prose, no markdown fences) matching this sha
   "job_selections": [{{"job_id": "<one of {job_ids}>", "bullet_ids": ["<ids from that job, most relevant first>"]}}, ... one entry per job, every job must appear],
   "project_selections": [{{"project_id": "<project id>", "bullet_ids": ["<ids from that project>"]}}, ... most relevant project first],
   "achievement_ids": ["<achievement ids, most relevant first>"],
+  "skill_ids": ["<4-5 most relevant skill category ids, most relevant first>"],
   "job_trim_priority": ["<all job ids, ordered least-relevant to most-relevant to this JD>"]
 }}"""
 

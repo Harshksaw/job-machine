@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 output/
+data/
+dashboard/node_modules/
 .env
 tests/
 uv.lock.bak

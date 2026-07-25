@@ -13,6 +13,18 @@ education:
   school: "Okanagan College"
   date: "Expected Dec 2026"
 
+profile_facts:
+  - id: profile.experience
+    text: "2+ years of software engineering internship experience."
+  - id: profile.target_roles
+    text: "Targeting Software Engineer, Full-Stack, Backend, AI/ML, and React Native Mobile roles at the new-grad or early-career level."
+  - id: profile.relocation
+    text: "Open to relocation."
+  - id: profile.work_mode
+    text: "No remote-only restriction."
+  - id: profile.company_preference
+    text: "Startups are preferred."
+
 jobs:
   - id: ommuse
     company: "Ommuse"
@@ -94,15 +106,21 @@ achievements:
     text: "Won an inter-university college hackathon, demonstrating innovative problem-solving and technical proficiency."
 
 skills:
-  - category: "Languages"
+  - id: skill.languages
+    category: "Languages"
     items: "JavaScript (ES6+), TypeScript, Python, Go (Golang), Bash"
-  - category: "Frontend & Mobile"
+  - id: skill.frontend_mobile
+    category: "Frontend & Mobile"
     items: "React, Next.js, React Native, Qwik.js, Electron"
-  - category: "Backend & Messaging"
+  - id: skill.backend_messaging
+    category: "Backend & Messaging"
     items: "NestJS, FastAPI, Express, Fastify, GraphQL, gRPC/Protobuf, Apache Kafka, BullMQ, RabbitMQ"
-  - category: "Databases"
+  - id: skill.databases
+    category: "Databases"
     items: "PostgreSQL, MongoDB, DynamoDB, Redis, MySQL, SurrealDB, SQLite"
-  - category: "Cloud & DevOps"
+  - id: skill.cloud_devops
+    category: "Cloud & DevOps"
     items: "AWS, Azure, Docker, Kubernetes, Terraform, Pulumi, Bazel, Jenkins, GitHub Actions"
-  - category: "AI & GenAI"
+  - id: skill.ai_genai
+    category: "AI & GenAI"
     items: "LangChain, LangSmith, AutoGen, RAG, FAISS, Pinecone, Qdrant, AstraDB, AWS Bedrock"

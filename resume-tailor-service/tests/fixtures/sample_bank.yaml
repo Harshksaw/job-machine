@@ -38,5 +38,6 @@ achievements:
     text: "Won the regional Test Hackathon."
 
 skills:
-  - category: "Languages"
+  - id: skill.languages
+    category: "Languages"
     items: "Python, Go"

@@ -70,6 +70,13 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
         "date": latex_escape(bank.education.date),
     }
 
+    skills_by_id = {skill.id: skill for skill in bank.skills if skill.id}
+    selected_skills = (
+        [skills_by_id[skill_id] for skill_id in manifest.skill_ids]
+        if manifest.skill_ids
+        else bank.skills
+    )
+
     return {
         "contact": contact_ctx,
         "education": education_ctx,
@@ -81,7 +88,7 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
         # to the dict's built-in `.items()` method instead of this key.
         "skills": [
             {"category": latex_escape(s.category), "entries": latex_escape(s.items)}
-            for s in bank.skills
+            for s in selected_skills
         ],
     }
 

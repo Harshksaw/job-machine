@@ -88,6 +88,16 @@ def test_trim_one_item_drops_bullet_from_lowest_priority_job_when_multiple_jobs_
     assert by_job["job_a"] == ["job_a.bullet.1", "job_a.bullet.2"]
 
 
+def test_trim_one_item_drops_lowest_priority_skill_above_minimum():
+    manifest = _manifest()
+    manifest.project_selections = []
+    manifest.achievement_ids = []
+    manifest.skill_ids = ["skill.1", "skill.2", "skill.3", "skill.4"]
+    trimmed = trim_one_item(manifest)
+    assert trimmed is not None
+    assert trimmed.skill_ids == ["skill.1", "skill.2", "skill.3"]
+
+
 def test_trim_one_item_returns_none_when_nothing_left():
     m = _manifest()
     m.project_selections = []

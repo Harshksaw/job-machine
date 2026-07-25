@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from app import tailor, render, dashboard, people
+from app import dashboard, job_store, jobs, people, render, tailor
 from app.bank import load_bank
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
 from app.slug import safe_slug
@@ -31,6 +31,15 @@ def health():
 
 @app.post("/tailor", response_model=TailorResponse)
 def tailor_resume(req: TailorRequest):
+    if req.job_id and job_store.get_job(req.job_id) is None:
+        raise HTTPException(status_code=404, detail="job dossier not found")
+    if req.job_id:
+        job_store.sync_tailor_context(
+            req.job_id,
+            req.jd_text,
+            req.job_url,
+            session=req.session,
+        )
     bank = load_bank(BANK_PATH)
 
     try:
@@ -60,6 +69,7 @@ def tailor_resume(req: TailorRequest):
         manifest=final_manifest,
         pages=pages,
         created_at=datetime.now(timezone.utc).isoformat(),
+        job_url=req.job_url,
     )
     meta_path = Path(pdf_path).parent / "meta.json"
     try:
@@ -67,11 +77,21 @@ def tailor_resume(req: TailorRequest):
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"failed to write resume metadata: {e}")
 
-    return TailorResponse(pdf_path=str(pdf_path), manifest=final_manifest, pages=pages)
+    resume_id = Path(pdf_path).parent.name
+    if req.job_id:
+        job_store.attach_resume(req.job_id, resume_id, session=req.session)
+
+    return TailorResponse(
+        pdf_path=str(pdf_path),
+        manifest=final_manifest,
+        pages=pages,
+        resume_id=resume_id,
+    )
 
 
 app.include_router(dashboard.router)
 app.include_router(people.router)
+app.include_router(jobs.router)
 
 # Serve the built dashboard SPA (see dashboard/README or resume-tailor-service/README
 # for the rebuild step). Mounted last so it never shadows the API routes above —

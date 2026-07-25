@@ -60,6 +60,10 @@ def trim_one_item(manifest: Manifest) -> Manifest | None:
         m.achievement_ids.pop()
         return m
 
+    if len(m.skill_ids) > 3:
+        m.skill_ids.pop()
+        return m
+
     for job_id in m.job_trim_priority:
         for js in m.job_selections:
             if js.job_id == job_id and len(js.bullet_ids) > 1:

@@ -14,6 +14,7 @@ def _valid_manifest():
             ProjectSelection(project_id="widgetizer", bullet_ids=["project.widgetizer.bullet.1"])
         ],
         achievement_ids=["achievement.1"],
+        skill_ids=["skill.languages"],
         job_trim_priority=["acme"],
     )
 
@@ -61,6 +62,14 @@ def test_unknown_achievement_id_is_rejected():
     m.achievement_ids = ["achievement.does-not-exist"]
     errors = validate_manifest(m, bank)
     assert any("achievement.does-not-exist" in e for e in errors)
+
+
+def test_unknown_skill_id_is_rejected():
+    bank = load_bank(FIXTURE)
+    manifest = _valid_manifest()
+    manifest.skill_ids = ["skill.invented"]
+    errors = validate_manifest(manifest, bank)
+    assert any("skill.invented" in error for error in errors)
 
 
 def test_job_trim_priority_must_match_job_ids_exactly():

@@ -1966,7 +1966,8 @@ to:
 
 ```markdown
 3. Per listing: read the job + the company's Wellfound profile. Score fit 1–10.
-   - < 6: skip, one-line reason.
+   - < 6: retain the dossier for review with a one-line reason; never
+     auto-skip or auto-archive it.
    - ≥ 6: apply. Before uploading, call the resume-tailor-service:
      `curl -s -X POST http://localhost:8420/tailor -H "Authorization: Bearer $RESUME_TAILOR_TOKEN" -H "Content-Type: application/json" -d '{"jd_text": "<listing JD text>", "company": "<company>", "role": "<role>"}'`
      and use the returned `pdf_path` for the resume upload. If the service

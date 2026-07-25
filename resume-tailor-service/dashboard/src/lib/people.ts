@@ -20,7 +20,11 @@ export function statusRank(s: string): number {
 }
 
 export function companyKey(company: string): string {
-  return company.trim().toLowerCase();
+  return company
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 /** True when a person should show under an application row. Company-level match;

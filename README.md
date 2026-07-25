@@ -67,7 +67,10 @@ redeploy the Apps Script with access = "Anyone" (Deploy → Manage deployments �
 
 ## 6. Daily usage
 ```bash
-cd job-machine && claude
+cd job-machine/resume-tailor-service && ./scripts/start.sh
+# open http://127.0.0.1:8420/
+
+cd .. && claude
 ```
 Then one of:
 - `Read prompts/wellfound-run.md and execute it`
@@ -76,6 +79,12 @@ Then one of:
 
 CLAUDE.md in this folder is loaded automatically every session — it holds your
 profile, rules, and webhook so the run prompts stay short.
+
+The dashboard opens on **Dossiers**, the detailed source of truth for each job:
+full JD, fit evidence and gaps, company context, tailored PDF, cover letter,
+application answers, linked people, next action, session activity, and
+restorable revisions. **Pipeline** remains the compact Google-Sheet view.
+Use **Import** in Dossiers to pull existing Sheet rows into local job records.
 
 ## 7. Volume lane — ApplyPilot (add later, optional)
 ```bash
@@ -93,5 +102,12 @@ https://github.com/Skyvern-AI/skyvern — self-host per README.
 ## Safety rails (already baked into prompts)
 - LinkedIn: human pace, max ~12 connection requests/session, no bulk anything
 - Never fabricate experience in any answer or form
-- Every action logs to the sheet — statuses: applied / people-mined /
-  outreach-sent / outreach-queued / replied / interview / rejected
+- Low-fit listings remain active for review; only you can mark one skipped or
+  archived
+- Every listing and action is captured in its local dossier; every content
+  update creates a restorable revision
+- External milestones also log to the sheet — statuses: applied /
+  people-mined / outreach-sent / outreach-queued / replied / interview /
+  rejected
+- Salary, authorization/sponsorship, start-date, demographic, and other
+  unknown personal questions are never guessed; the answer flow requests input

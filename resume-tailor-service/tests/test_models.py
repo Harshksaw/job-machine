@@ -18,6 +18,7 @@ def _sample_manifest_kwargs():
 def test_manifest_parses_valid_data():
     m = Manifest(**_sample_manifest_kwargs())
     assert m.job_selections[0].job_id == "acme"
+    assert m.skill_ids == []
 
 
 def test_manifest_missing_field_raises():

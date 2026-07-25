@@ -1,7 +1,7 @@
 import re
 from app.bank import (
     ResumeBank, all_job_ids, all_project_ids, all_achievement_ids,
-    all_job_bullet_ids, all_project_bullet_ids, bank_text_blob,
+    all_skill_ids, all_job_bullet_ids, all_project_bullet_ids, bank_text_blob,
 )
 from app.models import Manifest
 
@@ -51,6 +51,7 @@ def validate_manifest(manifest: Manifest, bank: ResumeBank) -> list[str]:
     job_ids = all_job_ids(bank)
     project_ids = all_project_ids(bank)
     achievement_ids = all_achievement_ids(bank)
+    skill_ids = all_skill_ids(bank)
     job_bullet_ids = all_job_bullet_ids(bank)
     project_bullet_ids = all_project_bullet_ids(bank)
 
@@ -75,6 +76,12 @@ def validate_manifest(manifest: Manifest, bank: ResumeBank) -> list[str]:
     for aid in manifest.achievement_ids:
         if aid not in achievement_ids:
             errors.append(f"unknown achievement_id: {aid}")
+
+    for skill_id in manifest.skill_ids:
+        if skill_id not in skill_ids:
+            errors.append(f"unknown skill_id: {skill_id}")
+    if len(manifest.skill_ids) != len(set(manifest.skill_ids)):
+        errors.append("skill_ids must not contain duplicates")
 
     if set(manifest.job_trim_priority) != job_ids:
         errors.append(

@@ -87,8 +87,9 @@ GET /health
    local, gitignored `.env`) with the JD text and the full content bank. The
    model returns a **manifest**: which bullet IDs to include per job (subset
    + order, most-relevant first), which project(s) to include (subset +
-   order), which achievement bullets to include (subset + order), a short
-   (1–2 sentence) summary line, and a `job_trim_priority` list ranking jobs
+   order), which achievement bullets to include (subset + order), which
+   verified skill-category IDs to include and order, a short (1–2 sentence)
+   summary line, and a `job_trim_priority` list ranking jobs
    from least- to most-relevant to this JD (used only for trimming — jobs
    themselves always display in chronological order, never reordered). The
    model is instructed to return IDs and reused facts only — never freeform
@@ -113,7 +114,8 @@ GET /health
      - 1 page → done, return the PDF.
      - >1 page → drop the lowest-priority optional item, in this fixed order:
        (a) last project in the projects list, (b) last achievement bullet,
-       (c) last bullet of the lowest-priority job — then recompile. Repeat,
+       (c) the lowest-priority skill category while at least three remain,
+       (d) last bullet of the lowest-priority job — then recompile. Repeat,
        one item at a time, up to a fixed small number of attempts.
      - Still >1 page after exhausting droppable content → hard error. The
        service never silently returns a resume longer than one page.

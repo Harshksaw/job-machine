@@ -27,7 +27,7 @@ COPY app ./app
 COPY content ./content
 COPY templates ./templates
 
-RUN mkdir -p /srv/app/output
+RUN mkdir -p /srv/app/output /srv/app/data
 
 EXPOSE 8420
 
