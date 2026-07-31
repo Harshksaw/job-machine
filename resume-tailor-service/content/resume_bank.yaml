@@ -27,7 +27,7 @@ profile_facts:
 
 jobs:
   - id: ommuse
-    company: "Ommuse"
+    company: "OmMuse"
     location: "Seattle, US"
     title: "Software Engineer Intern"
     dates: "Nov 2025 -- Present"
