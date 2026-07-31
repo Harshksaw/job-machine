@@ -92,8 +92,11 @@ def all_project_bullet_ids(bank: ResumeBank) -> dict[str, set[str]]:
 def bank_text_blob(bank: ResumeBank) -> str:
     parts: list[str] = []
     for job in bank.jobs:
+        parts.append(job.company)
+        parts.append(job.title)
         parts.extend(b.text for b in job.bullets)
     for proj in bank.projects:
+        parts.append(proj.name)
         parts.extend(b.text for b in proj.bullets)
     parts.extend(b.text for b in bank.achievements)
     parts.extend(s.items for s in bank.skills)
