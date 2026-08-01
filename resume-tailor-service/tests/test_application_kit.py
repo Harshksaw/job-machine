@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 
 from app.application_kit import (
+    _allowed_tokens,
+    _fact_is_traceable,
     build_source_index,
     generate_answer,
     generate_kit,
@@ -125,6 +127,83 @@ def test_validate_kit_rejects_automatic_skip_for_low_fit():
     errors = validate_kit(kit, _job(), build_source_index(bank))
 
     assert any("score below 6 must recommend review" in error for error in errors)
+
+
+def test_dotted_bank_term_makes_bare_base_name_traceable():
+    # The bank stores tech names in dotted form ("Qwik.js", "Node.js",
+    # "sync.Map"). The model may write the equally-truthful bare base name
+    # ("Qwik", "Node"). Regression: _allowed_tokens split only on "/" and "-",
+    # not ".", so the base name was flagged as an untraceable fact and every
+    # honest kit mentioning it 502'd.
+    allowed = _allowed_tokens("React Native, Qwik.js, Node.js, sync.Map dedup")
+    assert "qwik" in allowed  # from "Qwik.js"
+    assert "node" in allowed  # from "Node.js"
+    assert "map" in allowed  # from "sync.Map"
+    assert _fact_is_traceable("Qwik", allowed)
+    assert _fact_is_traceable("Node", allowed)
+    # A genuinely fabricated capitalized term must still be caught.
+    assert not _fact_is_traceable("Svelte", allowed)
+
+
+def test_validate_kit_accepts_bare_base_name_of_dotted_bank_tech():
+    # End-to-end guard through the real validator + real bank: a cover letter
+    # that references "Qwik" (bank stores "Qwik.js") must not be rejected.
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["cover_letter"] = payload["cover_letter"].replace(
+        "I would bring Acme Cloud evidence from shipped systems,",
+        "On the frontend I have shipped features with Qwik. I would bring "
+        "Acme Cloud evidence from shipped systems,",
+    )
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+    assert not any("Qwik" in error for error in errors), errors
+
+
+def _remarcable_job() -> JobWorkspace:
+    return JobWorkspace(
+        id="job2",
+        company="Remarcable, Inc.",
+        role="Software Engineer Full Stack",
+        jd_text=(
+            "Full Stack Software Engineer at Remarcable, a Series A SaaS startup. "
+            "Build REST APIs, integrate systems/APIs, Python, SQL, startup experience."
+        ),
+        company_context="Series A construction-tech SaaS startup.",
+        activities=[],
+        revisions=[],
+        created_at="2026-08-01T00:00:00+00:00",
+        updated_at="2026-08-01T00:00:00+00:00",
+    )
+
+
+def test_validate_kit_proof_allows_jd_terms_and_cross_source_facts():
+    # Regression: evidence proof was validated against ONLY the cited sources,
+    # so JD/requirement terms ("REST", "SaaS", "APIs") and real bank facts
+    # recorded under a sibling source ("12K+", "HubSpot") were flagged as
+    # untraceable, 502'ing honest kits. Proof is now checked against the full
+    # verified corpus (bank + JD + company context), like the cover letter.
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["evidence"][0]["proof"] = (
+        "Built REST APIs for a SaaS platform, including the 12K+ user HubSpot sync."
+    )
+    # Cite a source that does NOT itself contain REST/SaaS/APIs/12K+/HubSpot.
+    payload["analysis"]["evidence"][0]["source_ids"] = ["project.docintel.bullet.1"]
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _remarcable_job(), build_source_index(bank))
+    assert not any("evidence 0" in error for error in errors), errors
+
+
+def test_validate_kit_accepts_company_core_name_without_legal_suffix():
+    # Regression: the check required the full legal name ("Remarcable, Inc."),
+    # rejecting cover letters that naturally say "Remarcable".
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["cover_letter"] = payload["cover_letter"].replace("Acme Cloud", "Remarcable")
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _remarcable_job(), build_source_index(bank))
+    assert not any("name the company" in error for error in errors), errors
 
 
 def test_generate_kit_rejects_short_job_description():
