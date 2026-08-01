@@ -37,3 +37,9 @@ node_modules/
 
 # OS
 .DS_Store
+
+# Session scratch: browser UI snapshots + screenshots from run sessions
+session-artifacts/
+
+# Persistent service logs (launchd com.jobmachine.dashboard -> logs/dashboard.log)
+logs/

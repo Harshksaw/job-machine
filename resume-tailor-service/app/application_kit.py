@@ -128,7 +128,39 @@ def _word_count(text: str) -> int:
 
 
 def _allowed_tokens(text: str) -> set[str]:
-    return {token.lower() for token in _TOKEN_RE.findall(text)}
+    # Include both whole tokens AND their "/"- and "-"-split sub-parts, so a
+    # bank compound like "CI/CD" or "RAG-based" also makes "ci", "cd", "rag",
+    # "based" traceable. Without this, extract_facts() (whose token regex splits
+    # on "/") flags legitimate bank acronyms like CI, CD, RAG as untraceable.
+    allowed: set[str] = set()
+    for token in _TOKEN_RE.findall(text):
+        allowed.add(token.lower())
+        for part in re.split(r"[/-]", token):
+            if part:
+                allowed.add(part.lower())
+    return allowed
+
+
+def _fact_is_traceable(fact: str, allowed_tokens: set[str]) -> bool:
+    if fact.lower() in allowed_tokens:
+        return True
+    # Compound facts the model coins by gluing a bank term to a connective word
+    # ("RAG-powered", "Bazel-driven", "CI/CD"): traceable only if EVERY acronym-
+    # or proper-noun-like sub-part traces to the bank. Lowercase connectives
+    # ("powered", "based", "driven") are not facts and are ignored, so a
+    # genuinely fabricated Capitalized/acronym sub-part is still caught.
+    parts = [p for p in re.split(r"[/-]", fact) if p]
+    if len(parts) < 2:
+        return False
+    for part in parts:
+        significant = (
+            (part.isupper() and len(part) >= 2)
+            or part[:1].isupper()
+            or any(c in ".+#" for c in part)
+        )
+        if significant and part.lower() not in allowed_tokens:
+            return False
+    return True
 
 
 def _fact_errors(text: str, allowed_text: str, label: str) -> list[str]:
@@ -142,7 +174,7 @@ def _fact_errors(text: str, allowed_text: str, label: str) -> list[str]:
             char.isdigit() or char == "%" for char in fact
         )
         if wordlike:
-            if fact.lower() not in allowed_tokens:
+            if not _fact_is_traceable(fact, allowed_tokens):
                 errors.append(f"{label} contains untraceable fact {fact!r}")
         elif fact.lower() not in allowed_lower:
             errors.append(f"{label} contains untraceable fact {fact!r}")

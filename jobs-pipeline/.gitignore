@@ -1,0 +1,6 @@
+.env
+*.csv
+*.sql
+*.pgc
+clone.out
+dump.*
