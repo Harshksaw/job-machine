@@ -128,14 +128,18 @@ def _word_count(text: str) -> int:
 
 
 def _allowed_tokens(text: str) -> set[str]:
-    # Include both whole tokens AND their "/"- and "-"-split sub-parts, so a
-    # bank compound like "CI/CD" or "RAG-based" also makes "ci", "cd", "rag",
-    # "based" traceable. Without this, extract_facts() (whose token regex splits
-    # on "/") flags legitimate bank acronyms like CI, CD, RAG as untraceable.
+    # Include both whole tokens AND their "/"-, "-"- and "."-split sub-parts, so
+    # a bank compound like "CI/CD", "RAG-based" or "Qwik.js" also makes "ci",
+    # "cd", "rag", "based", "qwik", "js" traceable. Without splitting on "."
+    # too, a bank tech name stored in dotted form ("Qwik.js", "Node.js",
+    # "sync.Map") did not make its equally-truthful bare base name ("Qwik",
+    # "Node") traceable, so honest kits mentioning it failed validation and
+    # 502'd. The whole dotted token stays in the set as well, so exact dotted
+    # references ("Node.js") keep matching.
     allowed: set[str] = set()
     for token in _TOKEN_RE.findall(text):
         allowed.add(token.lower())
-        for part in re.split(r"[/-]", token):
+        for part in re.split(r"[/.-]", token):
             if part:
                 allowed.add(part.lower())
     return allowed
@@ -201,6 +205,17 @@ def validate_kit(
         if keyword.strip() and keyword.strip().lower() not in jd_lower:
             errors.append(f"keyword is not present in the job description: {keyword!r}")
 
+    allowed = " ".join(
+        [
+            *sources.values(),
+            job.company,
+            job.role,
+            job.jd_text,
+            job.company_context,
+            job.why_this_role,
+        ]
+    )
+
     for index, evidence in enumerate(analysis.evidence):
         unknown = [source_id for source_id in evidence.source_ids if source_id not in sources]
         if unknown:
@@ -214,30 +229,25 @@ def validate_kit(
                 f"evidence requirement {index}",
             )
         )
-        selected_text = " ".join(
-            sources[source_id]
-            for source_id in evidence.source_ids
-            if source_id in sources
-        )
         if evidence.proof:
+            # Validate proof facts against the full verified corpus (all bank
+            # sources + JD + company/role context) -- the same allowlist the
+            # cover letter uses -- not only the specific cited sources. A proof
+            # sentence legitimately restates the JD requirement it addresses
+            # ("REST APIs", "SaaS") and may reference a real bank fact recorded
+            # under a sibling source id; the old narrow check flagged those
+            # honest tokens as "untraceable" and 502'd every kit. Fabrication is
+            # still blocked -- every fact must appear somewhere in the verified
+            # corpus -- and the cited source ids are validated for existence
+            # above.
             errors.extend(
                 _fact_errors(
                     evidence.proof,
-                    selected_text,
+                    allowed,
                     f"evidence {index}",
                 )
             )
 
-    allowed = " ".join(
-        [
-            *sources.values(),
-            job.company,
-            job.role,
-            job.jd_text,
-            job.company_context,
-            job.why_this_role,
-        ]
-    )
     errors.extend(_fact_errors(analysis.verdict, allowed, "verdict"))
     errors.extend(_fact_errors(analysis.role_thesis, allowed, "role thesis"))
     for index, gap in enumerate(analysis.gaps):
@@ -250,7 +260,18 @@ def validate_kit(
         count = _word_count(cover)
         if count < 120 or count > 360:
             errors.append(f"cover letter must be 120-360 words, got {count}")
-        if job.company.lower() not in cover.lower():
+        # Match the company's core name, not its full legal form. Requiring the
+        # exact "Remarcable, Inc." string rejected cover letters that naturally
+        # say "Remarcable"; strip a trailing comma-suffix and common legal
+        # suffix so the human-facing name is what must appear.
+        company_core = re.split(r",", job.company)[0].strip()
+        company_core = re.sub(
+            r"\s+(inc|llc|ltd|corp|co|gmbh|plc)\.?$",
+            "",
+            company_core,
+            flags=re.IGNORECASE,
+        ).strip()
+        if company_core and company_core.lower() not in cover.lower():
             errors.append("cover letter must name the company")
     if cover:
         lowered = cover.lower()
@@ -292,6 +313,10 @@ Candidate source ledger (the ONLY allowed candidate facts):
 Rules:
 1. Never invent experience, skills, dates, numbers, education, authorization,
    preferences, or company facts. Candidate proof must cite source_ids above.
+   Copy names, dates, month spellings, degree names, and acronyms exactly as
+   the source ledger writes them (keep "Dec 2026" as "Dec", keep "Computer
+   Information Systems" spelled out) -- do not expand, abbreviate, or coin an
+   acronym the ledger does not contain.
 2. Score fit from 1-10. Below 6 => "review"; 6 or above => "apply".
    "review" means keep the opportunity active so the user can improve or
    reconsider it later. Never recommend "skip" automatically.
