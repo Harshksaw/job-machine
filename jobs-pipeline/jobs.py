@@ -247,7 +247,7 @@ def cmd_query(limit=500, dsn=None):
             print("  ", " | ".join(str(x)[:50] for x in r))
 
 
-def cmd_shortlist(dsn=None, limit=25, eligible=False):
+def cmd_shortlist(dsn=None, limit=25, eligible=False, canada_only=False):
     with psycopg.connect(dsn or DST) as conn:
         s, n = _pick_jobs_table(conn)
         cols = [c for c, _ in _columns(conn, s, n)]
@@ -286,6 +286,8 @@ def cmd_shortlist(dsn=None, limit=25, eligible=False):
         if seniority:
             clauses.append(f'COALESCE("{seniority}"::text,\'\') !~* %s'); fparams.append(SENIORITY_BAD)
         clauses.append(f'NOT ({text} ~* %s)'); fparams.append(CLEARANCE)   # drop clearance-gated roles
+        if canada_only and loc:
+            clauses.append(f'"{loc}"::text ~* \'canada\'')                 # Canada-located (country) only
         if eligible:
             elig = []
             if visa:
@@ -401,15 +403,17 @@ if __name__ == "__main__":
     if cmd in ("sync", "query") and not DST:
         sys.exit("LOCAL_DSN not set in .env")
     dispatch = {"schema": cmd_schema, "sync": cmd_sync, "query": cmd_query,
-                "count": cmd_count, "shortlist": cmd_shortlist, "eligible": cmd_shortlist}
+                "count": cmd_count, "shortlist": cmd_shortlist, "eligible": cmd_shortlist,
+                "canada": cmd_shortlist}
     if cmd not in dispatch:
-        sys.exit(f"unknown command {cmd!r}; use: schema | sync | query | count | shortlist | eligible")
+        sys.exit(f"unknown command {cmd!r}; use: schema | sync | query | count | shortlist | eligible | canada")
     use_rds = len(sys.argv) > 2 and sys.argv[2] == "rds"
     lim = next((int(a) for a in sys.argv[2:] if a.isdigit()), None)
     if cmd == "query":
         cmd_query(limit=lim or 500, dsn=SRC if use_rds else None)
-    elif cmd in ("shortlist", "eligible"):
-        cmd_shortlist(dsn=SRC if use_rds else None, limit=lim or 25, eligible=(cmd == "eligible"))
+    elif cmd in ("shortlist", "eligible", "canada"):
+        cmd_shortlist(dsn=SRC if use_rds else None, limit=lim or 25,
+                      eligible=(cmd == "eligible"), canada_only=(cmd == "canada"))
     elif cmd == "count" and use_rds:
         cmd_count(dsn=SRC)
     else:

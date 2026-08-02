@@ -1,0 +1,309 @@
+[
+ {
+  "company": "Clera",
+  "role": "AI & Backend Engineer",
+  "loc": "San Francisco (on-site)",
+  "url": "https://jobs.ashbyhq.com/Clera/b4405fb9-3917-48ff-b623-e3f3a09ee473",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Clera is a sub-15-person B2B SaaS building AI agents that autonomously resolve complex, technical enterprise support tickets \u2014 the agents learn from a company's historical support data, integrate deeply with existing workflows, and either resolve tickets end-to-end or escalate intelligently with full context. Stack is Python/FastAPI + TypeScript/React/Next.js on OpenAI models (GPT-4o, o3, o4-mini), PostgreSQL/Firestore, Docker/K8s on GCP/Azure; on-site with visa sponsorship available.",
+   "cover_letter": "Clera's agents resolve technical support tickets by learning from a company's historical support data, which is fundamentally retrieval-augmented reasoning over a private corpus \u2014 the exact problem I've built for in production. My Document Intelligence Platform is a multi-tenant RAG system on FastAPI, LangChain, and Qdrant with SHA-256 idempotent ingestion and a Groq-to-Gemini failover path, so tenants keep getting answers even when a single model provider degrades, the kind of reliability enterprise support can't go without. At OmMuse I shipped semantic search on a MongoDB Vector Store backed by AWS Bedrock, and across four internships I've owned full-stack features end to end in TypeScript and Python. I'd bring that production RAG-and-agents background directly to shaping Clera's resolution and escalation pipelines.",
+   "connection_note": "Hi \u2014 I saw Clera's AI & Backend Engineer role. Your agents resolving support tickets from historical data line up closely with a multi-tenant RAG platform I built (FastAPI/LangChain/Qdrant, Groq-to-Gemini failover) and production RAG on AWS Bedrock at OmMuse. Final-year CS, 2+ yrs shipping full-stack TS/Python. Would love to connect and hear how you're approaching autonomous resolution vs. escalation.",
+   "target_person_role": "Technical co-founder / CTO (or a founding engineer) \u2014 at a sub-15-person startup this person owns engineering hiring directly; fall back to whoever is listed as the hiring manager on the Ashby posting.",
+   "traceability": [
+    "company_hook: product description, tech stack, team size (<15), on-site + visa sponsorship \u2014 all verbatim from the Ashby posting JD (job id b4405fb9)",
+    "cover letter 'multi-tenant RAG on FastAPI/LangChain/Qdrant, SHA-256 idempotent ingestion, Groq->Gemini failover' -> CANDIDATE Projects: Document Intelligence Platform",
+    "cover letter 'semantic search on MongoDB Vector Store backed by AWS Bedrock' -> CANDIDATE Experience: OmMuse",
+    "cover letter 'four internships, full-stack TS/Python end to end' -> CANDIDATE: OmMuse, Bwisher, MoreThinks, Jythu + stack TypeScript/Python",
+    "connection_note 'final-year CS, 2+ yrs' -> CANDIDATE header (Okanagan College, grad Dec 2026, 2+ yrs internship)",
+    "fit=8: strong match on AI features/LLM integration/agent pipelines (OmMuse Bedrock RAG + Document Intelligence RAG), FastAPI, full-stack TS/Python, Docker/K8s, PostgreSQL, new-grad-with-strong-projects welcome, startups-preferred targeting; gaps that hold it below 9: no OpenAI-specific integration named (uses Bedrock/Groq/Gemini/LangChain), no Firestore/GCP (candidate is AWS/Azure), no customer-support-domain experience, and on-site role requiring relocation (candidate Canada-authorized, TN-eligible for US, sponsorship available)",
+    "NOTE: posting location is ambiguous \u2014 structured Ashby address + task say San Francisco (on-site); JD free-text says Munich, Germany (on-site). Both list visa sponsorship available. Candidate open to relocation per CANDIDATE."
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "Clera's agents resolve technical support tickets by learning from a company's historical support data, which is fundamentally retrieval-augmented reasoning over a private corpus, the exact problem I've built for in production. My Document Intelligence Platform is a multi-tenant RAG system on FastAPI, LangChain, and Qdrant with SHA-256 idempotent ingestion and a Groq-to-Gemini failover path, so tenants keep getting answers even when a single model provider degrades, the kind of reliability enterprise support can't go without. At OmMuse I shipped semantic search on a MongoDB Vector Store backed by AWS Bedrock, and across four internships I've owned full-stack features end to end in TypeScript and Python. I'd bring that production RAG-and-agents background directly to shaping Clera's resolution and escalation pipelines.",
+   "final_connection_note": "Hi, I saw Clera's AI & Backend Engineer role. Your agents resolving tickets from historical support data map to a multi-tenant RAG platform I built (FastAPI/LangChain/Qdrant, Groq-to-Gemini failover) plus production RAG on Bedrock at OmMuse. Final-year CS, 2+ yrs full-stack TS/Python. Keen to connect.",
+   "fabrications": []
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Agave",
+  "role": "Software Engineer",
+  "loc": "San Francisco (hybrid)",
+  "url": "https://www.linkedin.com/jobs/view/software-engineer-at-agave-4442679202",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Agave builds the unified API layer that lets construction's siloed ERP and project-management systems (14+ across cloud, hosted, and on-prem) talk to each other, plus AI for AP invoice automation, expense management, and vendor compliance. YC W22, $15M Series A led by Accel, profitable 2+ years, 500+ contractor customers.",
+   "cover_letter": "Agave's core bet \u2014 building reliable API rails so construction's siloed ERP and PM systems can finally talk to each other \u2014 is exactly the problem I worked on at OmMuse, where I built a Go service that keeps a 12K+ user platform in sync with HubSpot across 8 API trigger points, using sync.Map dedup to prevent double-writes when events fire concurrently. I've seen firsthand how brittle multi-system sync gets when the source systems were never designed to cooperate, and how much idempotency matters once real financial data is flowing. On the finance side I also shipped idempotent NestJS/FastAPI payment microservices at Bwisher with retry and exponential backoff, so failed downstream calls recover cleanly instead of duplicating charges. I'd like to bring that integration-and-reliability focus to a 0->1 team wiring AI onto a $12T industry's legacy software.",
+   "connection_note": "Hi [name] - saw Agave's Series A and the bet on unified API rails for construction's siloed ERP/PM systems. At OmMuse I built a Go service syncing a 12K-user platform to HubSpot across 8 trigger points with sync.Map dedup - the same multi-system sync problem. Would love to connect about the SWE role.",
+   "target_person_role": "Founding / early engineer or Engineering lead at Agave (small YC team \u2014 a co-founder/CTO is a reasonable direct target)",
+   "traceability": [
+    "company_hook: unified API across 14+ ERP/PM systems, YC W22, $15M Series A (Accel), profitable 2+ yrs, 500+ customers \u2014 from web research (BusinessWire, TechCrunch, useagave.com) and task context",
+    "cover_letter: 'Go service ... HubSpot ... across 8 API trigger points ... sync.Map dedup ... 12K+ user platform' \u2014 CANDIDATE OmMuse: 'Go async HubSpot CRM sync, sync.Map dedup across 8 triggers, 12K+ users'",
+    "cover_letter: 'idempotent NestJS/FastAPI payment microservices ... retry and exponential backoff' \u2014 CANDIDATE Bwisher: 'idempotent NestJS/FastAPI payment microservices w/ retry+backoff'",
+    "cover_letter: '0->1 team' fit \u2014 CANDIDATE Full-stack TS/Python/Go; role is full-stack/backend 0->1",
+    "connection_note: OmMuse Go HubSpot sync, 8 triggers, sync.Map dedup, 12K users \u2014 CANDIDATE OmMuse line",
+    "fit 8: full-stack TS/Python/Go match; integration/sync + idempotent financial microservices directly map to Agave's API-rails + finance product; caveat \u2014 SF hybrid role, candidate is Canada-authorized/TN-eligible for US (needs TN, no cap issue)"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "Agave's core bet \u2014 building reliable API rails so construction's siloed ERP and PM systems can finally talk to each other \u2014 is exactly the problem I worked on at OmMuse, where I built a Go service that keeps a 12K+ user platform in sync with HubSpot across 8 API trigger points, using sync.Map dedup to prevent double-writes when events fire concurrently. I've seen firsthand how brittle multi-system sync gets when the source systems were never designed to cooperate, and how much idempotency matters once real financial data is flowing. On the finance side I also shipped idempotent NestJS/FastAPI payment microservices at Bwisher with retry and exponential backoff, so failed downstream calls recover cleanly instead of duplicating charges. I'd like to bring that integration-and-reliability focus to a 0->1 team wiring AI onto a $12T industry's legacy software.",
+   "final_connection_note": "Hi [name] - saw Agave's Series A and the bet on unified API rails for construction's siloed ERP/PM systems. At OmMuse I built a Go service syncing a 12K-user platform to HubSpot across 8 trigger points with sync.Map dedup - the same multi-system sync problem. Would love to connect about the SWE role.",
+   "fabrications": []
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Sundayy",
+  "role": "Full Stack Software Engineer (Remote)",
+  "loc": "Remote (US, hires Canada-eligible)",
+  "url": "https://www.linkedin.com/jobs/view/full-stack-software-engineer-remote-at-sundayy-4442588837",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Sundayy is a global work & opportunity platform (NYC) that pulls jobs from across the internet and focuses on surfacing the roles actually worth attention, cutting the repetitive, scattered friction out of job search.",
+   "cover_letter": "Sundayy's core bet \u2014 surfacing the jobs actually worth a candidate's attention instead of drowning them in noise \u2014 is a relevance problem, and it's the one I've been building against at OmMuse, where I built RAG semantic search over a MongoDB Vector Store with AWS Bedrock embeddings to match users to the right content in a 12K+ user platform. I work full-stack across the exact surface a fast-moving SaaS needs: TypeScript and Python on React/Next front ends backed by Node/NestJS and FastAPI services, plus the Go async CRM sync (sync.Map dedup across eight trigger points) I shipped to keep that platform's data consistent at scale. Earlier, at Bwisher, I ran a Kafka + BullMQ pipeline serving 30K+ users and idempotent payment microservices with retry and exponential backoff, so I'm comfortable owning scalable backend services end to end in a small team. I'm remote-ready and authorized to work in Canada (TN-eligible for the US), and I'd like to help Sundayy make opportunity discovery feel clear instead of chaotic.",
+   "connection_note": "Hi [Name], Sundayy's take on cutting the noise in job search really lands with me. I'm a full-stack engineer (TS/Python, React/Next + FastAPI/Node) and I built RAG semantic search over a vector store at OmMuse to surface the right results in a 12K+ user platform. Would love to connect about your remote Full Stack role.",
+   "target_person_role": "Engineering Manager or Founding/Lead Engineer (or Recruiter) at Sundayy",
+   "traceability": [
+    "company_hook: Sundayy = global work & opportunity platform, NYC, aggregates jobs and surfaces roles worth attention \u2014 from WebSearch (crunchbase/sundayy.com results)",
+    "cover_letter 'RAG semantic search over a MongoDB Vector Store with AWS Bedrock ... 12K+ user platform' = OmMuse RAG semantic search (MongoDB Vector Store + AWS Bedrock), 12K+ users",
+    "cover_letter 'TypeScript and Python on React/Next ... Node/NestJS and FastAPI' = CANDIDATE stack (TypeScript, Python, React/Next, NestJS, FastAPI)",
+    "cover_letter 'Go async CRM sync (sync.Map dedup across eight trigger points)' = OmMuse Go async HubSpot CRM sync, sync.Map dedup across 8 triggers",
+    "cover_letter 'Kafka + BullMQ pipeline serving 30K+ users and idempotent payment microservices with retry and exponential backoff' = Bwisher Kafka+BullMQ marketing platform 30K+ users; idempotent NestJS/FastAPI payment microservices w/ retry+backoff",
+    "cover_letter 'authorized to work in Canada (TN-eligible for the US)' = CANDIDATE work authorization",
+    "connection_note 'full-stack engineer (TS/Python, React/Next + FastAPI/Node)' = CANDIDATE stack",
+    "connection_note 'RAG semantic search over a vector store at OmMuse ... 12K+ user platform' = OmMuse RAG semantic search, 12K+ users",
+    "fit 8 = strong full-stack TS/Python match to remote Full Stack SWE role + direct relevance of RAG/semantic-search experience to a job-surfacing platform; remote-ready and Canada-authorized per CANDIDATE"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "Sundayy's core bet \u2014 surfacing the jobs actually worth a candidate's attention instead of drowning them in noise \u2014 is a relevance problem, and it's the one I've been building against at OmMuse, where I built RAG semantic search over a MongoDB Vector Store with AWS Bedrock in a 12K+ user platform. I work full-stack across the exact surface a fast-moving SaaS needs: TypeScript and Python on React/Next front ends backed by Node/NestJS and FastAPI services, plus the Go async CRM sync (sync.Map dedup across eight trigger points) I shipped to keep that platform's data consistent at scale. Earlier, at Bwisher, I ran a Kafka + BullMQ pipeline serving 30K+ users and idempotent payment microservices with retry and exponential backoff, so I'm comfortable owning scalable backend services end to end in a small team. I'm remote-ready and authorized to work in Canada (TN-eligible for the US), and I'd like to help Sundayy make opportunity discovery feel clear instead of chaotic.",
+   "final_connection_note": "Hi [Name], Sundayy's take on cutting the noise in job search really lands with me. I'm a full-stack engineer (TS/Python, React/Next + FastAPI/Node) and I built RAG semantic search over a vector store at OmMuse to surface the right results in a 12K+ user platform. Would love to connect about your remote Full Stack role."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "NOSO LABS (YC S25)",
+  "role": "Founding Full Stack Engineer",
+  "loc": "San Francisco (on-site, intense)",
+  "url": "https://www.linkedin.com/jobs/view/full-stack-engineer-ongoing-hiring-forever-at-noso-labs-yc-s25-4441098087",
+  "draft": {
+   "fit": 7,
+   "company_hook": "NOSO is an AI agent platform for HVAC/home-service companies that automatically texts customers to follow up on unsold estimates and syncs the results back to the CRM \u2014 recovering revenue with \"0 extra headcount\" and aiming to be \"the source of intelligence for home service.\" That core loop (multi-channel automated outreach + reliable CRM sync + agentic AI) maps almost one-to-one onto the candidate's shipped work.",
+   "cover_letter": "NOSO's core loop \u2014 automatically texting customers to follow up on unsold estimates and syncing the results back into the CRM \u2014 is close to what I shipped at Bwisher, where I built a Kafka + BullMQ platform running automated SMS, email, and WhatsApp outreach across 30K+ users, backed by idempotent NestJS/FastAPI microservices with retry and exponential backoff so nothing double-fired or dropped. That reliability discipline carried into OmMuse, where I wrote the Go async HubSpot CRM sync (sync.Map dedup across 8 API trigger points for 12K+ users) \u2014 the same event-to-CRM plumbing your agents lean on. I also build agentic RAG end to end: my Document Intelligence Platform runs multi-tenant retrieval on FastAPI/LangChain/Qdrant with Groq\u2192Gemini failover on ECS Fargate, so I can move across the follow-up engine, the CRM layer, and the AI stack as a founding engineer. I ship fast, take full ownership, and am ready to be onsite in SF.",
+   "connection_note": "Hi Alex \u2014 NOSO's automated follow-up loop on unsold estimates maps closely to a Kafka+BullMQ SMS/email/WhatsApp platform I built for 30K+ users, plus a Go async HubSpot CRM sync I shipped at OmMuse for 12K+ users. I also build agentic RAG end to end. Would love to talk about the founding full-stack role.",
+   "target_person_role": "Alex Xi \u2014 Technical Co-founder / CTO (ex-ByteDance/Meta AI). Fallback: Winston Chi, CEO/Co-founder.",
+   "traceability": [
+    "company_hook: product/mission facts (automated follow-up on unsold estimates, CRM sync, '0 extra headcount', 'source of intelligence for home service') sourced from noso.so and YC \u2014 not candidate facts",
+    "cover_letter 'Kafka + BullMQ platform running automated SMS, email, and WhatsApp outreach across 30K+ users' \u2192 CANDIDATE: Bwisher (Kafka+BullMQ marketing platform SMS/email/WhatsApp 30K+ users)",
+    "cover_letter 'idempotent NestJS/FastAPI microservices with retry and exponential backoff' \u2192 CANDIDATE: Bwisher (idempotent NestJS/FastAPI payment microservices w/ retry+backoff)",
+    "cover_letter 'Go async HubSpot CRM sync (sync.Map dedup across 8 API trigger points for 12K+ users)' \u2192 CANDIDATE: OmMuse (Go async HubSpot CRM sync, sync.Map dedup across 8 triggers, 12K+ users)",
+    "cover_letter 'Document Intelligence Platform... multi-tenant retrieval on FastAPI/LangChain/Qdrant with Groq\u2192Gemini failover on ECS Fargate' \u2192 CANDIDATE: Document Intelligence Platform (multi-tenant RAG, FastAPI/LangChain/Qdrant, Groq->Gemini failover, ECS Fargate)",
+    "cover_letter 'founding engineer... ready to be onsite in SF' \u2192 CANDIDATE angle (ships fast, high ownership; open to sponsorship/TN, TN-eligible for US) + ROLE (SF onsite, founding full stack)",
+    "connection_note claims \u2192 same Bwisher and OmMuse facts as above",
+    "target_person_role (Alex Xi technical co-founder ex-ByteDance/Meta; Winston Chi CEO) \u2192 web research on NOSO founders, not candidate facts",
+    "fit=7: strong stack/domain match (multi-channel messaging, CRM sync, agentic RAG, full-stack TS/Python/Go per CANDIDATE) offset by new-grad status (grad Dec 2026) vs founding-engineer bar and US relocation/work-auth (Canada-authorized, TN-eligible, open to sponsorship per CANDIDATE)"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "NOSO's core loop \u2014 automatically texting customers to follow up on unsold estimates and syncing the results back into the CRM \u2014 is close to what I shipped at Bwisher, where I built a Kafka + BullMQ platform running automated SMS, email, and WhatsApp outreach across 30K+ users, backed by idempotent NestJS/FastAPI microservices with retry and exponential backoff so nothing double-fired or dropped. That reliability discipline carried into OmMuse, where I wrote the Go async HubSpot CRM sync (sync.Map dedup across 8 API trigger points for 12K+ users) \u2014 the same event-to-CRM plumbing your agents lean on. I also build agentic RAG end to end: my Document Intelligence Platform runs multi-tenant retrieval on FastAPI/LangChain/Qdrant with Groq\u2192Gemini failover on ECS Fargate, so I can move across the follow-up engine, the CRM layer, and the AI stack as a founding engineer. I ship fast, take full ownership, and am TN-eligible and ready to relocate onsite to SF.",
+   "final_connection_note": "Hi Alex \u2014 NOSO's automated follow-up loop on unsold estimates maps closely to a Kafka+BullMQ SMS/email/WhatsApp platform I built for 30K+ users, plus a Go async HubSpot CRM sync I shipped at OmMuse for 12K+ users. I also build agentic RAG end to end. Would love to talk about the founding full-stack role."
+  },
+  "_fit": 7
+ },
+ {
+  "company": "Mixedbread",
+  "role": "DevOps Engineer",
+  "loc": "San Francisco (on-site)",
+  "url": "https://www.linkedin.com/jobs/view/devops-engineer-at-mixedbread-4440383574",
+  "draft": {
+   "fit": 7,
+   "company_hook": "Mixedbread bundles state-of-the-art embeddings, reranking, document parsing, and a vector store behind one unified search API, so any content (text, images, tables, code, 100+ languages) becomes instantly searchable with natural language, no separate embedding models or vector DB to manage, serving millions of queries a day.",
+   "cover_letter": "Mixedbread packs embeddings, reranking, parsing, and a vector store behind one API serving millions of queries a day, and keeping that reliable at scale is exactly the DevOps work I've done. At Bwisher I ran the infrastructure for a Kafka + BullMQ marketing platform serving 30K+ users on Jenkins and Kubernetes, with Prometheus and Grafana for observability and idempotent payment microservices built on retry and exponential backoff. I've also operated vector databases directly: a multi-tenant RAG platform on FastAPI/LangChain/Qdrant with SHA-256 idempotent ingestion on ECS Fargate, plus RAG semantic search over a MongoDB Vector Store with AWS Bedrock at OmMuse. Terraform, Pulumi, Docker, and GitHub Actions are day-to-day tools for me, and I'd bring that IaC-plus-observability discipline to keeping your GPU and vector-DB workloads reliable.",
+   "connection_note": "Hi [name], saw Mixedbread's DevOps Engineer role. Your unified search API (embeddings, reranking, vector store, millions of queries/day) lines up closely with my work: I ran Jenkins/K8s infra with Prometheus/Grafana at Bwisher and operate Qdrant and Bedrock vector search directly, with Terraform/Pulumi IaC. Would be glad to connect.",
+   "target_person_role": "Founding/Platform Engineer or Head of Engineering at Mixedbread (small startup; fall back to a technical recruiter if no eng lead is reachable)",
+   "traceability": [
+    "Fit 7: strong overlap on IaC (Terraform, Pulumi), CI/CD (Jenkins, GitHub Actions), K8s/EKS, observability (Prometheus/Grafana), and direct vector-DB experience (Qdrant/Pinecone/Bedrock); downgraded from higher because candidate is a new-grad/intern generalist with no explicit GPU-cluster ops experience for a specialized DevOps role. Sponsorship offered and candidate is TN-eligible for US, so on-site SF is viable.",
+    "company_hook: unified embeddings/reranking/parsing/vector-store API, multimodal, 100+ languages, millions of queries/day - from Mixedbread docs and homepage research (not fabricated)",
+    "Cover letter 'Kafka + BullMQ marketing platform serving 30K+ users on Jenkins and Kubernetes, Prometheus and Grafana' -> Bwisher: Kafka+BullMQ multi-channel platform 30K+ users; Jenkins/K8s/Prometheus/Grafana",
+    "Cover letter 'idempotent payment microservices built on retry and exponential backoff' -> Bwisher: idempotent NestJS/FastAPI payment microservices w/ retry+backoff",
+    "Cover letter 'multi-tenant RAG platform on FastAPI/LangChain/Qdrant with SHA-256 idempotent ingestion on ECS Fargate' -> Project: Document Intelligence Platform",
+    "Cover letter 'RAG semantic search over a MongoDB Vector Store with AWS Bedrock at OmMuse' -> OmMuse: RAG semantic search on MongoDB Vector Store + AWS Bedrock",
+    "Cover letter 'Terraform, Pulumi, Docker, and GitHub Actions' -> Stack: AWS, Docker, K8s, Terraform, Pulumi, Bazel, Jenkins, GH Actions",
+    "Connection note 'Qdrant and Bedrock vector search' -> Stack: Qdrant, Bedrock; OmMuse + Document Intelligence Platform",
+    "Connection note 'Jenkins/K8s infra with Prometheus/Grafana' -> Bwisher",
+    "target_person_role: inferred from Mixedbread being an early-stage AI search startup (research-based inference, not a fabricated named person)"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "Mixedbread packs embeddings, reranking, parsing, and a vector store behind one API serving millions of queries a day, and keeping that reliable at scale is exactly the DevOps work I've done. At Bwisher I ran the infrastructure for a Kafka + BullMQ marketing platform serving 30K+ users on Jenkins and Kubernetes, with Prometheus and Grafana for observability and idempotent payment microservices built on retry and exponential backoff. I've also operated vector databases directly: a multi-tenant RAG platform on FastAPI/LangChain/Qdrant with SHA-256 idempotent ingestion on ECS Fargate, plus RAG semantic search over a MongoDB Vector Store with AWS Bedrock at OmMuse. Terraform, Pulumi, Docker, and GitHub Actions are day-to-day tools for me, and I'd bring that IaC-plus-observability discipline to keeping your GPU and vector-DB workloads reliable.",
+   "final_connection_note": "Hi [name], saw Mixedbread's DevOps Engineer role. Your unified search API (embeddings, reranking, vector store, millions of queries/day) lines up closely with my work: I ran Jenkins/K8s infra with Prometheus/Grafana at Bwisher and operate Qdrant and Bedrock vector search directly, with Terraform/Pulumi IaC. Would be glad to connect.",
+   "fabrications": []
+  },
+  "_fit": 7
+ },
+ {
+  "company": "Mutual of Omaha",
+  "role": "Data Scientist - AI Systems",
+  "loc": "Omaha, NE (on-site) $99-130k+bonus",
+  "url": "https://www.linkedin.com/jobs/view/data-scientist-%E2%80%93-ai-systems%C2%A0-at-mutual-of-omaha-4443615091",
+  "draft": {
+   "fit": 7,
+   "company_hook": "Mutual of Omaha is a Fortune 500 mutual insurer (Omaha, NE) that is embedding agentic GenAI into its core business: its Data Science team is building autonomous AI agents with LangGraph/Strands to power conversational interfaces, automated claims triage, and analytical workflows, with an explicit production-first mandate to move models out of notebooks and into live customer-facing systems.",
+   "cover_letter": "Mutual of Omaha's push to move agentic GenAI from prototype into production is exactly the problem I've been solving. I built a multi-tenant Document Intelligence Platform on FastAPI, LangChain, and Qdrant, running on ECS Fargate with a Groq-to-Gemini failover path and SHA-256 idempotent ingestion so the system stays reliable under real load rather than only in a demo. At OmMuse I also shipped RAG semantic search into production on MongoDB Vector Store and AWS Bedrock for a 12K+ user platform. I'd like to bring that production-first RAG and orchestration experience to the conversational and analytical AI systems your Data Science team is building.",
+   "connection_note": "Hi [Name] - I saw Mutual of Omaha's Data Science team is building LangGraph-based AI agents for conversational and claims workflows. I've shipped production RAG systems (LangChain/Qdrant on ECS Fargate with model failover, and Bedrock semantic search for a 12K+ user platform) and would value a quick chat about the AI Systems Data Scientist role. Thanks!",
+   "target_person_role": "Data Science Manager / AI Systems lead (hiring manager); secondary: Technical/AI Talent Acquisition Recruiter at Mutual of Omaha",
+   "traceability": [
+    "Hook: Data Science team building LangGraph/Strands agents, conversational interfaces, claims triage, production-first \u2014 from job context + web research (mutualofomaha.com careers, nucamp Omaha AI hiring)",
+    "Cover letter 'multi-tenant Document Intelligence Platform on FastAPI, LangChain, Qdrant, ECS Fargate, Groq-to-Gemini failover, SHA-256 idempotent ingestion' = CANDIDATE Projects: Document Intelligence Platform",
+    "Cover letter 'RAG semantic search on MongoDB Vector Store and AWS Bedrock for 12K+ users' = CANDIDATE OmMuse experience",
+    "Connection note 'production RAG LangChain/Qdrant on ECS Fargate with model failover' = CANDIDATE Document Intelligence Platform",
+    "Connection note 'Bedrock semantic search 12K+ user platform' = CANDIDATE OmMuse",
+    "Fit 7: strong production GenAI/RAG match (OmMuse Bedrock, Doc Intelligence LangChain) and agent-framework exposure (AutoGen from CANDIDATE stack); Python from CANDIDATE stack; sponsorship available so Canada-authorization not a blocker; gaps = LangGraph not explicitly in stack (adjacent LangChain/AutoGen), no insurance domain, Data Scientist title leans more statistical modeling than candidate's engineering focus, on-site Omaha requires relocation"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "Mutual of Omaha's push to move agentic GenAI from prototype into production is exactly the problem I've been solving. I built a multi-tenant Document Intelligence Platform on FastAPI, LangChain, and Qdrant, running on ECS Fargate with a Groq-to-Gemini failover path and SHA-256 idempotent ingestion so the system stays reliable under real load rather than only in a demo. At OmMuse I also shipped RAG semantic search into production on MongoDB Vector Store and AWS Bedrock for a 12K+ user platform. I'd like to bring that production-first RAG and orchestration experience to the conversational and analytical AI systems your Data Science team is building.",
+   "final_connection_note": "Hi [Name] - I saw Mutual of Omaha's Data Science team is building LangGraph-based AI agents for conversational and claims workflows. I've shipped production RAG systems (LangChain/Qdrant on ECS Fargate with model failover, and Bedrock semantic search for a 12K+ user platform) and would value a quick chat about the AI Systems Data Scientist role. Thanks!",
+   "fabrications": []
+  },
+  "_fit": 7
+ },
+ {
+  "company": "Alion / HENNGE",
+  "role": "Software Engineer (Frontend / Vue) - Email DLP",
+  "loc": "Hybrid",
+  "url": "https://www.linkedin.com/jobs/view/software-engineer-frontend-vue-hennge-email-dlp-at-alion-4446552007",
+  "draft": {
+   "fit": 7,
+   "company_hook": "HENNGE One is Japan's No.1-market-share cloud security service and passed 3M contracted users in 2026; its Email DLP edition stops email misdirection and data leakage for Microsoft 365 / Google Workspace through keyword filtering, auto-encryption of attachments, unsend, and supervisor review. The Email DLP frontend is built end-to-end in TypeScript + Vue (Pinia/Vuex) on AWS.",
+   "cover_letter": "HENNGE One protecting 3M+ users with Email DLP means the frontend is the last line of defense between a user's mistake and a real data leak, and I have built exactly that kind of high-stakes, typed client end to end. At OmMuse I own the Electron desktop uploader in TypeScript: OAuth 2.0 PKCE auth, 70+ gRPC methods exposed to the UI over a typed IPC layer, and chokidar + SQLite WAL folder sync with S3 multipart uploads. That work taught me to treat a large enterprise codebase as a security surface where correctness and clear state management matter as much as pixels, and my React/Next/Qwik background makes Vue with Pinia a short ramp. I would bring that security-conscious, ownership-first frontend discipline to your Email DLP team.",
+   "connection_note": "Hi [Name], HENNGE One reaching 3M+ users with Email DLP is impressive, and the end-to-end Vue frontend on that team caught my eye. I build typed, security-conscious clients (currently a TS Electron app with OAuth2 PKCE + 70+ gRPC methods at OmMuse) and my React/Next background maps closely to Vue. Would love to connect and learn more about the DLP team.",
+   "target_person_role": "Email DLP Frontend Engineering Manager / Lead (or HENNGE Global Talent Acquisition, since the team recruits English-speaking engineers from abroad)",
+   "traceability": [
+    "fit 7: strong TypeScript + frontend depth (React/Next/React Native/Qwik/Electron) and enterprise-scale UI ownership map directly to the Vue role; gaps are no direct Vue and no email-security domain experience, hence not higher",
+    "company_hook: verified via hennge.com press (3M+ contracted users, 2026) and hennge.com/global/service/one/dlp/email-dlp (misdirection/leakage prevention, keyword filtering, auto-encryption, unsend, supervisor review); frontend stack TS+Vue+Pinia/Vuex on AWS from HENNGE 'Behind the Code' interview",
+    "cover_letter 'own the Electron desktop uploader in TypeScript' = CANDIDATE OmMuse Electron uploader",
+    "cover_letter 'OAuth 2.0 PKCE auth' = CANDIDATE OmMuse Electron uploader OAuth2 PKCE",
+    "cover_letter '70+ gRPC methods over a typed IPC layer' = CANDIDATE OmMuse Electron uploader 70+ gRPC methods over typed IPC",
+    "cover_letter 'chokidar + SQLite WAL folder sync with S3 multipart' = CANDIDATE OmMuse Electron uploader chokidar+SQLite WAL, S3 multipart",
+    "cover_letter 'React/Next/Qwik background' = CANDIDATE stack React/Next/Qwik",
+    "cover_letter 'Vue with Pinia a short ramp' = role requirement (Vue/Pinia) + CANDIDATE angle Vue-transferable; not claimed as existing experience",
+    "connection_note 'TS Electron app with OAuth2 PKCE + 70+ gRPC methods at OmMuse' = CANDIDATE OmMuse Electron uploader",
+    "connection_note 'React/Next background maps to Vue' = CANDIDATE stack React/Next + Vue-transferable angle",
+    "target_person_role: HENNGE Email DLP team + global/abroad recruiting confirmed via TokyoDev listing (no Japanese required, applications from abroad)"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "HENNGE One protecting 3M+ users with Email DLP means the frontend is the last line of defense between a user's mistake and a real data leak, and I have built exactly that kind of high-stakes, typed client end to end. At OmMuse I own the Electron desktop uploader in TypeScript: OAuth 2.0 PKCE auth, 70+ gRPC methods exposed to the UI over a typed IPC layer, and chokidar + SQLite WAL folder sync with S3 multipart uploads. That work taught me to treat a large enterprise codebase as a security surface where correctness and clear state management matter as much as pixels, and my React/Next/Qwik background makes Vue with Pinia a short ramp. I would bring that security-conscious, ownership-first frontend discipline to your Email DLP team.",
+   "final_connection_note": "Hi [Name], HENNGE One reaching 3M+ users with Email DLP is impressive, and the end-to-end Vue frontend caught my eye. I build typed, security-conscious clients (a TS Electron app with OAuth2 PKCE + 70+ gRPC methods at OmMuse); my React/Next background maps closely to Vue. Would love to connect.",
+   "fabrications": []
+  },
+  "_fit": 7
+ },
+ {
+  "company": "American Express",
+  "role": "Data Engineer II",
+  "loc": "Phoenix, AZ (hybrid)",
+  "url": "https://egug.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/26011769",
+  "draft": {
+   "fit": 6,
+   "company_hook": "American Express runs one of the world's largest closed-loop payment networks, and its Technology org is built on data engineering: the pipelines that move transaction data at enterprise scale power real-time fraud/risk decisioning, Membership Rewards, and always-on (24/7) processing for millions of Card Members. A Data Engineer II here builds and hardens exactly those large-scale, high-availability data platforms.",
+   "cover_letter": "American Express's data platforms have to move payment-scale data reliably and never go dark, which is the problem I spent my time at Bwisher solving. There I built a Kafka + BullMQ streaming platform serving 30K+ users across SMS, email, and WhatsApp, backed by idempotent NestJS/FastAPI payment microservices with retry and exponential backoff so no message or transaction was lost or double-processed, all observed through Prometheus/Grafana on Kubernetes. I work daily in Go and Python across AWS, and my instinct for idempotency, dedup, and backpressure comes from real production traffic rather than coursework. I'd bring that same reliability-first discipline to Amex Tech's 24/7 data pipelines.",
+   "connection_note": "Hi [Name], I'm a final-year CS student applying for the Data Engineer II role on Amex Tech. I've built Kafka/BullMQ streaming pipelines for 30K+ users and idempotent payment microservices with retry + backoff, so the 24/7 data-platform work at Amex really resonates. Would love any insight into the team. Thanks for considering!",
+   "target_person_role": "Engineering Manager or Senior Data Engineer on an Amex Tech Data Engineering / Data Platform team (alternatively a University / Early Careers Tech Recruiter for the Phoenix Data Engineer II req)",
+   "traceability": [
+    "Kafka + BullMQ streaming platform, 30K+ users, SMS/email/WhatsApp -> Bwisher experience",
+    "Idempotent NestJS/FastAPI payment microservices with retry + exponential backoff -> Bwisher experience",
+    "Prometheus/Grafana observability on Kubernetes -> Bwisher (Jenkins/K8s/Prometheus/Grafana)",
+    "Works daily in Go and Python -> Stack (Go, Python) + OmMuse Go CRM sync",
+    "AWS experience -> Stack (AWS) + Jythu/MoreThinks/OmMuse AWS work",
+    "Vector-embedding data pipelines (data-engineering adjacency) -> MoreThinks",
+    "Event-driven pipeline with SQS/Lambda/SNS -> Jythu FFmpeg HLS pipeline",
+    "Final-year Computer Information Systems student -> candidate profile (Okanagan College, grad Dec 2026)",
+    "Dedup / idempotency instinct -> OmMuse sync.Map dedup + Bwisher idempotent services + Document Intelligence SHA-256 idempotent ingestion"
+   ]
+  },
+  "verify": {
+   "truthful": false,
+   "fabrications": [
+    "\"backpressure\" listed as a production instinct \u2014 not supported anywhere in the candidate profile (idempotency and dedup are supported, backpressure is not)"
+   ],
+   "final_cover_letter": "American Express's data platforms have to move payment-scale data reliably and never go dark, which is the problem I spent my time at Bwisher solving. There I built a Kafka + BullMQ streaming platform serving 30K+ users across SMS, email, and WhatsApp, backed by idempotent NestJS/FastAPI payment microservices with retry and exponential backoff so no message or transaction was lost or double-processed, all observed through Prometheus/Grafana on Kubernetes. I work daily in Go and Python across AWS, and my instinct for idempotency and dedup comes from real production traffic rather than coursework. I'd bring that same reliability-first discipline to Amex Tech's 24/7 data pipelines.",
+   "final_connection_note": "Hi [Name], I'm a final-year CS student applying for the Data Engineer II role on Amex Tech. I've built Kafka/BullMQ streaming pipelines for 30K+ users and idempotent payment microservices with retry + backoff, so the 24/7 data-platform work at Amex really resonates. Would love any insight into the team. Thanks for considering!"
+  },
+  "_fit": 6
+ },
+ {
+  "company": "Aurora",
+  "role": "Site Reliability Engineer",
+  "loc": "Palo Alto (on-site 4d) $170-250k",
+  "url": "https://www.linkedin.com/jobs/view/site-reliability-engineer-at-aurora-4442733672",
+  "draft": {
+   "fit": 5,
+   "company_hook": "Aurora runs a multi-cloud GPU orchestration platform for AI workloads (backed by ~$80M from Sequoia/Lightspeed, ~6x revenue growth), so reliability of the scheduling and compute-access layer is effectively the product. Note: the public-record company matching this profile (Palo Alto, $80M Sequoia+Lightspeed, GPU-cloud orchestration) is Foundry; I could not independently confirm a distinct AI-infra company publicly named \"Aurora,\" so this hook stays on the verified role context rather than invented product detail.",
+   "cover_letter": "Aurora's bet on a multi-cloud GPU orchestration layer makes reliability the product: when revenue-critical scheduling degrades, customers feel it immediately. At Bwisher I built the idempotent NestJS/FastAPI payment microservices behind a 30K-user platform, adding retry with exponential backoff and instrumenting the stack on Jenkins/Kubernetes with Prometheus and Grafana so failures surfaced before they became incidents. That pairing of self-healing services with hands-on observability is the core of owning SLOs and incident response on a small SRE team. I'd bring the same Terraform/Kubernetes IaC and reliability discipline to keeping Aurora's GPU platform dependable through its 6x growth.",
+   "connection_note": "Hi [name], saw Aurora's SRE role. At Bwisher I built the reliability side of infra: idempotent payment microservices with retry/backoff plus Prometheus/Grafana and K8s/Terraform monitoring for a 30K-user platform. Owning SLOs and incident response for a multi-cloud GPU platform is exactly the work I want to grow into. Would love to connect.",
+   "target_person_role": "Head of Infrastructure / Engineering Manager over the SRE team (founding/lead SRE on a small team); fall back to a technical recruiter if no manager is reachable",
+   "traceability": [
+    "Idempotent NestJS/FastAPI payment microservices with retry + exponential backoff -> Bwisher experience (idempotent NestJS/FastAPI payment microservices w/ retry+backoff)",
+    "Prometheus/Grafana observability, Jenkins, Kubernetes -> Bwisher (Jenkins/K8s/Prometheus/Grafana)",
+    "30K-user platform scale -> Bwisher (Kafka+BullMQ marketing platform, 30K+ users)",
+    "Terraform/Kubernetes IaC -> Stack (Terraform, K8s, Docker) and Jythu (Terraform AWS infra)",
+    "Multi-cloud experience -> Stack (AWS, Azure) and OmMuse/MoreThinks/Jythu AWS work",
+    "Reliability/incident discipline framing -> Bwisher monitoring stack + idempotent systems across OmMuse (sync.Map dedup) and Document Intelligence Platform (SHA-256 idempotent ingestion, Groq->Gemini failover)",
+    "Fit 5 rationale: strong infra/DevOps breadth for level, but SRE ownership of revenue-critical services on a small team at senior $170-250k band is early for a final-year student; Prometheus/Grafana/SLO exposure is from internship, no dedicated SRE title -> Candidate profile (final-year student, 2+ yrs internship)",
+    "On-site 4d Palo Alto / work authorization -> Candidate authorized in Canada, TN-eligible for US, open to relocation/sponsorship per role angle"
+   ]
+  },
+  "verify": {
+   "truthful": false,
+   "fabrications": [
+    "\"6x growth\" \u2014 unverified company metric attributed to \"Aurora,\" a company the draft itself could not confirm exists under that name; not a candidate fact and not independently verified, so removed from the cover letter.",
+    "Implicit reliance on unconfirmed company specifics ($80M Sequoia/Lightspeed, GPU-orchestration product identity) as if established \u2014 softened to avoid asserting details about a company that could not be verified."
+   ],
+   "final_cover_letter": "A multi-cloud GPU orchestration layer makes reliability the product: when revenue-critical scheduling degrades, customers feel it immediately. At Bwisher I built idempotent NestJS/FastAPI payment microservices behind a 30K-user platform, adding retry with exponential backoff and instrumenting the stack on Jenkins and Kubernetes with Prometheus and Grafana so failures surfaced before they became incidents. That pairing of self-healing services with hands-on observability is the core of owning SLOs and incident response on a small team. I'd bring the same Terraform/Kubernetes IaC and reliability discipline to keeping a GPU platform dependable as it scales.",
+   "final_connection_note": "Hi [name], saw the SRE role. At Bwisher I built the reliability side of infra: idempotent payment microservices with retry/backoff plus Prometheus/Grafana and K8s/Terraform monitoring for a 30K-user platform. Owning SLOs and incident response for a multi-cloud GPU platform is exactly the work I want to grow into. Would love to connect."
+  },
+  "_fit": 5
+ },
+ {
+  "company": "MeeBoss",
+  "role": "Founding AI Engineer (Multimodal / Computer Vision)",
+  "loc": "San Francisco (on-site) $180-240k",
+  "url": "https://www.linkedin.com/jobs/view/founding-ai-engineer-multimodal-ai-computer-vision-at-meeboss-4447727956",
+  "draft": {
+   "fit": 5,
+   "company_hook": "MeeBoss is a chat-first hiring platform (founded by Forrest Fisher and Susanna New; chat-based hiring launched Nov 2025) where the conversation is the application: instead of ranking resume keywords, its AI curates daily two-way matches between job seekers and hiring managers who then talk in real time. The Founding AI Engineer (Multimodal/CV) role signals they're pushing that matching intelligence beyond text.",
+   "cover_letter": "MeeBoss makes the conversation the application, which means match quality lives or dies on how well the AI understands people beyond keywords, and that is the exact problem I have shipped against. At OmMuse I own the RAG semantic search behind discovery for a 12K-user platform on MongoDB Vector Store and AWS Bedrock, and separately I built a multi-tenant Document Intelligence Platform end to end (FastAPI/LangChain/Qdrant, Groq to Gemini failover, SHA-256 idempotent ingestion on ECS Fargate) so retrieval stays fast and reliable under real load. I own AI systems from ingestion through serving rather than stopping at a prompt wrapper, and I want to bring that end-to-end ownership to the multimodal direction MeeBoss is building. I am Canada-based and TN-eligible, so your residency and visa requirements are a clean fit.",
+   "connection_note": "Hi Forrest, love that MeeBoss makes the conversation the application instead of keyword-ranking resumes. I have shipped production RAG/semantic-matching AI end to end at OmMuse (AWS Bedrock) plus a multi-tenant Document Intelligence platform. Canada-based and TN-eligible, so the residency/visa reqs on your founding AI role are a clean fit. Would love to connect.",
+   "target_person_role": "Co-founder / CEO (Forrest Fisher) \u2014 a founding-engineer hire is decided by founders, so reach a founder directly rather than a recruiter",
+   "traceability": [
+    "company_hook: MeeBoss product/founders/launch \u2014 from web research (Businesswire/Yahoo Finance Nov 2025, meeboss.com), not candidate facts",
+    "cover_letter 'RAG semantic search... 12K-user platform on MongoDB Vector Store and AWS Bedrock' -> OmMuse: RAG semantic search (MongoDB Vector Store + AWS Bedrock), 12K+ users",
+    "cover_letter 'multi-tenant Document Intelligence Platform... FastAPI/LangChain/Qdrant, Groq to Gemini failover, SHA-256 idempotent ingestion on ECS Fargate' -> Projects: Document Intelligence Platform (exact stack listed)",
+    "cover_letter 'Canada-based and TN-eligible' -> Candidate: authorized in Canada, TN-eligible for US; matches role req 'reside in USA or Canada, TN supported, no new H-1B'",
+    "connection_note 'production RAG/semantic-matching AI at OmMuse (AWS Bedrock)' -> OmMuse RAG semantic search on Bedrock",
+    "connection_note 'multi-tenant Document Intelligence platform' -> Projects: Document Intelligence Platform",
+    "fit=5: strong on Python + applied RAG/agentic AI + end-to-end ownership + exact visa/location match; GAP on core role reqs (computer vision, VLMs, PyTorch model training, vLLM/Triton/Ray serving, edge AI) which candidate facts do not cover; JD's 'not RAG wrappers' caveat targets that gap, so retain-for-review per fit<6 rule"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "MeeBoss makes the conversation the application, which means match quality lives or dies on how well the AI understands people beyond keywords, and that is the exact problem I have shipped against. At OmMuse I own the RAG semantic search behind discovery for a 12K-user platform on MongoDB Vector Store and AWS Bedrock, and separately I built a multi-tenant Document Intelligence Platform end to end (FastAPI/LangChain/Qdrant, Groq to Gemini failover, SHA-256 idempotent ingestion on ECS Fargate). I own AI systems from ingestion through serving rather than stopping at a prompt wrapper, and I want to bring that end-to-end ownership to the multimodal direction MeeBoss is building. I am Canada-based and TN-eligible, so your residency and visa requirements are a clean fit.",
+   "final_connection_note": "Hi Forrest, love that MeeBoss makes the conversation the application instead of keyword-ranking resumes. I have shipped production RAG/semantic-matching AI end to end at OmMuse (AWS Bedrock) plus a multi-tenant Document Intelligence platform. Canada-based and TN-eligible, so the residency/visa reqs on your founding AI role are a clean fit. Would love to connect."
+  },
+  "_fit": 5
+ }
+]

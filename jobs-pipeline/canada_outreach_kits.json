@@ -1,0 +1,335 @@
+[
+ {
+  "company": "Applied Systems",
+  "role": "Associate Software Engineer",
+  "loc": "Toronto, ON, Canada",
+  "url": "https://careers-appliedsystems.icims.com/jobs",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Applied Systems builds Applied Epic, the AI-powered, cloud-based agency management system that serves as the daily system of record for P&C and Benefits brokers across North America \u2014 unifying policy, servicing, claims, billing, and submissions in one connected platform, and now embedding automation and intelligence directly into those workflows.",
+   "cover_letter": "Applied Epic is the platform brokers open every morning to run their entire book, so reliability at scale is the whole job \u2014 which is exactly what I built as sole developer of an LMS migration platform now used daily by 1,500+ staff at Okanagan College. That meant owning a full-stack system end to end (TypeScript/Python front to back, Postgres, AWS) that real people depend on to get their work done, the same bar Applied Epic sets for its agencies. Across my internships I have shipped production full-stack services at real scale, including idempotent NestJS/FastAPI payment microservices with retry and exponential backoff on a 30K+ user platform. I would bring that ownership-minded, ship-it-and-support-it mindset to the Associate Software Engineer role in Toronto.",
+   "connection_note": "Hi [Name] \u2014 I'm applying to the Associate SWE role in Toronto. Applied Epic being the daily system of record for brokers resonates with me: I was sole dev of an LMS platform now used daily by 1,500+ staff, plus full-stack TS/Python/AWS work across internships. Grad Dec 2026, Canada-authorized. Would value connecting.",
+   "target_person_role": "Engineering Manager / Team Lead on an Applied Epic team (Toronto), or a University/Early-Careers Recruiter at Applied Systems",
+   "traceability": [
+    "company_hook: Applied Epic = AI-powered cloud agency management system for P&C/Benefits brokers, single connected platform, system of record \u2014 from web research (Applied Systems 2026 press release + Software Advice)",
+    "cover_letter 'sole developer of an LMS migration platform used daily by 1,500+ staff at Okanagan College' -> CANDIDATE: 'sole dev of LMS migration platform at Okanagan College used daily by 1,500+ staff'",
+    "cover_letter 'TypeScript/Python front to back, Postgres, AWS' -> CANDIDATE stack: TypeScript, Python; Postgres; AWS",
+    "cover_letter 'idempotent NestJS/FastAPI payment microservices with retry and exponential backoff on a 30K+ user platform' -> CANDIDATE Bwisher: 'idempotent NestJS/FastAPI payment microservices w/ retry+backoff' and 'marketing platform ... 30K+ users'",
+    "cover_letter 'Associate Software Engineer role in Toronto' -> ROLE: Associate Software Engineer at Applied Systems, Toronto, ON",
+    "connection_note 'sole dev of an LMS platform now used daily by 1,500+ staff' -> CANDIDATE: sole dev of LMS migration platform used daily by 1,500+ staff",
+    "connection_note 'full-stack TS/Python/AWS work across internships' -> CANDIDATE stack + experience (OmMuse, Bwisher, MoreThinks, Jythu)",
+    "connection_note 'Grad Dec 2026, Canada-authorized' -> CANDIDATE: grad Dec 2026; Authorized in Canada (no sponsorship needed)",
+    "fit 8: strong overlap on full-stack TS/Python, AWS, Postgres, new-grad/associate level, Canada-authorized (no sponsorship); minor gap = Java listed in role not in candidate stack"
+   ]
+  },
+  "verify": {
+   "truthful": false,
+   "fabrications": [
+    "cover_letter attributed a specific tech stack to the Okanagan College LMS platform ('owning a full-stack system end to end (TypeScript/Python front to back, Postgres, AWS)'). The CANDIDATE facts only state Harsh was 'sole dev of LMS migration platform used daily by 1,500+ staff' with no named tech stack. TypeScript/Python/Postgres/AWS are part of his general stack but are not documented as the LMS platform's implementation, so tying them to that project specifically is unsupported."
+   ],
+   "final_cover_letter": "Applied Epic is the platform brokers open every morning to run their entire book, so reliability at scale is the whole job \u2014 which is exactly the bar I met as sole developer of an LMS migration platform now used daily by 1,500+ staff at Okanagan College. Building something real people depend on to get their work done taught me end-to-end ownership, from shipping the feature to supporting it in production. Across my internships I have shipped production full-stack services at real scale, including idempotent NestJS/FastAPI payment microservices with retry and exponential backoff on a 30K+ user platform. I would bring that ownership-minded, ship-it-and-support-it mindset to the Associate Software Engineer role in Toronto.",
+   "final_connection_note": "Hi [Name] \u2014 I'm applying to the Associate SWE role in Toronto. Applied Epic being the daily system of record for brokers resonates with me: I was sole dev of an LMS platform now used daily by 1,500+ staff, plus full-stack TS/Python/AWS work across internships. Grad Dec 2026, Canada-authorized. Would value connecting."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Reailize",
+  "role": "AI Full Stack Developer",
+  "loc": "Montreal, QC, Canada",
+  "url": "https://ats.rippling.com/reailizecareers/jobs",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Reailize turns large-scale telco data into measurable outcomes for mobile operators. Its Knowledge-as-a-Service builds AI-powered contextual knowledge-retrieval pipelines (RAG) for network troubleshooting, and its TelcoGPT is a deliberately cloud- and LLM-agnostic agentic AI framework, all under an \"Automation by Design\" philosophy across products like AGILITY, Network Insight, and Deep Packet Inspection.",
+   "cover_letter": "Reailize's Knowledge-as-a-Service builds AI-powered contextual retrieval pipelines for network troubleshooting, and TelcoGPT is deliberately cloud- and LLM-agnostic, which is exactly how I already ship retrieval systems. I built a multi-tenant RAG platform on FastAPI, LangChain, and Qdrant with SHA-256 idempotent ingestion and automatic Groq-to-Gemini failover on ECS Fargate, so vendor-neutral resilience is baked into how I design these systems. At OmMuse I also run production RAG semantic search on MongoDB Vector Store and AWS Bedrock, and as a full-stack engineer across TypeScript and Python I can own both the retrieval backend and the interfaces on top of it. I would welcome the chance to bring that RAG and full-stack experience to Reailize's telecom analytics work in Montreal.",
+   "connection_note": "Hi [name] - Reailize's AI knowledge-retrieval pipelines and LLM-agnostic TelcoGPT line up closely with my work: production RAG on FastAPI/LangChain/Qdrant with Groq->Gemini failover, plus Bedrock+Mongo vector search at OmMuse. Would love to connect re: the AI Full Stack role.",
+   "target_person_role": "Engineering Manager / Lead AI Engineer at Reailize (fallback: Technical/Talent Recruiter for the Montreal AI Full Stack req)",
+   "traceability": [
+    "Company hook (KaaS = RAG pipelines, TelcoGPT LLM-agnostic agentic AI, AGILITY/Network Insight/DPI, Automation by Design) - sourced from reailize.com/telco-data-and-ai and reailize.com/why",
+    "multi-tenant RAG on FastAPI/LangChain/Qdrant, SHA-256 idempotent ingestion, Groq-to-Gemini failover, ECS Fargate - Document Intelligence Platform (CANDIDATE Projects)",
+    "production RAG semantic search on MongoDB Vector Store + AWS Bedrock - OmMuse (CANDIDATE Experience)",
+    "full-stack across TypeScript and Python - CANDIDATE Stack (TypeScript, Python) + full-stack targeting",
+    "Montreal, QC location + no-sponsorship-needed fit - CANDIDATE authorized in Canada",
+    "Groq->Gemini failover mapped to Reailize's cloud/LLM-agnostic TelcoGPT - Document Intelligence Platform failover (CANDIDATE Projects) vs company research"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "Reailize's Knowledge-as-a-Service builds AI-powered contextual retrieval pipelines for network troubleshooting, and TelcoGPT is deliberately cloud- and LLM-agnostic, which is exactly how I already ship retrieval systems. I built a multi-tenant RAG platform on FastAPI, LangChain, and Qdrant with SHA-256 idempotent ingestion and automatic Groq-to-Gemini failover on ECS Fargate, so vendor-neutral resilience is baked into how I design these systems. At OmMuse I also run production RAG semantic search on MongoDB Vector Store and AWS Bedrock, and as a full-stack engineer across TypeScript and Python I can own both the retrieval backend and the interfaces on top of it. I would welcome the chance to bring that RAG and full-stack experience to Reailize's telecom analytics work in Montreal.",
+   "final_connection_note": "Hi [name] - Reailize's AI knowledge-retrieval pipelines and LLM-agnostic TelcoGPT line up closely with my work: production RAG on FastAPI/LangChain/Qdrant with Groq->Gemini failover, plus Bedrock+Mongo vector search at OmMuse. Would love to connect re: the AI Full Stack role."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Voltus",
+  "role": "Software Engineer",
+  "loc": "Remote (hires in Canada)",
+  "url": "https://www.linkedin.com/jobs/view/software-engineer-at-voltus",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Voltus is a virtual power plant operator connecting 4.2+ GW of distributed energy resources (flexible load, storage, on-site generation, EVs) to wholesale electricity markets \u2014 paying commercial and industrial customers to curtail or shift usage on grid signals. The platform runs on real-time control (\"Voltlets\" on customer sites) and 30-second interval data so customers can track curtailment targets and event performance live.",
+   "cover_letter": "At Bwisher I built a Kafka + BullMQ pipeline that fanned real-time events out across SMS, email, and WhatsApp for 30K+ users, backed by idempotent NestJS/FastAPI microservices with retry and exponential backoff so no event was double-processed or dropped. Voltus's demand-response model \u2014 dispatching curtailment signals across thousands of DER sites and reconciling 30-second interval data in real time \u2014 is the same event-driven reliability problem, pointed at the grid instead of a marketing inbox. I've also run high-throughput async work in Go (a HubSpot sync using sync.Map dedup across 8 trigger points for a 12K+ user platform), which maps directly to keeping site telemetry and market events consistent under load. That backend reliability experience on a climate mission is exactly the kind of work I want to be doing.",
+   "connection_note": "Hi [name] \u2014 I've been reading about how Voltus dispatches curtailment across 4.2+ GW of DERs on real-time 30-second interval data. I build event-driven backends (Kafka/BullMQ fan-out for 30K+ users, idempotent Go/Node services with retry+backoff), and reliable real-time event delivery for a climate mission is work I'd genuinely want to do. Would love to connect.",
+   "target_person_role": "Engineering Manager, Backend/Platform (or a backend Software Engineer already on the DER/data team) \u2014 for a remote Canada-eligible junior role",
+   "traceability": [
+    "company_hook: 4.2 GW DERs, Voltlets real-time control, 30-second interval data \u2014 from Voltus web research (voltus.co/technology, /about, /demand-response), not candidate facts",
+    "cover_letter 'Kafka + BullMQ pipeline ... SMS, email, and WhatsApp for 30K+ users' -> Bwisher: Kafka+BullMQ multi-channel marketing platform (SMS/email/WhatsApp, 30K+ users)",
+    "cover_letter 'idempotent NestJS/FastAPI microservices with retry and exponential backoff' -> Bwisher: idempotent NestJS/FastAPI payment microservices (retry + exponential backoff)",
+    "cover_letter 'async work in Go ... sync.Map dedup across 8 trigger points for a 12K+ user platform' -> OmMuse: Go async HubSpot CRM sync, sync.Map dedup across 8 API trigger points, 12K+ users",
+    "cover_letter 'climate mission' -> candidate angle: cares about climate",
+    "connection_note 'Kafka/BullMQ fan-out for 30K+ users' -> Bwisher Kafka+BullMQ, 30K+ users",
+    "connection_note 'idempotent Go/Node services with retry+backoff' -> OmMuse Go async sync + Bwisher idempotent NestJS payment microservices with retry+backoff",
+    "fit 8: junior data-heavy backend role, remote hires in Canada (candidate authorized in Canada, no sponsorship needed) + strong event-driven backend match (Go, Kafka, idempotent microservices)"
+   ]
+  },
+  "verify": {
+   "truthful": false,
+   "fabrications": [
+    "'That backend reliability experience on a climate mission is exactly the kind of work I want to be doing' and 'reliable real-time event delivery for a climate mission is work I'd genuinely want to do' \u2014 assert a personal climate motivation not present in the candidate facts (the draft's own traceability concedes this as a 'candidate angle', but no such fact exists)."
+   ],
+   "final_cover_letter": "At Bwisher I built a Kafka + BullMQ pipeline that fanned real-time events out across SMS, email, and WhatsApp for 30K+ users, backed by idempotent NestJS/FastAPI microservices with retry and exponential backoff so no event was double-processed or dropped. Voltus's demand-response model \u2014 dispatching curtailment signals across thousands of DER sites and reconciling 30-second interval data in real time \u2014 is the same event-driven reliability problem, pointed at the grid. I've also run high-throughput async work in Go (a HubSpot sync using sync.Map dedup across 8 trigger points for a 12K+ user platform), which maps directly to keeping site telemetry and market events consistent under load. That backend reliability work at real-time scale is exactly the kind of problem I want to be solving.",
+   "final_connection_note": "Hi [name] \u2014 I've been reading about how Voltus dispatches curtailment across 4.2+ GW of DERs on real-time 30-second interval data. I build event-driven backends (Kafka/BullMQ fan-out for 30K+ users, idempotent Go/Node services with retry+backoff), and reliable real-time event delivery at that scale is exactly the work I want to be doing. Would love to connect."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Tiny Health",
+  "role": "Full Stack Engineer",
+  "loc": "Remote (Canada-eligible)",
+  "url": "https://jobs.ashbyhq.com/tiny-health",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Tiny Health is a precision microbiome platform (founded 2020, Austin TX) that pioneered the first at-home baby gut microbiome test and now spans pregnancy through adult longevity. It uses shotgun metagenomic sequencing to map the gut at strain-level precision and, as of Dec 2025, has passed 100,000 tests and 3,000+ practitioners \u2014 turning dense sequencing data into clear, actionable insights for families and clinicians to catch imbalances tied to eczema, allergies, IBS, and more.",
+   "cover_letter": "Tiny Health's real product challenge is turning strain-level metagenomic data into insights a parent or practitioner can actually act on \u2014 and that data-to-insight pipeline is what I've built before. On my Document Intelligence Platform I shipped a multi-tenant RAG system (FastAPI, LangChain, Qdrant on ECS Fargate) with SHA-256 idempotent ingestion and a Groq-to-Gemini failover so results stayed reliable and traceable across tenants \u2014 the same reliability and multi-tenant separation a consumer-plus-practitioner health product depends on. Across OmMuse, Bwisher, and Jythu I've worked full-stack in exactly your world: TypeScript and Python front to back, React Native consumer apps used by thousands, and AWS data pipelines. I'd like to help Tiny Health scale the layer between the lab and the family reading their results.",
+   "connection_note": "Hi [Name] \u2014 I've been following Tiny Health since your 100K-test milestone; turning strain-level metagenomic data into insight families can act on is a hard, worthwhile problem. I'm a full-stack TS/Python engineer (RAG data pipelines on AWS, React Native consumer apps) and Canada-based, which fits your remote role. Would love to connect and hear where the eng team is headed.",
+   "target_person_role": "Engineering Manager or Head of Engineering (Full Stack / Platform); fallback: technical co-founder/CTO or a Full Stack Engineer on the team",
+   "traceability": [
+    "fit 8: Full Stack Engineer role, remote Canada-eligible \u2014 candidate is authorized in Canada (no sponsorship needed) and works full-stack in TS/Python, a direct stack match",
+    "company_hook: sourced from web research (GlobeNewswire Dec 2025 100K-tests release, HIT Consultant, NutraIngredients) \u2014 not from candidate facts",
+    "cover letter Document Intelligence Platform: multi-tenant RAG, FastAPI/LangChain/Qdrant, Groq->Gemini failover, ECS Fargate, SHA-256 idempotent ingestion \u2014 all from CANDIDATE Projects",
+    "cover letter 'TypeScript and Python front to back': from CANDIDATE Stack (TypeScript, Python) and roles across OmMuse/Bwisher/MoreThinks",
+    "cover letter 'React Native consumer apps used by thousands': Jythu \u2014 2 production React Native apps, 2K+ learners (CANDIDATE Experience)",
+    "cover letter 'AWS data pipelines': Jythu FFmpeg HLS pipeline (S3/CloudFront/SQS/Lambda), Terraform AWS; OmMuse AWS Bedrock (CANDIDATE Experience)",
+    "connection_note 'RAG data pipelines on AWS': OmMuse RAG semantic search on MongoDB Vector Store + AWS Bedrock; Document Intelligence Platform (CANDIDATE)",
+    "connection_note 'React Native consumer apps': Jythu (CANDIDATE Experience)",
+    "connection_note 'Canada-based, fits remote role': CANDIDATE authorized in Canada; role is Remote (Canada-eligible)",
+    "connection_note '100K-test milestone': from web research (GlobeNewswire Dec 2025), not fabricated"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "Tiny Health's real product challenge is turning strain-level metagenomic data into insights a parent or practitioner can actually act on, and that data-to-insight pipeline is what I've built before. On my Document Intelligence Platform I shipped a multi-tenant RAG system (FastAPI, LangChain, Qdrant on ECS Fargate) with SHA-256 idempotent ingestion and a Groq-to-Gemini failover so results stayed reliable and traceable across tenants, the same multi-tenant separation a consumer-plus-practitioner health product depends on. Across OmMuse, Bwisher, and Jythu I've worked full-stack in TypeScript and Python front to back, shipped React Native consumer apps used by thousands, and built AWS data pipelines. I'd like to help Tiny Health scale the layer between the lab and the family reading their results.",
+   "final_connection_note": "Hi [Name] \u2014 I've been following Tiny Health since your 100K-test milestone; turning strain-level metagenomic data into insight families can act on is a hard, worthwhile problem. I'm a full-stack TS/Python engineer (RAG data pipelines on AWS, React Native consumer apps) and Canada-based, which fits your remote role. Would love to connect and hear where the eng team is headed."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Verkada",
+  "role": "Backend Engineer - Connectivity",
+  "loc": "San Mateo, CA (sponsors, visa=true)",
+  "url": "https://job-boards.greenhouse.io/verkada/jobs/5194598007",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Verkada's Connectivity team owns the Gateways that bring cameras and sensors online across 170+ countries \u2014 resilient device-to-cloud plumbing at the scale of hundreds of thousands of devices, built on Go/Python microservices over Redis, DynamoDB, Postgres, Kafka/SQS, Terraform and Kubernetes.",
+   "cover_letter": "Verkada's Connectivity team keeps hundreds of thousands of cameras and sensors reliably online from the edge \u2014 the exact problem I worked on at OmMuse, where I built an Electron desktop uploader that syncs local device folders to the cloud through chokidar + SQLite WAL change tracking, S3 multipart uploads, and OAuth 2.0 PKCE, driven by 70+ gRPC methods over typed IPC. Making that device-to-cloud link durable under flaky connections and partial failures is why the low-latency, high-throughput microservices your team runs on Go, Redis, DynamoDB and Kafka feel like familiar ground. I've also shipped Go async services at scale \u2014 a HubSpot CRM sync using sync.Map dedup across 8 API trigger points for a 12K+ user platform \u2014 and stood up production infra with Terraform and Kubernetes at prior roles. I'd like to bring that resilient-connectivity experience to the Gateways and sensors that Verkada's ecosystem depends on.",
+   "connection_note": "Hi [Name] \u2014 I'm a backend engineer drawn to Verkada's Connectivity team and the challenge of keeping cameras and sensors online across 170+ countries. At OmMuse I built a device-to-cloud uploader (gRPC, S3 multipart, resilient WAL-based sync) plus Go services on Kafka/Redis, so that device-connectivity work really resonates. Would love to connect.",
+   "target_person_role": "Engineering Manager, Connectivity team (or a backend engineer on Connectivity); fall back to Verkada technical/university recruiter",
+   "traceability": [
+    "Electron desktop uploader with chokidar+SQLite WAL, S3 multipart, OAuth 2.0 PKCE, 70+ gRPC methods over typed IPC -> OmMuse experience (CANDIDATE)",
+    "Go async HubSpot CRM sync, sync.Map dedup across 8 API trigger points, 12K+ users -> OmMuse experience (CANDIDATE)",
+    "Terraform and Kubernetes production infra -> Jythu (Terraform AWS) and Bwisher (Jenkins/K8s) experience (CANDIDATE)",
+    "Kafka experience -> Bwisher Kafka+BullMQ marketing platform (CANDIDATE)",
+    "Redis / DynamoDB experience -> stack list includes Postgres, Mongo, DynamoDB, Redis (CANDIDATE)",
+    "Go and Python proficiency -> stack list: TypeScript, Python, Go, Bash (CANDIDATE)",
+    "Backend engineer with 2+ yrs internship, final-year student grad Dec 2026 -> matches role's 1+ yr production backend requirement (CANDIDATE)",
+    "US work eligibility -> TN-eligible for US; role sponsors visas (CANDIDATE + role context)"
+   ]
+  },
+  "verify": {
+   "truthful": false,
+   "final_cover_letter": "Verkada's Connectivity team keeps hundreds of thousands of cameras and sensors reliably online from the edge \u2014 the exact problem I worked on at OmMuse, where I built an Electron desktop uploader that syncs local device folders to the cloud through chokidar + SQLite WAL change tracking, S3 multipart uploads, and OAuth 2.0 PKCE, driven by 70+ gRPC methods over typed IPC. Making that device-to-cloud link durable under flaky connections and partial failures is why the low-latency, high-throughput microservices your team runs on Go, Redis, DynamoDB and Kafka feel like familiar ground. I've also shipped Go async services at scale \u2014 a HubSpot CRM sync using sync.Map dedup across 8 API trigger points for a 12K+ user platform \u2014 and stood up production infra with Terraform and Kubernetes at prior roles. I'd like to bring that resilient-connectivity experience to the Gateways and sensors that Verkada's ecosystem depends on.",
+   "final_connection_note": "Hi [Name] \u2014 I'm a backend engineer drawn to Verkada's Connectivity team and the challenge of keeping cameras and sensors online across 170+ countries. At OmMuse I built a device-to-cloud uploader (gRPC, S3 multipart, resilient WAL-based sync) plus Go async services, and I've worked with Kafka-based pipelines, so that connectivity work really resonates. Would love to connect.",
+   "fabrications": [
+    "Connection note: 'plus Go services on Kafka/Redis' conflates unrelated facts \u2014 Harsh's Go work (OmMuse HubSpot CRM sync) is not tied to Kafka or Redis; Kafka was at Bwisher on a NestJS/FastAPI (TypeScript/Python) stack, not Go. No evidence of Go services built on Kafka or Redis. Corrected to 'Go async services' plus separate 'Kafka-based pipelines'."
+   ]
+  },
+  "_fit": 8
+ },
+ {
+  "company": "OneClick / IXL Learning",
+  "role": "Software Engineer, New Grad",
+  "loc": "Raleigh, NC (H1B available)",
+  "url": "https://www.linkedin.com/jobs/view/software-engineer-new-grad-at-oneclick-smart-resume-4447247640",
+  "draft": {
+   "fit": 8,
+   "company_hook": "IXL Learning is the largest US EdTech company; its flagship IXL.com is used by 1 in 4 US students, and its portfolio spans Rosetta Stone (25 languages), Wyzant, Teachers Pay Teachers, Vocabulary.com, Education.com, and ABCya \u2014 with a mission to build products that make a real, positive difference for learners and educators. The Raleigh new-grad team builds across back-end, React front-end, iOS/Android mobile, and full-stack.",
+   "cover_letter": "IXL.com reaches one in four U.S. students, and building learning products that hold up at that scale is the work I've been doing. At Jythu I shipped two production React Native apps for an LMS serving 2,000+ learners, and built the FFmpeg HLS video pipeline behind them on S3/CloudFront/SQS/Lambda/SNS that cut video seek time from 30s to 1.5s and bandwidth roughly 70%. I've also worked full-stack on AWS across TypeScript, Python, and React, and was sole developer of an LMS migration platform now used daily by 1,500+ staff at Okanagan College. I'd like to bring that mix of mobile, full-stack, and education-product experience to your Raleigh team.",
+   "connection_note": "Hi [Name], I'm a final-year CS student (grad Dec 2026) applying to IXL's New Grad SWE role in Raleigh. I've shipped two React Native learning apps for 2K+ learners and was sole dev of an LMS platform used daily by 1,500+ staff. IXL reaching 1 in 4 US students is exactly the scale I'd love to build for. Would value connecting.",
+   "target_person_role": "University / Early Careers Recruiter at IXL Learning (Raleigh), or Engineering Manager on the Core Technology / Full-Stack team",
+   "traceability": [
+    "company_hook (1 in 4 US students, Rosetta Stone/Wyzant/TPT portfolio, mission, Raleigh new-grad teams) -> IXL Learning web research (talent.com, simplify.jobs, edtech.com listings)",
+    "React Native learning apps for 2,000+ learners -> Jythu (2 production React Native apps, LMS + admin, 2K+ learners)",
+    "FFmpeg HLS pipeline S3/CloudFront/SQS/Lambda/SNS, seek 30s->1.5s, ~70% bandwidth cut -> Jythu",
+    "sole dev of LMS migration platform used daily by 1,500+ staff -> Okanagan College",
+    "full-stack on AWS across TypeScript, Python, React -> candidate stack + OmMuse/Bwisher/MoreThinks experience",
+    "final-year CS student, grad Dec 2026 -> candidate profile (Okanagan College)"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "IXL.com reaches one in four U.S. students, and building learning products that hold up at that scale is the work I've been doing. At Jythu I shipped two production React Native apps for an LMS serving 2,000+ learners, and built the FFmpeg HLS video pipeline behind them on S3/CloudFront/SQS/Lambda/SNS that cut video seek time from 30s to 1.5s and bandwidth roughly 70%. I've also worked full-stack on AWS across TypeScript, Python, and React, and was sole developer of an LMS migration platform now used daily by 1,500+ staff at Okanagan College. I'd like to bring that mix of mobile, full-stack, and education-product experience to your Raleigh team.",
+   "final_connection_note": "Hi [Name], I'm a final-year student (grad Dec 2026) applying to IXL's New Grad SWE role in Raleigh. I've shipped two React Native learning apps for 2K+ learners and was sole dev of an LMS platform used daily by 1,500+ staff. IXL reaching 1 in 4 US students is exactly the scale I'd love to build for. Would value connecting."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Deloitte",
+  "role": "Applied AI Engineer II",
+  "loc": "US (sponsors, visa=true)",
+  "url": "https://www.linkedin.com/jobs/view/applied-ai-engineer-deloitte",
+  "draft": {
+   "fit": 8,
+   "company_hook": "Deloitte's 2026 \"State of AI in the Enterprise\" work centers on moving clients from GenAI pilots to production-scale, and its Applied AI practice is building customizable, secure agentic workflows across AWS/Azure/GCP \u2014 including a dedicated agentic transformation practice on Google Cloud's Gemini Enterprise. The core engineering problem is enterprise-grade RAG and agents that hold up under real tenants, multiple model providers, and audit requirements.",
+   "cover_letter": "Deloitte's Applied AI practice is scaling enterprise GenAI from pilots into production across AWS, Azure, and GCP, which is exactly the class of system I built with my Document Intelligence Platform \u2014 a multi-tenant RAG service on FastAPI, LangChain, and Qdrant, deployed on ECS Fargate. To keep answers flowing when a single model provider degrades, I engineered a Groq-to-Gemini failover path, and I made ingestion safely repeatable with SHA-256 idempotent document processing so re-runs never duplicate or corrupt a tenant's corpus. I have since taken RAG into production at OmMuse, wiring semantic search over a MongoDB Vector Store with AWS Bedrock, so I understand both the prototype-to-production gap and the multi-cloud reality Deloitte's clients operate in. I would bring that hands-on RAG and agent-plumbing experience to the Applied AI Engineer II role.",
+   "connection_note": "Hi [Name] \u2014 I saw Deloitte's Applied AI Engineer II opening and your team's push to take enterprise GenAI from pilot to production. I've built a multi-tenant RAG platform with cross-provider (Groq-to-Gemini) failover on ECS Fargate, and shipped production RAG on AWS Bedrock at my current internship. Would love to connect and learn about the team.",
+   "target_person_role": "University/Early-Careers Recruiter for AI & Engineering, or a GenAI Engineering Manager within Deloitte's Applied AI / Cyber & AI Engineering practice",
+   "traceability": [
+    "fit 8: role is Applied AI Engineer II (GenAI/agentic on AWS/Azure/GCP); candidate has production RAG on AWS Bedrock (OmMuse), multi-tenant RAG w/ multi-provider failover (Doc Intelligence Platform), AutoGen in stack, and multi-cloud (AWS/Azure) \u2014 strong direct match; visa=true covers sponsorship needs, new-grad Dec 2026 with 2+ yrs internship fits early-career II",
+    "company_hook: 'State of AI in the Enterprise 2026' report and pilot-to-production focus \u2014 WebSearch (deloitte.com/us State of AI report 2026); 'agentic transformation practice on Google Cloud Gemini Enterprise' \u2014 WebSearch (Google Cloud press corner, 2026-04-22); AWS/Azure/GCP + agentic enterprise focus \u2014 ROLE context provided",
+    "cover letter 'multi-tenant RAG service on FastAPI, LangChain, and Qdrant, deployed on ECS Fargate' \u2014 CANDIDATE Projects: Document Intelligence Platform (multi-tenant RAG, FastAPI/LangChain/Qdrant, ECS Fargate)",
+    "cover letter 'Groq-to-Gemini failover path' \u2014 CANDIDATE Projects: Groq->Gemini failover",
+    "cover letter 'SHA-256 idempotent document processing' \u2014 CANDIDATE Projects: SHA-256 idempotent ingestion",
+    "cover letter 'production RAG at OmMuse ... MongoDB Vector Store with AWS Bedrock' \u2014 CANDIDATE Experience: OmMuse (RAG semantic search on MongoDB Vector Store + AWS Bedrock)",
+    "cover letter 'multi-cloud reality' / AWS+Azure \u2014 CANDIDATE Stack: AWS, Azure",
+    "connection_note 'multi-tenant RAG ... Groq-to-Gemini failover on ECS Fargate' \u2014 CANDIDATE Projects: Document Intelligence Platform; 'production RAG on AWS Bedrock at my current internship' \u2014 CANDIDATE Experience: OmMuse"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "Deloitte's Applied AI practice is scaling enterprise GenAI from pilots into production across AWS, Azure, and GCP, which is exactly the class of system I built with my Document Intelligence Platform \u2014 a multi-tenant RAG service on FastAPI, LangChain, and Qdrant, deployed on ECS Fargate. To keep answers flowing when a single model provider degrades, I engineered a Groq-to-Gemini failover path, and I made ingestion safely repeatable with SHA-256 idempotent document processing so re-runs never duplicate or corrupt a tenant's corpus. I have since taken RAG into production at OmMuse, wiring semantic search over a MongoDB Vector Store with AWS Bedrock, so I understand both the prototype-to-production gap and the multi-cloud reality Deloitte's clients operate in. I would bring that hands-on RAG and agent-plumbing experience to the Applied AI Engineer II role.",
+   "final_connection_note": "Hi [Name] \u2014 I saw Deloitte's Applied AI Engineer II opening and your team's push to take enterprise GenAI from pilot to production. I've built a multi-tenant RAG platform with cross-provider (Groq-to-Gemini) failover on ECS Fargate, and shipped production RAG on AWS Bedrock at my current internship. Would love to connect and learn about the team."
+  },
+  "_fit": 8
+ },
+ {
+  "company": "Ledgebrook",
+  "role": "Full Stack Engineer (Finance Engineering)",
+  "loc": "Remote (Canada-eligible)",
+  "url": "https://www.comeet.com/jobs/ledgebrook/",
+  "draft": {
+   "fit": 7,
+   "company_hook": "Ledgebrook is a tech-driven E&S specialty insurance MGA (General Liability / Professional Liability sold through wholesale brokers) that raised a $65M Series C and is building toward becoming a full-stack specialty carrier, shipping a new specialty product roughly every six months. Its finance-engineering team owns the software behind premium flows, money movement, and carrier-grade financial data.",
+   "cover_letter": "Ledgebrook's push to move E&S insurance into the modern era, ~one new specialty product every six months, only works if the money-movement layer underneath it is airtight, which is exactly the kind of full-stack work I did at Bwisher. There I built idempotent NestJS and FastAPI payment microservices with retry and exponential backoff so charges and payouts stayed correct under duplicate events and downstream failures for a platform serving 30K+ users. I pair that reliability-first backend work with TypeScript and Python across the stack, plus recent experience keeping financial-adjacent systems consistent, such as a Go async HubSpot CRM sync using sync.Map dedup across eight trigger points at OmMuse. I'd like to bring that same correctness-under-load mindset to your finance-engineering team.",
+   "connection_note": "Hi [Name], I saw Ledgebrook is building tech-driven E&S insurance and scaling finance engineering after your Series C. I'm a full-stack TS/Python engineer who built idempotent payment microservices (retry + backoff) for a 30K+ user platform, so the money-movement reliability side really resonates. Would love to connect and hear how your finance-eng team is growing.",
+   "target_person_role": "Engineering Manager / Head of Engineering, Finance Engineering (or a technical recruiter at Ledgebrook if no eng lead is reachable)",
+   "traceability": [
+    "company_hook: E&S MGA, GL/Professional Liability via wholesale brokers, $65M Series C, full-stack carrier goal, new product ~every 6 months \u2014 from web research (Ledgebrook LinkedIn/Crunchbase/press) plus role context provided",
+    "cover_letter: idempotent NestJS/FastAPI payment microservices with retry + exponential backoff, 30K+ users \u2014 CANDIDATE Bwisher",
+    "cover_letter: Go async HubSpot CRM sync with sync.Map dedup across 8 trigger points \u2014 CANDIDATE OmMuse",
+    "cover_letter: full-stack TypeScript and Python \u2014 CANDIDATE stack",
+    "connection_note: full-stack TS/Python; idempotent payment microservices (retry + backoff), 30K+ user platform \u2014 CANDIDATE Bwisher + stack",
+    "fit 7: full-stack TS/Python match + finance/money-movement reliability match (Bwisher payments); remote Canada-eligible aligns with Canada work authorization; new-grad (Dec 2026) with 2+ yrs internships is the main gap vs a domain-heavy finance-eng role"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "Ledgebrook's push to modernize E&S insurance, shipping roughly one new specialty product every six months, only works if the money-movement layer underneath it is airtight, which is exactly the kind of full-stack work I did at Bwisher. There I built idempotent NestJS and FastAPI payment microservices with retry and exponential backoff so charges and payouts stayed correct under duplicate events and downstream failures for a platform serving 30K+ users. I pair that reliability-first backend work with TypeScript and Python across the stack, plus recent Go work keeping systems consistent under concurrency, such as an async HubSpot CRM sync using sync.Map dedup across eight trigger points at OmMuse. I'd like to bring that same correctness-under-load mindset to your finance-engineering team.",
+   "final_connection_note": "Hi [Name], I saw Ledgebrook is building tech-driven E&S insurance and scaling finance engineering after your Series C. I'm a full-stack TS/Python engineer who built idempotent payment microservices (retry + backoff) for a 30K+ user platform, so the money-movement reliability side really resonates. Would love to connect and hear how your finance-eng team is growing."
+  },
+  "_fit": 7
+ },
+ {
+  "company": "Skyflow",
+  "role": "Software Engineer",
+  "loc": "Remote (Canada-eligible)",
+  "url": "https://www.linkedin.com/jobs/view/software-engineer-at-skyflow",
+  "draft": {
+   "fit": 7,
+   "company_hook": "Skyflow is a \"data privacy vault\" built on zero-trust, privacy-by-architecture: it tokenizes PII at the point of collection so companies store only tokens that reference sensitive data, and uses polymorphic encryption to let teams use, share, and analyze that data without ever decrypting it. This is exactly the security-minded backend infrastructure work the candidate has been doing.",
+   "cover_letter": "Skyflow's model of tokenizing PII at the point of collection so teams handle references instead of raw sensitive data maps directly to infrastructure I have already built. For my Document Intelligence Platform I designed a multi-tenant RAG system on FastAPI, LangChain, and Qdrant with SHA-256 idempotent ingestion, so tenant data stayed isolated and re-submitted documents never produced duplicate or inconsistent records. At OmMuse I have reinforced that security-first instinct with an Electron uploader using OAuth 2.0 PKCE, S3 multipart transfers, and 70+ gRPC methods over typed IPC, alongside Go services with sync.Map dedup across eight trigger points for 12K+ users. I want to bring that combination of correct, idempotent data plumbing and zero-trust discipline to a privacy vault used as critical infrastructure.",
+   "connection_note": "Hi [Name], I'm a final-year CS student (grad Dec 2026, authorized in Canada) drawn to Skyflow's privacy-by-architecture vault. I've built multi-tenant RAG with SHA-256 idempotent ingestion and secured OAuth2 PKCE + gRPC infra at OmMuse. I'd love to connect about the remote Software Engineer role and how I could contribute.",
+   "target_person_role": "Engineering Manager or Backend/Platform team lead at Skyflow (or a University/Early-Career Recruiter if EM is unreachable)",
+   "traceability": [
+    "company_hook: Skyflow zero-trust vault / tokenize PII at point of collection / polymorphic encryption / store tokens not sensitive data - all from skyflow.com research (tokenization, data-privacy-vault, pii pages)",
+    "cover_letter 'multi-tenant RAG on FastAPI, LangChain, Qdrant with SHA-256 idempotent ingestion' - CANDIDATE Projects: Document Intelligence Platform (multi-tenant RAG, FastAPI/LangChain/Qdrant, SHA-256 idempotent ingestion)",
+    "cover_letter 'Electron uploader using OAuth 2.0 PKCE, S3 multipart, 70+ gRPC methods over typed IPC' - CANDIDATE OmMuse (Electron uploader, OAuth2 PKCE, S3 multipart, 70+ gRPC methods)",
+    "cover_letter 'Go services with sync.Map dedup across eight trigger points for 12K+ users' - CANDIDATE OmMuse (Go async HubSpot CRM sync, sync.Map dedup across 8 triggers, 12K+ users)",
+    "connection_note 'final-year CS student, grad Dec 2026, authorized in Canada' - CANDIDATE header (Okanagan College, grad Dec 2026; authorized in Canada)",
+    "connection_note 'multi-tenant RAG with SHA-256 idempotent ingestion' - CANDIDATE Document Intelligence Platform",
+    "connection_note 'OAuth2 PKCE + gRPC infra at OmMuse' - CANDIDATE OmMuse experience",
+    "fit=7: junior/early-career SWE, remote Canada-eligible matches candidate authorization; strong backend/security-minded infra overlap (idempotency, OAuth2 PKCE, gRPC, AWS); slightly below top score as candidate is still a student with no dedicated data-privacy/tokenization domain experience"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "fabrications": [],
+   "final_cover_letter": "Skyflow's model of tokenizing PII at the point of collection so teams handle references instead of raw sensitive data maps directly to infrastructure I have already built. For my Document Intelligence Platform I designed a multi-tenant RAG system on FastAPI, LangChain, and Qdrant with SHA-256 idempotent ingestion, so tenant data stayed isolated and re-submitted documents never produced duplicate or inconsistent records. At OmMuse I have reinforced that security-first instinct with an Electron uploader using OAuth 2.0 PKCE, S3 multipart transfers, and 70+ gRPC methods over typed IPC, alongside Go services with sync.Map dedup across eight trigger points for 12K+ users. I want to bring that combination of correct, idempotent data plumbing and zero-trust discipline to a privacy vault used as critical infrastructure.",
+   "final_connection_note": "Hi [Name], I'm a final-year CS student (grad Dec 2026, authorized in Canada) drawn to Skyflow's privacy-by-architecture vault. I've built multi-tenant RAG with SHA-256 idempotent ingestion and secured OAuth2 PKCE + gRPC infra at OmMuse. I'd love to connect about the remote Software Engineer role and how I could contribute."
+  },
+  "_fit": 7
+ },
+ {
+  "company": "Cresta",
+  "role": "Customer Engineer",
+  "loc": "Remote (Canada-eligible)",
+  "url": "https://job-boards.greenhouse.io/cresta/jobs",
+  "draft": {
+   "fit": 7,
+   "company_hook": "Cresta is the unified AI platform for human and AI agents in the contact center \u2014 real-time Agent Assist that surfaces live knowledge and guidance during conversations, an autonomous AI Agent across voice and digital, and Conversation Intelligence. Born from the Stanford AI Lab, backed by a16z/Greylock/Sequoia, with customers like Intuit, Hilton, and CarMax.",
+   "cover_letter": "Cresta's Agent Assist lives or dies on retrieving the right knowledge in real time mid-conversation, which is exactly the problem I shipped at OmMuse: a RAG semantic search system over a MongoDB Vector Store with AWS Bedrock embeddings, serving a 12K+ user platform. As a Customer Engineer I'd bring the integration side too \u2014 I built a Go async HubSpot CRM sync with sync.Map dedup wired across 8 API trigger points, so I know what it takes to make an AI product connect cleanly and reliably to a customer's existing systems. I've worked the full deployment path on AWS (ECS Fargate, EKS, Terraform/Pulumi) rather than just prototypes. I'd like to help Cresta's enterprise customers get real value from AI in production, not just in a demo.",
+   "connection_note": "Hi [Name] \u2014 I'm a final-year CS student who shipped production RAG semantic search (MongoDB Vector Store + AWS Bedrock) and Go integrations syncing a 12K+ user platform to HubSpot. Cresta's real-time Agent Assist is the exact problem I've been building toward, and the Customer Engineer role maps well to my integration + AWS work. Would love to connect.",
+   "target_person_role": "Customer Engineering Manager / Head of Customer Engineering (or a Customer Engineer on the team for a referral)",
+   "traceability": [
+    "Real-time knowledge retrieval / Agent Assist tie -> OmMuse: RAG semantic search on MongoDB Vector Store + AWS Bedrock",
+    "12K+ user platform -> OmMuse platform, 12K+ users",
+    "Integrating AI with customer systems (CE responsibility) -> OmMuse: Go async HubSpot CRM sync, sync.Map dedup across 8 API trigger points",
+    "AWS deployment depth (CE role emphasizes AWS) -> ECS Fargate (Document Intelligence Platform), AWS EKS (MoreThinks), Terraform/Pulumi",
+    "Multi-channel/contact-center adjacency -> Bwisher: Kafka+BullMQ SMS/email/WhatsApp platform, 30K+ users",
+    "Multi-tenant RAG platform capability -> Document Intelligence Platform: FastAPI/LangChain/Qdrant, ECS Fargate",
+    "Full-stack/API building on SDKs (CE responsibility) -> 70+ gRPC methods over typed IPC in OmMuse Electron uploader; NestJS/FastAPI/Express experience",
+    "Authorized in Canada, role is Remote Canada-eligible -> candidate authorized in Canada, no sponsorship needed"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "Cresta's Agent Assist lives or dies on retrieving the right knowledge in real time mid-conversation, which is exactly the problem I shipped at OmMuse: a RAG semantic search system over a MongoDB Vector Store with AWS Bedrock, serving a 12K+ user platform. As a Customer Engineer I'd bring the integration side too \u2014 I built a Go async HubSpot CRM sync with sync.Map dedup wired across 8 API trigger points, so I know what it takes to make an AI product connect cleanly and reliably to a customer's existing systems. I've worked the full deployment path on AWS (ECS Fargate, EKS, Terraform/Pulumi) rather than just prototypes. I'd like to help Cresta's enterprise customers get real value from AI in production, not just in a demo.",
+   "final_connection_note": "Hi [Name] \u2014 I'm a final-year CS student who shipped production RAG semantic search (MongoDB Vector Store + AWS Bedrock) and Go integrations syncing a 12K+ user platform to HubSpot. Cresta's real-time Agent Assist is the exact problem I've been building toward, and the Customer Engineer role maps well to my integration + AWS work. Would love to connect.",
+   "fabrications": []
+  },
+  "_fit": 7
+ },
+ {
+  "company": "State Street",
+  "role": "Cloud Security Engineer",
+  "loc": "Toronto, ON, Canada",
+  "url": "https://statestreet.wd1.myworkdayjobs.com/Global",
+  "draft": {
+   "fit": 5,
+   "company_hook": "State Street runs Alpha, its cloud-native, AI-enabled data platform for institutional and wealth managers (built with Charles River Development on a Snowflake foundation) \u2014 moving front-office investment data across internal and third-party services in near real-time, which makes cloud security engineering a core control on regulated financial data.",
+   "cover_letter": "State Street's Alpha platform moves front-office investment data across cloud and third-party services in near real-time, so the security controls around that infrastructure carry real regulatory weight. At Jythu I owned the AWS infrastructure-as-code (Terraform) and built device-bound anti-piracy authentication for two production apps serving 2,000+ learners, plus an FFmpeg HLS pipeline across S3, CloudFront, SQS, Lambda, and SNS \u2014 security-conscious cloud engineering under production constraints. More recently at OmMuse I implemented OAuth 2.0 PKCE and typed IPC across 70+ gRPC methods in an Electron desktop uploader, hardening the auth and transport boundary of a client application. I'd bring that hands-on AWS/Terraform and auth-hardening background to securing State Street's cloud platforms.",
+   "connection_note": "Hi [Name] \u2014 I'm a final-year CIS student (grad Dec 2026) drawn to the cloud security work behind State Street's Alpha platform. My background is AWS/Terraform infra plus auth hardening \u2014 device-bound auth for a 2K-user app and OAuth 2.0 PKCE over gRPC at my current role. Would value connecting as I explore the Toronto Cloud Security Engineer opening.",
+   "target_person_role": "Cloud Security Engineering Manager (Toronto) or a Technology Recruiter / Talent Acquisition partner for State Street's Toronto tech hub",
+   "traceability": [
+    "Alpha cloud-native data platform / Charles River / Snowflake \u2014 from web research (Nasdaq, Snowflake, businesswire)",
+    "AWS Terraform infrastructure-as-code \u2014 CANDIDATE: Jythu (Terraform AWS infra)",
+    "device-bound anti-piracy authentication, 2 production apps, 2K+ learners \u2014 CANDIDATE: Jythu",
+    "FFmpeg HLS pipeline S3/CloudFront/SQS/Lambda/SNS \u2014 CANDIDATE: Jythu",
+    "OAuth 2.0 PKCE, 70+ gRPC methods over typed IPC, Electron uploader \u2014 CANDIDATE: OmMuse",
+    "final-year CIS student, grad Dec 2026 \u2014 CANDIDATE header",
+    "AWS/Azure, K8s, Terraform, Pulumi \u2014 CANDIDATE stack",
+    "Toronto Cloud Security Engineer role \u2014 ROLE line"
+   ]
+  },
+  "verify": {
+   "truthful": true,
+   "final_cover_letter": "State Street's Alpha platform moves front-office investment data across cloud and third-party services in near real-time, so the security controls around that infrastructure carry real regulatory weight. At Jythu I owned the AWS infrastructure-as-code (Terraform) and built device-bound anti-piracy authentication for two production apps serving 2,000+ learners, plus an FFmpeg HLS pipeline across S3, CloudFront, SQS, Lambda, and SNS \u2014 security-conscious cloud engineering under production constraints. More recently at OmMuse I implemented OAuth 2.0 PKCE and typed IPC across 70+ gRPC methods in an Electron desktop uploader, hardening the auth and transport boundary of a client application. I'd bring that hands-on AWS/Terraform and auth-hardening background to securing State Street's cloud platforms.",
+   "final_connection_note": "Hi [Name] \u2014 I'm a final-year CIS student (grad Dec 2026) drawn to the cloud security work behind State Street's Alpha platform. My background is AWS/Terraform infra plus auth hardening \u2014 device-bound auth for a 2K-user app and OAuth 2.0 PKCE over gRPC at my current role. Would value connecting as I explore the Toronto Cloud Security Engineer opening.",
+   "fabrications": []
+  },
+  "_fit": 5
+ }
+]
