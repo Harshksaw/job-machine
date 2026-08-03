@@ -170,19 +170,27 @@ following:
 1. `slot_id` exists in the pinned source map.
 2. `before` occurs exactly once in that slot's extracted plain text and maps to
    one text node without crossing a LaTeX command.
-3. `after` is non-empty plain text with no newline or model-supplied LaTeX.
-   Reserved characters are escaped only by the server's deterministic encoder.
+3. `after` is non-empty, single-line, source-safe plain text. LaTeX-reserved
+   characters (`\\`, `{`, `}`, `%`, `$`, `#`, `&`, `_`, `~`, and `^`) are
+   rejected rather than escaped, so applying an edit cannot add a control
+   sequence or formatting command. A keyword requiring one of these characters
+   needs a separately reviewed source-map entry; the model cannot invent it.
 4. Leading/trailing whitespace, source newlines, and surrounding punctuation
    remain canonical. The replacement cannot introduce duplicate spaces.
 5. Edits do not overlap and are always applied to a fresh canonical source,
    never on top of another candidate.
-6. All numeric tokens, dates, URLs, company names, product names, and proper
-   nouns in `before` remain unchanged unless the source map explicitly permits
-   the exact replacement. The initial map permits no numeric changes.
-7. Every added claim-bearing token is listed as an approved term or alias for
-   at least one referenced evidence ID that is allowed for the slot. Presence in
-   the JD alone is never evidence.
-8. Every `jd_keywords` value appears in the normalized JD and in `after`.
+6. The normalized numeric-token sequence in `before` and `after` is identical;
+   no number can be added, removed, reordered, or changed. Dates, URLs, company
+   names, product names, and proper nouns also remain unchanged unless the
+   source map explicitly permits one exact reviewed replacement. The initial
+   map permits no numeric replacements.
+7. Every newly introduced non-stopword token is covered by an approved term or
+   alias for at least one referenced evidence ID that is allowed for the slot.
+   The stopword list is fixed in code and checked into tests. Presence in the JD
+   alone is never evidence.
+8. Each edit declares at least one `jd_keywords` phrase. Every declared phrase
+   appears in the normalized JD and in `after`, and every newly introduced
+   approved term is accounted for by a declared JD keyword.
 9. An edit changes a short phrase, not a sentence or complete bullet.
 
 Initial conservative budgets are configuration constants covered by tests:
@@ -194,7 +202,10 @@ Initial conservative budgets are configuration constants covered by tests:
 - no slot may have 20% or more of its words changed;
 - no empty replacement, item deletion, or whole-sentence replacement.
 
-The exact lexical diff is computed server-side. Model explanations do not
+The exact lexical diff is computed server-side with one checked-in tokenizer.
+For budgets, an edit's changed-word count is the larger of its removed-word and
+added-word counts; total changed words is the sum across edits, and the 6%
+denominator is the canonical mutable-word count. Model explanations do not
 affect acceptance. An empty edit list is valid and produces an `unchanged`
 result when the JD has no safe, useful keyword substitutions.
 
@@ -353,10 +364,17 @@ Behavior by status:
 
 - `tailored`: all checks pass and `pdf_path` points to `final.pdf`.
 - `unchanged`: a valid empty patch; `pdf_path` points to the canonical
-  `resume.pdf`, and verification still records why no safe edit was made.
+  `resume.pdf`, `verification_passed` is true, `comparison_path` is null, and
+  verification records why no safe edit was made.
 - `fallback`: a candidate or retry failed; no candidate is exposed as the
   upload path, `pdf_path` points to canonical `resume.pdf`,
-  `verification_passed` is false, and `fallback_reason` is explicit.
+  `verification_passed` is false, `comparison_path` is null, and
+  `fallback_reason` is explicit.
+
+A `fallback` is allowed only after the canonical base PDF passes its own
+integrity checks. If canonical source, class, or base-PDF integrity fails, the
+endpoint returns a non-success error with no `pdf_path`; it cannot claim that a
+corrupt or unverified artifact is a safe fallback.
 
 The dashboard result panel shows the status badge, final file actually in use,
 exact changed words, evidence, page/format checks, and links to the side-by-side
