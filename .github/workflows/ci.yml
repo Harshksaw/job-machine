@@ -1,0 +1,109 @@
+name: CI
+
+# Scoped to the service on purpose: jobs-pipeline/ churns daily with JSON and
+# markdown run artifacts, and none of that is code worth a CI run.
+on:
+  push:
+    paths:
+      - 'resume-tailor-service/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'resume-tailor-service/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: resume-tailor-service
+
+env:
+  # Pin the interpreter so CI never drifts onto a python newer than the wheels
+  # our deps publish. uv.lock is resolved for >=3.11, so 3.12 is in range.
+  UV_PYTHON: "3.12"
+
+jobs:
+  test:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Sync deps (locked)
+        run: uv sync --frozen
+
+      # No .env exists on a fresh checkout, which is the point: this proves the
+      # suite does not secretly depend on Harsh's local secrets.
+      - name: Run tests
+        run: uv run pytest -q
+
+  deploy-check:
+    name: boots and serves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # The service's whole output is a compiled PDF. Without TeX the render
+      # tests skip themselves silently (tests/test_render.py:10), which would
+      # make this job green while the core path was never exercised.
+      - name: Install TeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-base texlive-latex-extra texlive-fonts-recommended
+
+      - name: Assert pdflatex is present
+        run: pdflatex --version | head -1
+
+      - name: Sync deps (locked)
+        run: uv sync --frozen
+
+      # Same invocation launchd uses in scripts/serve.sh, so a green run here
+      # means a fresh clone would come up the same way on the Mac.
+      - name: Boot the service
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8420 > boot.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8420/health >/dev/null 2>&1; then
+              echo "booted after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "service never became healthy; boot log:"
+          cat boot.log
+          exit 1
+
+      - name: Check /health
+        run: |
+          body="$(curl -fsS http://127.0.0.1:8420/health)"
+          echo "$body"
+          test "$body" = '{"status":"ok"}'
+
+      # app/static/ is committed precisely so a clean checkout serves the
+      # dashboard with no node build (see .gitignore). This asserts that holds.
+      - name: Check the dashboard is served
+        run: curl -fsS -o /dev/null http://127.0.0.1:8420/
+
+      # Now that pdflatex exists, the render tests actually execute instead of
+      # skipping, so this run covers the LaTeX -> PDF path end to end.
+      - name: Full suite, including PDF rendering
+        run: uv run pytest -q
+
+      - name: Service log
+        if: always()
+        run: cat boot.log || true

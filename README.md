@@ -1,5 +1,11 @@
 # Job Machine — Full Setup
 
+[![CI](https://github.com/Harshksaw/job-machine/actions/workflows/ci.yml/badge.svg)](https://github.com/Harshksaw/job-machine/actions/workflows/ci.yml)
+
+Green badge = the service's tests pass and a clean checkout boots and serves
+`/health` plus the dashboard. It does **not** report on the launchd instance
+running locally; that one is loopback-only and unreachable from CI.
+
 One-time setup ~20 min. After that: open terminal, run `claude`, say "run the wellfound prompt".
 
 ---

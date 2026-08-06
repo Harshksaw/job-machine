@@ -114,6 +114,14 @@ else
   ok "uv $(uv --version 2>/dev/null || echo installed)"
   warn "Host mode compiles PDFs with LaTeX — TeX Live must be installed (texlive-latex-base/-extra/-fonts-recommended). Docker mode bundles it for you."
   ( cd resume-tailor-service && uv sync ) && ok "uv sync complete (.venv ready)" || die "uv sync failed."
+
+  # launchd supervises the dashboard on macOS (starts at login, restarts on
+  # crash) — the host-mode equivalent of compose's `restart: unless-stopped`.
+  if [ "$(uname -s)" = "Darwin" ]; then
+    ( cd resume-tailor-service && ./scripts/install-launchd.sh ) \
+      && ok "launchd agent installed — dashboard supervised on http://127.0.0.1:8420" \
+      || warn "launchd install failed — run resume-tailor-service/scripts/install-launchd.sh by hand, or use ./scripts/start.sh per session."
+  fi
 fi
 
 # ---- Next steps ------------------------------------------------------------
@@ -130,15 +138,20 @@ if [ "$MODE" = "docker" ]; then
       docker compose logs -f      # watch it        docker compose down   # stop it
 EOF
 else
-  bold "✅ Host setup complete. To run the machine (two windows, both local-only):"
+  bold "✅ Host setup complete (all local-only). To run the machine:"
   cat <<'EOF'
 
-  Window 1 — tailor service (leave running):
-      cd resume-tailor-service && ./scripts/start.sh    # mock sheet :8799 + API :8420
+  On macOS the tailor service is ALREADY running under launchd — it starts at
+  login and restarts on crash, so you only need ONE window:
 
-  Window 2 — drive the applications:
       claude
       # then say:  run the linkedin prompt      (prompts/linkedin-run.md)
+
+  Service controls (from resume-tailor-service/):
+      curl -s 127.0.0.1:8420/health          # is it up?
+      ./scripts/install-launchd.sh --check   # does the agent match the repo?
+      tail -f ../logs/dashboard.log          # watch it
+      ./scripts/start.sh                     # foreground run instead (adds mock sheet :8799)
 EOF
 fi
 cat <<'EOF'
