@@ -1,1 +1,107 @@
-/
+\documentclass{resume} 
+\usepackage[left=0.2in,top=0.15in,right=0.2in,bottom=0.15in]{geometry}
+\usepackage{setspace}
+\setstretch{0.55}
+\renewcommand{\labelitemi}{$\bullet$}
+
+\name{\normalsize Harsh Saw}
+\address{\footnotesize +1 (778) 583-2260 \\ Kelowna, BC, Canada}
+\address{\footnotesize 
+  \href{mailto:mister.harshkumar@gmail.com}{mister.harshkumar@gmail.com} \\ 
+  \href{https://www.linkedin.com/in/harsh-kumar-s-32727b247/}{LinkedIn} \\ 
+  \href{https://github.com/Harshksaw}{GitHub} \\ 
+  \href{https://harshsaw.me/}{harshsaw.me}
+}
+\begin{document}
+
+\vspace{-.5em}
+\begin{rSection}{Summary}
+{\scriptsize Full-stack software engineer with 2+ years of experience shipping production systems across distributed messaging, cloud infrastructure, and AI pipelines. Currently building RAG and agentic workflows at Ommuse; prior work spans real-time marketing platforms, video streaming infrastructure, and mobile apps serving thousands of users.}
+\end{rSection}\vspace{-0.6em}
+
+\begin{rSection}{Education}
+{\scriptsize \textbf{Bachelor of Computer Information Systems}, Okanagan College \hfill Expected Dec 2026}
+\end{rSection}\vspace{-0.5em}
+
+\begin{rSection}{Experience}
+\scriptsize
+
+\job{Software Engineer}{Ommuse}{https://ommuse.com/}{Seattle, US}{Nov 2025 -- Present}
+\begin{jobitems}
+    \item Architecting \textbf{AI-powered semantic search} and natural language chat for enterprise studio workflows using a \textbf{RAG} pipeline (\textbf{MongoDB Vector Store, AWS Bedrock}), enabling producers to query projects, tracks, and collaborators conversationally.
+    \item Built \textbf{HubSpot CRM} sync for a 12K+ user music platform in \textbf{Go} --- async batch worker using \textbf{sync.Map} deduplication (30s flush, 100-user chunks) syncing live metrics across 8 API trigger points; platform manages 18K+ tracks and 67\,GB of user audio.
+    \item Engineered a cross-platform desktop uploader (\textbf{Electron}) with persistent folder-sync engine (\textbf{chokidar + SQLite WAL}), parallelized \textbf{S3 multipart uploads}, \textbf{OAuth 2.0 PKCE} auth flow, and a typed IPC bridge exposing 70+ \textbf{gRPC} service methods to the renderer.
+    \item Shipped features across a polyglot monorepo (\textbf{Go gRPC/protobuf}, TypeScript/React, Python) unified by \textbf{Bazel}, owning full deployment infrastructure --- \textbf{AWS} (S3, SQS, ECR), \textbf{Docker}, \textbf{Pulumi} IaC, Envoy proxy, and \textbf{GitHub Actions} CI/CD.
+\end{jobitems}
+
+\job{Full-Stack ML Engineer (Contract)}{Darwin X Global Solutions}{https://www.darwinxsolutions.com/}{Remote, USA}{Apr 2026 -- Jul 2026}
+\begin{jobitems}
+    \item Built the resume/JD parsing layer for a production AI job portal using \textbf{GLiNER} zero-shot NER, normalizing extracted skills, titles, and employers against a proprietary \textbf{30,000-entry skills taxonomy}.
+    \item Architected candidate--job matching with \textbf{bi-encoder} embedding retrieval and \textbf{cross-encoder} reranking, replacing monolithic external LLM calls with a staged, cost-aware inference pipeline.
+    \item Fine-tuned \textbf{Qwen3-4B} via \textbf{QLoRA/Unsloth} on logged production traffic to self-host resume rewriting, cutting per-resume LLM inference cost by 60\%.
+\end{jobitems}
+
+\job{Software Engineer Intern}{Bwisher Ltd}{https://bwishernepal.com/}{Remote}{Dec 2024 -- Jun 2025}
+\begin{jobitems}
+    \item Architected a multi-channel marketing platform using \textbf{Apache Kafka} and \textbf{BullMQ}, orchestrating personalized SMS, email, and \textbf{WhatsApp} campaigns with custom offers across \textbf{30K+ users} while feeding real-time CRM and analytics pipelines.
+    \item Designed idempotent \textbf{NestJS} and \textbf{FastAPI} microservices for payment and credit workflows with retry and exponential backoff strategies, eliminating duplicate transactions in high-stakes financial operations.
+    \item Owned end-to-end deployment infrastructure with \textbf{Jenkins, Kubernetes, Prometheus,} and \textbf{Grafana}; shipped features behind feature flags enabling safe tenant-by-tenant rollouts with instant kill-switch control.
+\end{jobitems}
+
+\job{Full-Stack Developer Intern}{Jythu Ltd}{https://jythu.com/}{Remote}{Jan 2024 -- Dec 2024}
+\begin{jobitems}
+    \item Shipped two production \textbf{React Native} apps (LMS + admin panel) with \textbf{Node.js} backends serving \textbf{2K+ learners}; provisioned full \textbf{AWS} infrastructure with \textbf{Terraform} and \textbf{GitHub Actions} CI/CD, with multi-layer anti-piracy controls including device-bound auth.
+    \item Built an end-to-end video streaming pipeline using \textbf{FFmpeg} HLS transcoding delivered via \textbf{S3/CloudFront}, orchestrated through \textbf{SQS, Lambda, and SNS} --- reducing seek time from \textbf{30s to 1.5s} and cutting bandwidth by approximately \textbf{70\%}.
+\end{jobitems}
+
+\end{rSection}\vspace{-0.7em}
+
+\begin{rSection}{Projects}
+
+\scriptsize \textbf{Document Intelligence Platform (RAG)}
+{\scriptsize \textit{FastAPI, LangChain, Qdrant, Groq, Google Gemini, AWS ECS Fargate, Docker}}
+\hfill
+\href{https://aidoc.harshsaw.ca/}{Live Demo} | 
+\href{https://github.com/Harshksaw/document_portal}{GitHub}
+
+\begin{itemize}\itemsep -4pt
+    \item Architected a multi-tenant RAG platform with session-isolated \textbf{Qdrant} indexes, enabling semantic search and conversational Q\&A over PDF, DOCX, and TXT documents.
+    \item Engineered resilient LLM orchestration using \textbf{LangChain RunnableWithFallbacks}, implementing automatic provider failover (Groq to Gemini) with streaming retrieval pipelines featuring context-aware query rewriting and hybrid document chunking.
+    \item Deployed to \textbf{AWS ECS Fargate} with GitHub Actions CI/CD and multi-worker Uvicorn scaling; designed idempotent ingestion using \textbf{SHA-256} fingerprinting to deduplicate embeddings and reduce redundant indexing.
+\end{itemize}
+
+\scriptsize \textbf{CodeExpo -- Browser-Based IDE \& Sandbox Environment}
+{\scriptsize \textit{React, Node.js, WebSocket, Docker, Nginx, Zustand, xterm.js}}
+\hfill
+\href{https://code.harshsaw.ca}{Live Demo} |
+\href{https://github.com/Harshksaw/Project-IDX-Codesandbox}{GitHub}
+\begin{itemize}\itemsep -4pt
+    \item Engineered a full-stack browser-based IDE replicating a local dev environment --- live terminal via \textbf{xterm.js} and \textbf{WebSocket}, real-time code execution with browser preview pane, and \textbf{Socket.IO} file synchronization across the workspace.
+    \item Architected containerized sandbox environments using \textbf{Docker} with multi-stage builds and \textbf{Nginx} reverse proxy, managing isolated execution contexts and environment lifecycle per session.
+    \end{itemize}
+
+\end{rSection}\vspace{-0.7em}
+
+\begin{rSection}{Technical Skills}
+\scriptsize
+\begin{itemize}[leftmargin=0em,label={},itemsep=0pt,topsep=1pt,parsep=0pt,partopsep=0pt]
+\item \textbf{Languages:} JavaScript (ES6+), TypeScript, Python, Go (Golang), Bash
+\item \textbf{Frontend \& Mobile:} React, Next.js, React Native, Qwik.js, Electron
+\item \textbf{Backend \& Messaging:} NestJS, FastAPI, Express, Fastify, GraphQL, gRPC/Protobuf, Apache Kafka, BullMQ, RabbitMQ
+\item \textbf{Databases:} PostgreSQL, MongoDB, DynamoDB, Redis, MySQL, SurrealDB, SQLite
+\item \textbf{Cloud \& DevOps:} AWS, Azure, Docker, Kubernetes, Terraform, Pulumi, Bazel, Jenkins, GitHub Actions
+\item \textbf{AI \& ML:} PyTorch, Hugging Face Transformers, PEFT/LoRA/QLoRA, Unsloth, vLLM, embeddings, cross-encoder reranking, LangChain, RAG, Qdrant, FAISS, Pinecone, AWS Bedrock
+\end{itemize}
+\end{rSection}\vspace{-0.5em}
+
+\begin{rSection}{Achievements}
+\scriptsize
+\begin{itemize}\itemsep -7pt
+    \item Sole developer of an internal LMS migration platform at \textbf{Okanagan College}, built and deployed end-to-end and relied on daily by \textbf{1,500+ staff and instructors} for the institution-wide Moodle-to-Brightspace transition --- featuring guided step-by-step migration workflows with progress tracking and complete records, real-time notifications and chat, and AI-powered templating.
+    \item Built an end-to-end stock prediction pipeline covering \textbf{500 S\&P 500 constituents} over 5 years of 15-minute bar data --- \textbf{XGBoost} models trained across 26 intraday horizons on \textbf{4x NVIDIA H100 GPUs} (DRAC), with automated warm-start retraining every 15 minutes during market hours, served via a \textbf{FastAPI} backend backed by a \textbf{PostgreSQL} data warehouse and a multi-rolling feature pipeline.
+    \item Ranked in the \textbf{top 2\% of verified freelancers} on \href{https://www.freelancer.com/u/misterharshkumar}{Freelancer.com} with a 5-star rating, delivering 25+ production-grade projects.
+    \item Won an inter-university college hackathon, demonstrating innovative problem-solving and technical proficiency.
+\end{itemize}
+\end{rSection}
+
+\end{document}

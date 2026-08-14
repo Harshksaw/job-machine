@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "description": "Pinned provenance and rebuild invariants for the canonical resume baseline. This is the baseline subset of the canonical_map.json described in docs/superpowers/specs/2026-08-03-canonical-resume-tailoring-verifier-design.md. Mutable slots, text anchors, and per-slot edit budgets are NOT here yet; they belong to the patch-contract work that builds app/canonical.py, app/patch.py, and app/verify.py.",
+
+  "artifacts": {
+    "harshsaw.tex": {
+      "role": "canonical editable source",
+      "sha256": "ca35f93320d7e8c4aef2b80cc93b1758593cb72a38734d24aa6578a6d3998eb8",
+      "bytes": 8871
+    },
+    "resume.cls": {
+      "role": "canonical class, exact user-supplied bytes",
+      "sha256": "addfa2d77cf079ef06515f9266c7847bfbaddcbf61723c654caf80c2dd543049",
+      "bytes": 3711
+    },
+    "resume.pdf": {
+      "role": "published base and fallback PDF",
+      "sha256": "aaa240ed505c64c51c79bf364adab8cd0aef20e4d47ef35db9f20871f85f35e1",
+      "bytes": 114824,
+      "note": "Byte hash is provenance only, never a rebuild invariant: valid PDF build metadata and compression legitimately differ between compiles."
+    }
+  },
+
+  "rebuild_invariants": {
+    "pages": 1,
+    "page_size_pt": [612.0, 792.0],
+    "fonts": [
+      "/IDCQOZ+CMSY8",
+      "/LRJHTD+CMSY9",
+      "/MZECLQ+CMR8",
+      "/NAESLA+CMTI8",
+      "/OWRIOL+CMR9",
+      "/VAMTHN+CMBX8",
+      "/WJXPNN+CMBX10"
+    ],
+    "normalized_text_sha256": "12b1a49a872b06921357d5579e170c04fa22cf64e52a1535b60a05f069e822cd",
+    "normalized_text_tokens": 742,
+    "tokenizer": "pypdf extract_text per page, joined with newlines, whitespace collapsed to single spaces, split on whitespace",
+    "note": "The 2026-08-03 design doc records this count as 766. That figure came from a different extraction environment and does not reproduce under pypdf 6.14.2; no tokenization tried here yields it. Token count is therefore environment-qualified provenance. The load-bearing invariant is that a rebuild matches THIS base PDF, which holds exactly."
+  },
+
+  "allowed_warnings": [
+    "Overfull \\hbox (30.0pt too wide) in paragraph at lines 15--15"
+  ],
+
+  "provenance": {
+    "harshsaw_tex_recovered_from": "8be286f67af042a323e37846301a066c536fc710",
+    "resume_cls_recovered_from": "codex session rollout-2026-08-01T08-30-57, user-supplied 2026-08-03, patch_apply_end record for /tmp/resume-canonical-check/resume.cls",
+    "verified_on": "2026-08-07",
+    "verified_with": "pdfTeX 3.141592653-2.6-1.40.29 (TeX Live 2026), pypdf 6.14.2",
+    "note": "Any intentional future change to the base resume requires regenerating this file and reviewing the diff, not editing a hash in place."
+  }
+}

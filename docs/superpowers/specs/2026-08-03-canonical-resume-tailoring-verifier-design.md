@@ -42,6 +42,12 @@ The canonical baseline is recoverable and reproducible:
   produces one US-letter page (`612 x 792` points).
 - The normalized extracted text is exactly equal to the existing base PDF,
   with 766 extracted tokens and the same font resources.
+  **Correction, 2026-08-07:** the token count is 742, not 766, under pypdf
+  6.14.2; the base PDF and a fresh rebuild agree exactly at that figure and no
+  tokenization reproduces 766, so it was specific to the 2026-08-03 extraction
+  environment. Treat token count as environment-qualified provenance, pinned in
+  `resume-tailor-service/content/canonical_baseline.json`. The load-bearing
+  invariant is rebuild-equals-base, which holds.
 - A Quick Look render of the compiled PDF is pixel-identical to the current
   base PDF. Both preview images had SHA-256
   `30a6eb556cb094797a6d7a67813a0490726f1ad0b2b0da940e4ae47cdb81c245`.

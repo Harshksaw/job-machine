@@ -6,6 +6,9 @@ Green badge = the service's tests pass and a clean checkout boots and serves
 `/health` plus the dashboard. It does **not** report on the launchd instance
 running locally; that one is loopback-only and unreachable from CI.
 
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers how the whole thing fits
+together: subsystems, request flows, deployment, and the known gaps.
+
 One-time setup ~20 min. After that: open terminal, run `claude`, say "run the wellfound prompt".
 
 ---

@@ -1,5 +1,527 @@
 [
  {
+  "score": 14,
+  "company": "Alarm.com",
+  "role": "Software Engineer II",
+  "loc": "{\"cities\": [\"Tysons\"], \"regions\": [\"Virginia\"], \"countries\":",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/alarmcom/jobs/8610334002"
+ },
+ {
+  "score": 13,
+  "company": "Circadia Health",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"Los Angeles\"], \"regions\": [\"California\"], \"coun",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/circadiahealth/1138ac93-5ed3-43d3-b0fa-d99a264d6ece"
+ },
+ {
+  "score": 13,
+  "company": "Arevon",
+  "role": "Software Engineer, Business Systems & Analytics ",
+  "loc": "{\"cities\": [\"Scottsdale\"], \"regions\": [\"Arizona\"], \"countrie",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/arevonenergyimpltest/jobs/5027450007"
+ },
+ {
+  "score": 13,
+  "company": "Rivian and Volkswagen Group Technologies",
+  "role": "Software Engineer II - Streaming",
+  "loc": "{\"cities\": [\"Palo Alto\"], \"regions\": [\"California\"], \"countr",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/rivianvw.tech/9a3114b1-4e3f-461c-91fc-2e1ea028f7b9"
+ },
+ {
+  "score": 12,
+  "company": "Apprenticely",
+  "role": "AI Software Engineer Intern- Bastazo",
+  "loc": "{\"cities\": [\"Bentonville\"], \"regions\": [\"Arkansas\"], \"countr",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/acds/65b739c3-02ad-4814-ad24-24abecbc83f4"
+ },
+ {
+  "score": 12,
+  "company": "Verndale LLC",
+  "role": "Data Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "rippling",
+  "visa": false,
+  "url": "https://ats.rippling.com/verndale-llc/jobs/639d704b-6f84-47e4-b1e4-0d2177b16bb5"
+ },
+ {
+  "score": 11,
+  "company": "Adaptive Innovations",
+  "role": "Data Engineer",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/adaptive-innovations/4ab6cdf5-ae65-4138-8921-fb7a57bedfa2"
+ },
+ {
+  "score": 11,
+  "company": "INSTALILY.AI",
+  "role": "Software Engineer, Full Stack",
+  "loc": "{\"cities\": [\"San Francisco\", \"New York\"], \"regions\": [\"Calif",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/instalilyai/jobs/4261595009"
+ },
+ {
+  "score": 11,
+  "company": "PlayStation Global",
+  "role": "Software Engineer II",
+  "loc": "{\"cities\": [\"San Mateo\"], \"regions\": [\"California\"], \"countr",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/sonyinteractiveentertainmentglobal/jobs/5985241004"
+ },
+ {
+  "score": 11,
+  "company": "Cloudflare",
+  "role": "Systems Engineer, Data Intelligence & Analytics Team",
+  "loc": "{\"cities\": [\"Austin\"], \"regions\": [\"Texas\"], \"countries\": [\"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/cloudflare/jobs/8050813?gh_jid=8050813"
+ },
+ {
+  "score": 11,
+  "company": "Wealth.com",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/wealth-com/30842daf-a487-4d21-abbc-452acb72518b"
+ },
+ {
+  "score": 11,
+  "company": "Newton Research",
+  "role": "Junior Software Engineer (Backend + AI)",
+  "loc": "{\"cities\": [\"Needham\"], \"regions\": [\"Massachusetts\"], \"count",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/newtonresearch/jobs/5202112008"
+ },
+ {
+  "score": 11,
+  "company": "Twilio",
+  "role": "Machine Learning Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/twilio/jobs/7059734"
+ },
+ {
+  "score": 10,
+  "company": "Twilio",
+  "role": "Software Engineer (L2)",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/twilio/jobs/8097672"
+ },
+ {
+  "score": 10,
+  "company": "Lumanu",
+  "role": "Junior Software Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/lumanu/3c9f0864-04d9-4d2d-9326-7953c0f30ab5"
+ },
+ {
+  "score": 10,
+  "company": "Oscilar",
+  "role": "Full-Stack Engineer \u2013 AI Agent Platform (Fraud, Risk & AML)",
+  "loc": "{\"cities\": [\"Palo Alto\"], \"regions\": [\"California\"], \"countr",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/oscilar/4326a0be-8156-4485-bb2e-3513331c6866"
+ },
+ {
+  "score": 10,
+  "company": "Office Hours",
+  "role": "Software Engineer, Full Stack",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/office-hours/664c0299-27c5-4550-91ec-30c4a058e19f"
+ },
+ {
+  "score": 10,
+  "company": "Jobgether",
+  "role": "Software Engineer II, AI Apps and Cloud Infrastructure",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/jobgether/443be57c-768a-4f0a-a4f3-5f9e72a98eae"
+ },
+ {
+  "score": 10,
+  "company": "Pipe17",
+  "role": "Junior Software Engineer, AI-Native",
+  "loc": "{\"cities\": [\"Seattle\"], \"regions\": [\"Washington\"], \"countrie",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/pipe17/jobs/4717950005"
+ },
+ {
+  "score": 10,
+  "company": "Orb",
+  "role": "Software Engineer, Real Time Analytics - San Francisco HQ",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/orb/bb6bd921-33f0-40d3-bd12-9f1d9371e30b"
+ },
+ {
+  "score": 10,
+  "company": "Hims & Hers",
+  "role": "Software Engineer II",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/hims-and-hers/b8bc9bef-2dd4-452f-bf07-769dddd1a6c0"
+ },
+ {
+  "score": 10,
+  "company": "Path Robotics",
+  "role": "Software Engineer, C#",
+  "loc": "{\"cities\": [\"Columbus\"], \"regions\": [\"Ohio\"], \"countries\": [",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/pathrobotics/jobs/8635262002?gh_jid=8635262002"
+ },
+ {
+  "score": 10,
+  "company": "Kustomer",
+  "role": "Software Engineer, Full Stack (Early Career)",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/kustomer/4037272a-7fd3-4040-906b-47fde875a817"
+ },
+ {
+  "score": 10,
+  "company": "Hyperbound",
+  "role": "Full-Stack Software Engineer",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/Hyperbound/e875cc8d-9913-45a6-969d-22382797e0b8"
+ },
+ {
+  "score": 10,
+  "company": "Vercel",
+  "role": "Software Engineer, CDN Content",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/vercel/jobs/6105394004"
+ },
+ {
+  "score": 10,
+  "company": "Cloudflare",
+  "role": "Data Engineer Intern (Fall 2026)",
+  "loc": "{\"cities\": [\"Austin\"], \"regions\": [\"Texas\"], \"countries\": [\"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/cloudflare/jobs/8047201?gh_jid=8047201"
+ },
+ {
+  "score": 10,
+  "company": "Rivian and Volkswagen Group Technologies",
+  "role": "Software Engineer II, Full-Stack (Developer Productivity)",
+  "loc": "{\"cities\": [\"Palo Alto\"], \"regions\": [\"California\"], \"countr",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/rivianvw.tech/960f48a9-97eb-4c7d-9428-8319354573f9"
+ },
+ {
+  "score": 10,
+  "company": "Concentrate AI",
+  "role": "Full-Stack Software Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/Concentrate%20AI/c603e7c5-3e26-4dce-97a5-c445685e388c"
+ },
+ {
+  "score": 10,
+  "company": "Curri",
+  "role": "Software Engineer ",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/curri/25fff41f-da1c-4b34-9120-0d91c251a111"
+ },
+ {
+  "score": 10,
+  "company": "Exadel",
+  "role": "Middle Data Engineer (ADB, Python)",
+  "loc": "{\"cities\": null, \"regions\": [\"Georgia\"], \"countries\": [\"Roma",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/externaljobboards/jobs/6100521004"
+ },
+ {
+  "score": 10,
+  "company": "Exadel Inc (Website)",
+  "role": "Middle Data Engineer (ADB, Python)",
+  "loc": "{\"cities\": null, \"regions\": [\"Georgia\"], \"countries\": [\"Roma",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/exadelinc/jobs/6100519004"
+ },
+ {
+  "score": 10,
+  "company": "Mixpanel",
+  "role": "Software Engineer, DevInfra",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/mixpanel/jobs/7941929"
+ },
+ {
+  "score": 9,
+  "company": "Twilio",
+  "role": "Software Engineer (L2)",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/twilio/jobs/8100236"
+ },
+ {
+  "score": 9,
+  "company": "Bot Auto",
+  "role": "Software Engineer, Generalist in Autonomous Driving System",
+  "loc": "{\"cities\": [\"Houston\"], \"regions\": [\"Texas\"], \"countries\": [",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/botauto/jobs/5370717008"
+ },
+ {
+  "score": 9,
+  "company": "Revin",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/revin/06d29ed2-3494-489b-89f1-b390aec320cb"
+ },
+ {
+  "score": 9,
+  "company": "Jobgether",
+  "role": "Site Reliability Engineer - FedRAMP",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/jobgether/92a51b58-f383-4f18-89d1-df68390f7aa0"
+ },
+ {
+  "score": 9,
+  "company": "Ridgeline",
+  "role": "Full Stack Software Engineer, Client Management",
+  "loc": "{\"cities\": [\"Reno\"], \"regions\": [\"Nevada\"], \"countries\": [\"U",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/ridgeline/jobs/7812359003?gh_jid=7812359003"
+ },
+ {
+  "score": 9,
+  "company": "AssemblyAI",
+  "role": "Applied AI Engineer ",
+  "loc": "{\"cities\": [\"San Francisco\", \"New York\", \"London\"], \"regions",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/assemblyai/jobs/4707265005"
+ },
+ {
+  "score": 9,
+  "company": "Encord",
+  "role": "DevOps Engineer",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/encord/312b9d04-ea38-4872-96d4-22e14ca7fdf1"
+ },
+ {
+  "score": 9,
+  "company": "Jobgether",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/jobgether/d6f93f7a-a281-42e8-8688-e2dfabba853e"
+ },
+ {
+  "score": 9,
+  "company": "Cohere Health",
+  "role": "Site Reliability Engineer ll",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/coherehealth/jobs/7807972003"
+ },
+ {
+  "score": 9,
+  "company": "Excel Sports Management",
+  "role": "Data Engineer",
+  "loc": "{\"cities\": [\"Chicago\"], \"regions\": [\"Illinois\"], \"countries\"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/excelsportsmanagement/jobs/4715868005"
+ },
+ {
+  "score": 9,
+  "company": "Impiricus",
+  "role": "Software Engineer (DevOps)",
+  "loc": "{\"cities\": [\"Atlanta\", \"New York\"], \"regions\": [\"Georgia\", \"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/impiricus/jobs/5199972008"
+ },
+ {
+  "score": 9,
+  "company": "Chariot",
+  "role": "Backend Engineer",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/chariot/aae6b3fa-c17d-45d2-aff3-f5d8e72cd4f6"
+ },
+ {
+  "score": 9,
+  "company": "Serval",
+  "role": "Software Engineer Intern",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/Serval/d7fb089c-db8a-4877-a5f3-73a09e67f54b"
+ },
+ {
+  "score": 9,
+  "company": "Applied Intuition",
+  "role": "Build & Release Engineer",
+  "loc": "{\"cities\": [\"Sunnyvale\"], \"regions\": [\"California\"], \"countr",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/applied/ea1ca9ab-8607-44a0-ab40-54db0fd5e48b"
+ },
+ {
+  "score": 9,
+  "company": "Taskrabbit",
+  "role": "Software Engineer II, Fulfillment",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/taskrabbit/jobs/8026277"
+ },
+ {
+  "score": 9,
+  "company": "Kustomer",
+  "role": "Software Engineer, Full Stack  ",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/kustomer/eacd70b8-81fd-4ea6-a590-32e4571cc700"
+ },
+ {
+  "score": 9,
+  "company": "The New York Times",
+  "role": "Software Engineer, Content Data Products",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/thenewyorktimes/jobs/4713567005"
+ },
+ {
+  "score": 9,
+  "company": "THUMBWAR",
+  "role": "Infrastructure Automation Engineer",
+  "loc": "{\"cities\": [\"Los Angeles\"], \"regions\": [\"California\"], \"coun",
+  "ats": "rippling",
+  "visa": false,
+  "url": "https://ats.rippling.com/thumbwar/jobs/2f32646a-6f11-4dab-bc65-9bcdf2e41d97"
+ },
+ {
+  "score": 9,
+  "company": "The New York Times",
+  "role": "QA Engineer",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/thenewyorktimes/jobs/4709153005"
+ },
+ {
+  "score": 9,
+  "company": "Sprinter Health",
+  "role": "Growth Team - Software Engineer",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/sprinter-health/7c9a105c-af07-4602-8326-c20c7cbcba68"
+ },
+ {
+  "score": 9,
+  "company": "VantageScore",
+  "role": "Production Engineer (Contract)",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/vantagescore/jobs/4305333009"
+ },
+ {
+  "score": 9,
+  "company": "Career Team",
+  "role": "DevOps Engineer",
+  "loc": "{\"cities\": [\"Denver\"], \"regions\": [\"Colorado\"], \"countries\":",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/careerteam/jobs/4711767005"
+ },
+ {
+  "score": 9,
+  "company": "Easy Dynamics Corporation",
+  "role": "Software Developer ",
+  "loc": "{\"cities\": [\"McLean\"], \"regions\": [\"Virginia\"], \"countries\":",
+  "ats": "rippling",
+  "visa": false,
+  "url": "https://ats.rippling.com/easy-dynamics-corporation/jobs/c6ee70e2-453d-40e3-a34c-469c69956621"
+ },
+ {
+  "score": 9,
+  "company": "Enova International",
+  "role": "Software Engineer - SMB (Hybrid)",
+  "loc": "{\"cities\": [\"Chicago\"], \"regions\": [\"Illinois\"], \"countries\"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/enova/jobs/8043813"
+ },
+ {
+  "score": 9,
+  "company": "Career Team",
+  "role": "Data Conversion Software Engineer",
+  "loc": "{\"cities\": [\"Denver\"], \"regions\": [\"Colorado\"], \"countries\":",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/careerteam/jobs/4666273005"
+ },
+ {
+  "score": 9,
+  "company": "Walker Consultants",
+  "role": "Data Platform Engineer",
+  "loc": "{\"cities\": [\"Chicago\"], \"regions\": [\"Illinois\"], \"countries\"",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/walkerconsultants/5e24dd8e-31fb-40d4-9901-9962227c6e9f"
+ },
+ {
   "score": 9,
   "company": "Tempo",
   "role": "Software Developer",
@@ -9,462 +531,408 @@
   "url": "https://jobs.ashbyhq.com/tempo-io/f71fd16c-bacb-4e90-9568-fcf9eea98a64"
  },
  {
-  "score": 8,
-  "company": "Array",
-  "role": "Quality Assurance (QA) Engineer",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "score": 9,
+  "company": "Bot Auto",
+  "role": "Frontend Engineer, Autonomous Traffic Control",
+  "loc": "{\"cities\": [\"Houston\", \"San Francisco\"], \"regions\": [\"Texas\"",
   "ats": "greenhouse",
   "visa": false,
-  "url": "https://boards.greenhouse.io/array/jobs/5633883004?gh_jid=5633883004"
+  "url": "https://job-boards.greenhouse.io/botauto/jobs/5279037008"
  },
  {
-  "score": 6,
-  "company": "Capable Labs",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/Capable/5cd1c05e-6631-43cb-b638-dcecc6602610"
- },
- {
-  "score": 6,
-  "company": "Diagrid",
-  "role": "Customer Engineer",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/Diagrid/6d47dded-b71d-4d21-ba79-842afe66ff21"
- },
- {
-  "score": 5,
-  "company": "LatchBio",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/LatchBio/14900ad1-ffc2-4790-a720-6363c842be46"
- },
- {
-  "score": 5,
-  "company": "Elorian",
-  "role": "Inference Infrastructure Engineer, Serving",
-  "loc": "{\"cities\": [\"Palo Alto\"], \"regions\": [\"California\"], \"countr",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/elorian-ai-inc/7836158c-eeb6-4d55-95ca-510b1007b41d"
- },
- {
-  "score": 5,
-  "company": "Elorian",
-  "role": "Reinforcement Learning Infrastructure Engineer",
-  "loc": "{\"cities\": [\"Palo Alto\"], \"regions\": [\"California\"], \"countr",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/elorian-ai-inc/7fc67724-f805-4715-a157-fa00e050bf8d"
- },
- {
-  "score": 5,
-  "company": "Kodiak",
-  "role": "Software Engineer, UI Tools Infrastructure",
-  "loc": "{\"cities\": [\"Mountain View\"], \"regions\": [\"California\"], \"co",
-  "ats": "greenhouse",
-  "visa": true,
-  "url": "https://job-boards.greenhouse.io/kodiak/jobs/4320932009"
- },
- {
-  "score": 5,
-  "company": "Jobgether",
-  "role": "Machine Learning Engineer, New Grad - Quora",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
-  "ats": "lever",
-  "visa": false,
-  "url": "https://jobs.lever.co/jobgether/4d090288-0343-42cd-8be2-956361f014b3"
- },
- {
-  "score": 5,
-  "company": "Thinking Machines Lab",
-  "role": "Software Engineer, Full Stack, Tinker",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "greenhouse",
-  "visa": true,
-  "url": "https://job-boards.greenhouse.io/thinkingmachines/jobs/5290314008"
- },
- {
-  "score": 5,
-  "company": "Thinking Machines Lab",
-  "role": "Software Engineer, Full Stack, Tinker",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "greenhouse",
-  "visa": true,
-  "url": "https://job-boards.greenhouse.io/thinkingmachines/jobs/5203386008"
- },
- {
-  "score": 4,
-  "company": "AssetWatch, Inc.",
-  "role": "Quality Assurance Engineer",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/assetwatch/jobs/4718087005"
- },
- {
-  "score": 4,
-  "company": "Jerry.ai",
-  "role": "Product Owner, AI Agents and Automation",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/Jerry.ai/6d607292-141e-47a3-ab28-f75b71602746"
- },
- {
-  "score": 4,
-  "company": "Jerry.ai",
-  "role": "Product Owner, Agentic AI",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/Jerry.ai/2154cf72-9fc7-49cc-96a3-6dc4886ad696"
- },
- {
-  "score": 4,
-  "company": "Profound",
-  "role": "Analytics Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/Profound/a6a442ba-00b4-4c70-b7fd-6a27eca54d8e"
- },
- {
-  "score": 4,
-  "company": "PCMI",
-  "role": "Software Engineer ",
-  "loc": "{\"cities\": [\"Oakville\", \"Park Ridge\"], \"regions\": [\"Ontario\"",
-  "ats": "rippling",
-  "visa": false,
-  "url": "https://ats.rippling.com/pcmi/jobs/3c0c434c-d6ca-4a54-becf-8db454a6147c"
- },
- {
-  "score": 4,
-  "company": "Bloomerang",
-  "role": "Data Engineer",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/bloomerang/jobs/4716623005"
- },
- {
-  "score": 4,
-  "company": "Nex",
-  "role": "Frontend Engineer - Marketing & Digital Experience (Contract)",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/nex/jobs/5289228008"
- },
- {
-  "score": 4,
-  "company": "Nex",
-  "role": "Frontend Engineer - Marketing & Digital Experience",
-  "loc": "{\"cities\": [\"San Jose\"], \"regions\": [\"California\"], \"countri",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/nex/jobs/5155205008"
- },
- {
-  "score": 4,
-  "company": "Jerry.ai",
-  "role": "Product Owner, AI Agents and Automation",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/Jerry.ai/1f4e7fb2-f8bf-4c18-a4f1-6dd9d9605fe9"
- },
- {
-  "score": 4,
-  "company": "Jerry.ai",
-  "role": "Product Owner, Agentic AI",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/Jerry.ai/93aadeb7-d590-4c80-999a-e995c147720f"
- },
- {
-  "score": 4,
-  "company": "Jobgether",
+  "score": 9,
+  "company": "Factory6",
   "role": "Software Developer",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
-  "ats": "lever",
-  "visa": false,
-  "url": "https://jobs.lever.co/jobgether/2254d47f-2236-4613-8e26-c800337fac3d"
- },
- {
-  "score": 4,
-  "company": "Capable Labs",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/Stealth-Deep-Tech/5cd1c05e-6631-43cb-b638-dcecc6602610"
- },
- {
-  "score": 4,
-  "company": "Dedalus Labs, Inc.",
-  "role": "Systems Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/dedalus-labs/cc865f1c-3c3a-4e89-ab55-0021b0c34970"
- },
- {
-  "score": 4,
-  "company": "Resolution",
-  "role": "Research Engineer",
-  "loc": "{\"cities\": [\"Berkeley\"], \"regions\": [\"California\"], \"countri",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/resolution/ee8f984b-dc19-46e6-93a6-ad4ba66f69ae"
- },
- {
-  "score": 4,
-  "company": "Loop",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"Columbus\"], \"regions\": [\"Ohio\"], \"countries\": [",
-  "ats": "lever",
-  "visa": false,
-  "url": "https://jobs.lever.co/loopreturns/4fc9603b-95c6-4d05-8d5a-4247fa108418"
- },
- {
-  "score": 3,
-  "company": "Chainlink Labs",
-  "role": "Software Engineer I, CCIP",
-  "loc": "{\"cities\": [\"Charlotte\"], \"regions\": [\"North Carolina\"], \"co",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/chainlink-labs/8485e325-111f-4370-b3c6-0ed95872144f"
- },
- {
-  "score": 3,
-  "company": "Tenstorrent",
-  "role": "Software Engineer, Metal Runtime (API & Abstractions)",
-  "loc": "{\"cities\": [\"Toronto\", \"Austin\", \"Santa Clara\"], \"regions\": ",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/tenstorrent/jobs/5192671007"
- },
- {
-  "score": 3,
-  "company": "Recraft",
-  "role": "Junior  Machine Learning Engineer",
-  "loc": "{\"cities\": [\"London\"], \"regions\": [\"England\", \"Georgia\"], \"c",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/recraft/f9c15249-88f1-4e68-8eaf-03fff97971e5"
- },
- {
-  "score": 3,
-  "company": "Kodiak",
-  "role": "Software Engineer, Controls (C++) ",
-  "loc": "{\"cities\": [\"Mountain View\"], \"regions\": [\"California\"], \"co",
-  "ats": "greenhouse",
-  "visa": true,
-  "url": "https://job-boards.greenhouse.io/kodiak/jobs/4312761009"
- },
- {
-  "score": 3,
-  "company": "Tenstorrent",
-  "role": "Software Engineer, TT-Fabric ",
-  "loc": "{\"cities\": [\"Toronto\", \"Austin\", \"Santa Clara\"], \"regions\": ",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/tenstorrent/jobs/4645584007"
- },
- {
-  "score": 3,
-  "company": "HUD",
-  "role": "Research Engineer, QC Automation",
-  "loc": "{\"cities\": [\"Singapore\", \"San Francisco\"], \"regions\": [\"Cali",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/hud/e6f9812e-dcfd-422b-b614-1d1273c16003"
- },
- {
-  "score": 3,
-  "company": "HUD",
-  "role": "Applied Research Engineer",
-  "loc": "{\"cities\": [\"Singapore\", \"San Francisco\"], \"regions\": [\"Cali",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/hud/4d61c93c-d17e-4ea1-9e17-85ca66a8db79"
- },
- {
-  "score": 3,
-  "company": "HUD",
-  "role": "Research Engineer, Benchmarks",
-  "loc": "{\"cities\": [\"Singapore\", \"San Francisco\"], \"regions\": [\"Cali",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/hud/c5252f0e-fd1d-41cf-b803-b0ce1fe4cea1"
- },
- {
-  "score": 3,
-  "company": "HUD",
-  "role": "Research Engineer, Synthetic Data",
-  "loc": "{\"cities\": [\"Singapore\", \"San Francisco\"], \"regions\": [\"Cali",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/hud/44e356fa-801c-4dac-99f5-848d80a68500"
- },
- {
-  "score": 3,
-  "company": "Exa",
-  "role": "Research Engineer, Generalist",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/exa/913d2b71-39d5-4d3a-ab8d-ffffa34cd069"
- },
- {
-  "score": 3,
-  "company": "Mercury",
-  "role": "Software Engineer - Product",
-  "loc": "{\"cities\": [\"Portland\", \"San Francisco\", \"New York\"], \"regio",
-  "ats": "greenhouse",
-  "visa": false,
-  "url": "https://job-boards.greenhouse.io/mercury/jobs/6101145004"
- },
- {
-  "score": 3,
-  "company": "Campspot",
-  "role": "AI Software Developer",
-  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "loc": "{\"cities\": [\"Lindon\"], \"regions\": [\"Utah\"], \"countries\": [\"U",
   "ats": "rippling",
   "visa": false,
-  "url": "https://ats.rippling.com/campspot/jobs/67d0ee6b-7f5d-4411-a80a-002712cbac5b"
+  "url": "https://ats.rippling.com/factory6-job-board/jobs/c5190b09-29f2-4417-9885-3ee5bab2f586"
  },
  {
-  "score": 2,
-  "company": "Pogo Technologies, Inc.",
-  "role": "Full Stack Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
+  "score": 9,
+  "company": "Ellevation",
+  "role": "Software Engineer II, Engineering",
+  "loc": "{\"cities\": [\"Boston\"], \"regions\": [\"Massachusetts\"], \"countr",
+  "ats": "lever",
   "visa": false,
-  "url": "https://jobs.ashbyhq.com/joinpogo/264829f1-d5a5-4f82-b32a-a9d7e6e3a1cf"
+  "url": "https://jobs.lever.co/ellevationeducation/014f9e30-c9f8-4b5a-b338-3bd3670910ed"
  },
  {
-  "score": 2,
-  "company": "Sauna",
-  "role": "Applied AI Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/sauna.ai/8b929ad7-204f-4584-bfa5-a356d08fab87"
- },
- {
-  "score": 2,
-  "company": "Retell AI",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"Redwood City\"], \"regions\": [\"California\"], \"cou",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/retell-ai/538ecfa9-2315-42a6-89cc-3cae52165526"
- },
- {
-  "score": 2,
-  "company": "Pogo Technologies, Inc.",
-  "role": "Full Stack Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
+  "score": 8,
+  "company": "FieldAI",
+  "role": "Software Engineer, Data Engineering",
+  "loc": "{\"cities\": [\"Irvine\"], \"regions\": [\"California\"], \"countries",
+  "ats": "lever",
   "visa": false,
-  "url": "https://jobs.ashbyhq.com/joinpogo/570c8f47-ee6f-4c54-9858-33d9f2233fb6"
+  "url": "https://jobs.lever.co/field-ai/e3b7bac7-5410-44bb-964c-02815fbd0c97"
  },
  {
-  "score": 2,
-  "company": "Pogo Technologies, Inc.",
-  "role": "Full Stack Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/joinpogo/15592f79-0a11-4a07-87a2-bb90a5970bdc"
- },
- {
-  "score": 2,
-  "company": "Pogo Technologies, Inc.",
-  "role": "Full Stack Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/joinpogo/ebd72670-ed09-4a4d-a294-d5c0ac5461d0"
- },
- {
-  "score": 2,
-  "company": "Pogo Technologies, Inc.",
-  "role": "Full Stack Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": false,
-  "url": "https://jobs.ashbyhq.com/joinpogo/70e4e132-f4ad-4a2a-ad89-7cd1be7e30f1"
- },
- {
-  "score": 2,
-  "company": "Capable Labs",
-  "role": "Founding ML Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/Stealth-Deep-Tech/f88a6721-4892-4cb0-97e7-d9b1b5dbd13f"
- },
- {
-  "score": 2,
-  "company": "Capable Labs",
-  "role": "Founding ML Engineer",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/Capable/f88a6721-4892-4cb0-97e7-d9b1b5dbd13f"
- },
- {
-  "score": 2,
-  "company": "Augustus",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
-  "ats": "ashbyhq",
-  "visa": true,
-  "url": "https://jobs.ashbyhq.com/Augustus/bd9bb1b4-9f01-4215-9fa5-e40a64dc087b"
- },
- {
-  "score": 1,
-  "company": "Kodiak",
-  "role": "Software Engineer, Embedded",
-  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
-  "ats": "greenhouse",
-  "visa": true,
-  "url": "https://job-boards.greenhouse.io/kodiak/jobs/4005123009"
- },
- {
-  "score": 1,
-  "company": "Vivid Seats",
-  "role": "Software Engineer",
-  "loc": "{\"cities\": [\"Toronto\", \"Chicago\"], \"regions\": [\"Ontario\", \"I",
+  "score": 8,
+  "company": "Scale AI",
+  "role": "Software Engineer, Gen AI",
+  "loc": "{\"cities\": [\"San Francisco\", \"New York\"], \"regions\": [\"Calif",
   "ats": "greenhouse",
   "visa": false,
-  "url": "https://job-boards.greenhouse.io/vividseatsllc/jobs/5167447007?gh_jid=5167447007"
+  "url": "https://job-boards.greenhouse.io/scaleai/jobs/4591300005"
  },
  {
-  "score": 1,
-  "company": "Paxos",
-  "role": "Security Operations Engineer",
+  "score": 8,
+  "company": "GovWell",
+  "role": "Software Engineer, Mobile",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/GovWell/aaedfff4-c080-4ecc-bd34-2e18d78ee41a"
+ },
+ {
+  "score": 8,
+  "company": "3Pillar",
+  "role": "Mid Full Stack Engineer (Javascript)",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/3pillarglobal/37c48bdd-a18e-4b3f-a521-6b759882804f"
+ },
+ {
+  "score": 8,
+  "company": "Zanskar",
+  "role": "Full-Stack Software Engineer, Platform Data",
+  "loc": "{\"cities\": [\"Salt Lake City\"], \"regions\": [\"Utah\"], \"countri",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/Zanskar/5c1ec83e-ff30-4088-b88b-9d6d6dccae17"
+ },
+ {
+  "score": 8,
+  "company": "Flock Homes",
+  "role": "Full Stack Software Engineer",
+  "loc": "{\"cities\": [\"Denver\", \"San Francisco\"], \"regions\": [\"Colorad",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/flockhomes/jobs/4719723005"
+ },
+ {
+  "score": 8,
+  "company": "The Weather Company",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"Andover\"], \"regions\": [\"Massachusetts\"], \"count",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/theweathercompany/jobs/5190840007"
+ },
+ {
+  "score": 8,
+  "company": "Roo",
+  "role": "Full Stack Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/roo/jobs/5373552008"
+ },
+ {
+  "score": 8,
+  "company": "GRAIL",
+  "role": "Build Engineer - Bazel - #4770",
+  "loc": "{\"cities\": [\"Durham\"], \"regions\": [\"North Carolina\"], \"count",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/grailbio/bacb3f20-2791-4d39-a416-d3fb9ce4e5f5"
+ },
+ {
+  "score": 8,
+  "company": "Sirona Medical",
+  "role": "Software Engineer - Burlington, VT",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/sironamedical/jobs/4718959005"
+ },
+ {
+  "score": 8,
+  "company": "Anduril Industries",
+  "role": "Software Engineer, Fleet Infrastructure",
+  "loc": "{\"cities\": [\"Washington\", \"Boston\"], \"regions\": [\"District o",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/andurilindustries/jobs/5195644007?gh_jid=5195644007"
+ },
+ {
+  "score": 8,
+  "company": "Steelhead Technologies",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"Calumet\"], \"regions\": [\"Michigan\"], \"countries\"",
+  "ats": "rippling",
+  "visa": false,
+  "url": "https://ats.rippling.com/steelhead-technologies-inc/jobs/c21fa91c-1028-4442-9319-617d84ef64ed"
+ },
+ {
+  "score": 8,
+  "company": "Jobgether",
+  "role": "Shopify Full Stack Developer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/jobgether/7fc9b5e6-a2af-4884-884d-76249204e837"
+ },
+ {
+  "score": 8,
+  "company": "Hippo Insurance",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"Austin\"], \"regions\": [\"Texas\"], \"countries\": [\"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/hippo70/jobs/8649207002?gh_jid=8649207002"
+ },
+ {
+  "score": 8,
+  "company": "Profluent",
+  "role": "Machine Learning Research Engineer ",
+  "loc": "{\"cities\": [\"Emeryville\"], \"regions\": [\"California\"], \"count",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/profluent/jobs/5195933008"
+ },
+ {
+  "score": 8,
+  "company": "Jobgether",
+  "role": "Go Developer - AI & ML",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/jobgether/14613fd7-714f-489a-9186-222b571e0801"
+ },
+ {
+  "score": 8,
+  "company": "Zello",
+  "role": "Software Engineer I - AI Generalist",
+  "loc": "{\"cities\": [\"Austin\"], \"regions\": [\"Texas\"], \"countries\": [\"",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/zello/66de7a50-17cb-42aa-87eb-cd40c637338e"
+ },
+ {
+  "score": 8,
+  "company": "Boson AI",
+  "role": "Software Engineer - Platform & Application",
+  "loc": "{\"cities\": [\"Santa Clara\"], \"regions\": [\"California\"], \"coun",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/bosonai/2b520a0f-556a-4dc2-a5a7-d8845a921335"
+ },
+ {
+  "score": 8,
+  "company": "National Information Solutions Cooperative (NISC)",
+  "role": "Software Developer II - Meter Data Management Software (Full Stack, Databricks)",
+  "loc": "{\"cities\": [\"Cedar Rapids\", \"Mandan\", \"Lake Saint Louis\"], \"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/nisc/jobs/8077146"
+ },
+ {
+  "score": 8,
+  "company": "Black Canyon Consulting",
+  "role": "Full Stack Developer \u2013 Wagtail CMS",
+  "loc": "{\"cities\": [\"Bethesda\"], \"regions\": [\"Maryland\"], \"countries",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/blackcanyonconsulting/jobs/7811700003"
+ },
+ {
+  "score": 8,
+  "company": "Bjak",
+  "role": "Full Stack Engineer, AI systems",
+  "loc": "{\"cities\": [\"Ireland\"], \"regions\": [\"Mississippi\"], \"countri",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/bjakcareer/f5749c08-7463-4458-a55e-6b6e69eba152"
+ },
+ {
+  "score": 8,
+  "company": "Zania",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/Zania/008b2087-e8fb-4b5e-a39f-75d40ab02c57"
+ },
+ {
+  "score": 8,
+  "company": "Welbehealth Non Sponsored Board",
+  "role": "AI Engineer I",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/jobboard/jobs/8599687002"
+ },
+ {
+  "score": 8,
+  "company": "CCT",
+  "role": "Full Stack Software Engineer - Insight Analytics",
+  "loc": "{\"cities\": [\"Tulsa\"], \"regions\": [\"Oklahoma\"], \"countries\": ",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/casino-cash-trac/a964f2d4-044c-423a-bdfb-d3e61d98e4b9"
+ },
+ {
+  "score": 8,
+  "company": "CCT",
+  "role": "Full Stack Software Engineer - Insight Analytics",
+  "loc": "{\"cities\": [\"Tulsa\"], \"regions\": [\"Oklahoma\"], \"countries\": ",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/casino-cash-trac/ce1906ae-2c7e-4852-8489-ed909b87ce8f"
+ },
+ {
+  "score": 8,
+  "company": "Commure",
+  "role": "Software Engineer, AI Integrations",
+  "loc": "{\"cities\": [\"Mountain View\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/Commure/39e07152-a3d2-47c0-8c5b-36e8b3a6cdf5"
+ },
+ {
+  "score": 8,
+  "company": "\u014cura",
+  "role": "Full Stack Software Engineer",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/oura/jobs/4287386009"
+ },
+ {
+  "score": 8,
+  "company": "Netic",
+  "role": "Software Engineer (Agent Platform) - Intern - 2026-2027",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/netic/b0ea7aab-8eea-4d31-96f9-278364180ae7"
+ },
+ {
+  "score": 8,
+  "company": "Netic",
+  "role": "Software Engineer (Agent Platform) - New Grad - 2026-2027",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/netic/d9bcb6a2-0e54-4cb3-baec-43f2d74db18f"
+ },
+ {
+  "score": 8,
+  "company": "Motional",
+  "role": "Software Engineer, ML Dev Enablement",
+  "loc": "{\"cities\": [\"Las Vegas\"], \"regions\": [\"Nevada\"], \"countries\"",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/motional/jobs/7788600003"
+ },
+ {
+  "score": 8,
+  "company": "Path Robotics",
+  "role": "Software Engineer, C++/Robotics",
+  "loc": "{\"cities\": [\"Columbus\"], \"regions\": [\"Ohio\"], \"countries\": [",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://boards.greenhouse.io/pathrobotics/jobs/8633387002?gh_jid=8633387002"
+ },
+ {
+  "score": 8,
+  "company": "Petra Security",
+  "role": "Software Engineer (Frontend)",
+  "loc": "{\"cities\": [\"San Francisco\"], \"regions\": [\"California\"], \"co",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/petra-security/91476f76-c535-4052-a18d-7387b95e8983"
+ },
+ {
+  "score": 8,
+  "company": "Sprinter Health",
+  "role": "Product Engineering Team - Software Engineer (Mid-Level)",
+  "loc": "{\"cities\": [\"Menlo Park\"], \"regions\": [\"California\"], \"count",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/sprinter-health/8d0e0761-d1b3-4b31-bff1-4c0860d57ef0"
+ },
+ {
+  "score": 8,
+  "company": "DexCare",
+  "role": "Backend - Software Engineer II",
+  "loc": "{\"cities\": [\"International Falls\"], \"regions\": [\"Minnesota\"]",
+  "ats": "lever",
+  "visa": false,
+  "url": "https://jobs.lever.co/dexcarehealth/a5333983-d3f7-4ec9-bd35-e5a20115a230"
+ },
+ {
+  "score": 8,
+  "company": "Nous Research",
+  "role": "Software Engineer, Hermes Cloud",
   "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
   "ats": "ashbyhq",
   "visa": false,
-  "url": "https://jobs.ashbyhq.com/paxos/f0eece71-5927-4f49-bed2-9932af8edd9f"
+  "url": "https://jobs.ashbyhq.com/nous-research/c0c86c4a-19fd-405d-a3bc-453b91f5066d"
  },
  {
-  "score": 1,
-  "company": "Kodiak",
-  "role": "Software Engineer, Routing",
-  "loc": "{\"cities\": [\"Mountain View\"], \"regions\": [\"California\"], \"co",
+  "score": 8,
+  "company": "Realtor.com Careers",
+  "role": "Software Engineer ",
+  "loc": "{\"cities\": [\"Austin\"], \"regions\": [\"Texas\"], \"countries\": [\"",
   "ats": "greenhouse",
-  "visa": true,
-  "url": "https://job-boards.greenhouse.io/kodiak/jobs/4243323009"
+  "visa": false,
+  "url": "https://boards.greenhouse.io/rdccareers/jobs/7800190003?gh_jid=7800190003"
+ },
+ {
+  "score": 8,
+  "company": "Alarm.com",
+  "role": "DevOps Engineer",
+  "loc": "{\"cities\": [\"Lawrence\"], \"regions\": [\"Kansas\"], \"countries\":",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/alarmcom/jobs/8594797002"
+ },
+ {
+  "score": 8,
+  "company": "Focus Financial Partners",
+  "role": "BI & Data Engineer",
+  "loc": "{\"cities\": [\"St. Louis\"], \"regions\": [\"Missouri\"], \"countrie",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.greenhouse.io/focusfinancialpartners/jobs/6112185004"
+ },
+ {
+  "score": 8,
+  "company": "Dandelion Health Inc",
+  "role": "Analytics Engineer",
+  "loc": "{\"cities\": null, \"regions\": null, \"countries\": [\"United Stat",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/dandelionhealth/3070b88a-c42c-4136-bb87-9eb950efd154"
+ },
+ {
+  "score": 8,
+  "company": "Allen Control Systems",
+  "role": "Full Stack Developer ",
+  "loc": "{\"cities\": [\"Austin\"], \"regions\": [\"Texas\"], \"countries\": [\"",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/allen-control-systems/8e5924c7-5d91-41a5-a6b5-0e6ffc506bd1"
+ },
+ {
+  "score": 8,
+  "company": "Man Group",
+  "role": "Software Engineer",
+  "loc": "{\"cities\": [\"New York\"], \"regions\": [\"New York\"], \"countries",
+  "ats": "greenhouse",
+  "visa": false,
+  "url": "https://job-boards.eu.greenhouse.io/mangroup/jobs/4920204101"
+ },
+ {
+  "score": 8,
+  "company": "Sprinter Health",
+  "role": "Data Platform Team - Software Engineer (Mid-level)",
+  "loc": "{\"cities\": [\"Menlo Park\"], \"regions\": [\"California\"], \"count",
+  "ats": "ashbyhq",
+  "visa": false,
+  "url": "https://jobs.ashbyhq.com/sprinter-health/ac76c6fa-f3bc-4068-81e4-a0fabbbecce9"
  }
 ]

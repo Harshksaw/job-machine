@@ -1,0 +1,108 @@
+<style>
+  .choice-grid { display:grid; gap:18px; }
+  .design-card { border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; background:var(--surface); transition:.18s ease; }
+  .design-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+  .design-card.selected { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent); }
+  .design-head { display:flex; align-items:flex-start; gap:12px; padding:16px 18px; border-bottom:1px solid var(--border); }
+  .choice-letter { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:9px; background:#102d2b; color:#69e4d5; font-weight:800; }
+  .design-head h3 { margin:0; }
+  .design-head p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+  .recommend { margin-left:auto; padding:4px 8px; border-radius:999px; background:#123a2e; color:#75e8b5; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+  .mini-app { background:#090b10; color:#e5e7eb; min-height:250px; font:11px/1.35 ui-sans-serif,system-ui; }
+  .mini-top { display:flex; align-items:center; gap:8px; min-height:34px; padding:0 10px; border-bottom:1px solid #252832; background:#0d1016; }
+  .brand { font-weight:800; margin-right:auto; }
+  .metric { padding:3px 7px; border:1px solid #292d38; border-radius:6px; color:#a1a1aa; }
+  .metric strong { color:#f4f4f5; }
+  .live { color:#6ee7b7; }
+  .layout-a { display:grid; grid-template-columns:126px 190px minmax(250px,1fr) 220px; min-height:216px; }
+  .nav { padding:10px 8px; border-right:1px solid #252832; background:#0b0e13; }
+  .nav-item { padding:7px 8px; margin-bottom:3px; border-radius:6px; color:#71717a; }
+  .nav-item.active { background:#12302e; color:#70e1d3; }
+  .queue { border-right:1px solid #252832; background:#0e1117; }
+  .pane-title { padding:10px; color:#a1a1aa; border-bottom:1px solid #252832; font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+  .queue-item { padding:9px 10px; border-bottom:1px solid #20232b; }
+  .queue-item.active { background:#182120; border-left:3px solid #2dd4bf; padding-left:7px; }
+  .company { color:#f4f4f5; font-weight:700; }
+  .role { color:#71717a; font-size:10px; margin-top:2px; }
+  .tag { display:inline-block; margin-top:5px; padding:2px 5px; border-radius:999px; font-size:9px; }
+  .tag.review { background:#3a2d12; color:#fbbf24; }
+  .tag.work { background:#132d42; color:#7dd3fc; }
+  .tag.done { background:#123326; color:#6ee7b7; }
+  .pdf-zone { display:grid; place-items:center; padding:12px; background:#171a20; }
+  .paper { width:142px; height:184px; padding:10px; background:white; color:#111827; box-shadow:0 8px 30px #0008; }
+  .paper-name { font-size:7px; font-weight:900; text-align:center; margin-bottom:5px; }
+  .paper-rule { height:2px; background:#27272a; margin:5px 0 4px; }
+  .paper-line { height:2px; margin:3px 0; background:#a1a1aa; border-radius:2px; }
+  .paper-line.hot { background:#14b8a6; }
+  .side { border-left:1px solid #252832; background:#0d1016; }
+  .checks { padding:10px; border-bottom:1px solid #252832; }
+  .check { display:flex; justify-content:space-between; margin:5px 0; color:#a1a1aa; }
+  .check b { color:#6ee7b7; }
+  .timeline { padding:10px; color:#71717a; }
+  .event { padding:3px 0 3px 12px; border-left:1px solid #3f3f46; }
+  .event.now { color:#fbbf24; border-color:#fbbf24; }
+  .actions { display:flex; gap:6px; padding:10px; margin-top:auto; }
+  .btn { flex:1; padding:7px 5px; border-radius:6px; text-align:center; font-weight:700; }
+  .approve { background:#0f766e; color:white; }
+  .regen { border:1px solid #3f3f46; color:#d4d4d8; }
+  .layout-b { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px; min-height:216px; }
+  .column { border:1px solid #252832; border-radius:8px; background:#0e1117; overflow:hidden; }
+  .column-title { padding:8px; border-bottom:1px solid #252832; color:#a1a1aa; font-weight:700; }
+  .job-card { margin:7px; padding:8px; border:1px solid #2a2e37; border-radius:7px; background:#131720; }
+  .thumb { float:right; width:30px; height:39px; background:#f4f4f5; border-radius:2px; }
+  .layout-c { display:grid; grid-template-columns:170px 1fr; min-height:216px; }
+  .dossiers { border-right:1px solid #252832; padding:8px; }
+  .dossier { padding:8px; border-bottom:1px solid #252832; color:#a1a1aa; }
+  .dossier.active { color:#e4e4e7; background:#17201f; }
+  .detail { padding:10px; }
+  .tabs { display:flex; gap:12px; color:#71717a; border-bottom:1px solid #252832; padding-bottom:7px; }
+  .tabs b { color:#5eead4; }
+  .detail-body { display:grid; grid-template-columns:1fr 140px; gap:10px; padding-top:10px; }
+  .preview-strip { display:grid; place-items:center; min-height:155px; background:#171a20; }
+  .review-box { border:1px solid #3a2d12; border-radius:8px; padding:10px; color:#d4d4d8; }
+  .tradeoff { padding:12px 18px 16px; color:var(--muted); font-size:12px; }
+  @media(max-width:900px){ .layout-a{grid-template-columns:100px 150px 1fr}.layout-a .side{display:none}.layout-b{grid-template-columns:1fr}.layout-c{grid-template-columns:120px 1fr} }
+</style>
+
+<h2>Choose the Resume Review dashboard structure</h2>
+<p class="subtitle">Every job keeps moving through discovery, analysis, tailoring, and verification. Only the upload step for a specific job waits for your approval.</p>
+
+<div class="choice-grid">
+  <div class="design-card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="design-head">
+      <div class="choice-letter">A</div>
+      <div><h3>Resume Operations Console</h3><p>Dedicated queue + live resume + verification/log panel in one screen.</p></div>
+      <div class="recommend">Recommended</div>
+    </div>
+    <div class="mini-app">
+      <div class="mini-top"><span class="brand">JOB MACHINE</span><span class="metric"><strong>3</strong> workers <span class="live">● live</span></span><span class="metric"><strong>8</strong> awaiting review</span><span class="metric"><strong>21</strong> queued</span></div>
+      <div class="layout-a">
+        <div class="nav"><div class="nav-item">Dossiers</div><div class="nav-item">Pipeline</div><div class="nav-item active">Resume Queue</div><div class="nav-item">People</div></div>
+        <div class="queue"><div class="pane-title">Review queue · 8</div><div class="queue-item active"><div class="company">Cohere</div><div class="role">Software Engineer</div><span class="tag review">Awaiting approval</span></div><div class="queue-item"><div class="company">Nylas</div><div class="role">Full-Stack Engineer</div><span class="tag work">Verifying 9/12</span></div><div class="queue-item"><div class="company">7shifts</div><div class="role">Backend Developer</div><span class="tag work">Compiling</span></div><div class="queue-item"><div class="company">Promise Robotics</div><div class="role">Software Developer</div><span class="tag done">Approved</span></div></div>
+        <div class="pdf-zone"><div class="paper"><div class="paper-name">HARSH SAW</div><div class="paper-rule"></div><div class="paper-line"></div><div class="paper-line hot" style="width:85%"></div><div class="paper-line"></div><div class="paper-rule"></div><div class="paper-line" style="width:92%"></div><div class="paper-line hot"></div><div class="paper-line" style="width:80%"></div><div class="paper-line"></div><div class="paper-line" style="width:88%"></div><div class="paper-rule"></div><div class="paper-line hot" style="width:75%"></div><div class="paper-line"></div><div class="paper-line" style="width:90%"></div><div class="paper-line"></div></div></div>
+        <div class="side"><div class="pane-title">Verification</div><div class="checks"><div class="check">One page <b>PASS</b></div><div class="check">Format unchanged <b>PASS</b></div><div class="check">Evidence-backed <b>PASS</b></div><div class="check">Word edits <b>4</b></div></div><div class="pane-title">Live process</div><div class="timeline"><div class="event">Queued</div><div class="event">Tailored</div><div class="event">Compiled</div><div class="event">Verified 12/12</div><div class="event now">Waiting for you</div></div><div class="actions"><div class="btn regen">Regenerate</div><div class="btn approve">Approve & continue</div></div></div>
+      </div>
+    </div>
+    <div class="tradeoff">Best for fast reviewing and understanding exactly what happened. Adds one focused top-level workspace.</div>
+  </div>
+
+  <div class="design-card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="design-head"><div class="choice-letter">B</div><div><h3>Kanban Queue</h3><p>Processing, awaiting review, and approved resumes arranged as cards.</p></div></div>
+    <div class="mini-app">
+      <div class="mini-top"><span class="brand">RESUME PIPELINE</span><span class="metric"><strong>3</strong> active</span><span class="metric"><strong>8</strong> review</span></div>
+      <div class="layout-b"><div class="column"><div class="column-title">Processing · 3</div><div class="job-card"><div class="thumb"></div><div class="company">Nylas</div><div class="role">Verifying 9/12</div><span class="tag work">live</span></div><div class="job-card"><div class="company">7shifts</div><div class="role">Compiling PDF</div></div></div><div class="column"><div class="column-title">Needs review · 8</div><div class="job-card"><div class="thumb"></div><div class="company">Cohere</div><div class="role">4 word changes</div><span class="tag review">approve</span></div><div class="job-card"><div class="company">Verkada</div><div class="role">3 word changes</div></div></div><div class="column"><div class="column-title">Approved · 14</div><div class="job-card"><div class="thumb"></div><div class="company">Promise Robotics</div><div class="role">Ready to upload</div><span class="tag done">approved</span></div></div></div>
+    </div>
+    <div class="tradeoff">Excellent queue overview, but opening and comparing full resumes requires a drawer or modal.</div>
+  </div>
+
+  <div class="design-card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="design-head"><div class="choice-letter">C</div><div><h3>Dossier-First Upgrade</h3><p>Keep the current dashboard; add approval and logs inside each job.</p></div></div>
+    <div class="mini-app">
+      <div class="mini-top"><span class="brand">DOSSIERS</span><span class="metric"><strong>8</strong> resumes need review</span></div>
+      <div class="layout-c"><div class="dossiers"><div class="dossier">Hims & Hers</div><div class="dossier active">Cohere · Review</div><div class="dossier">Nylas · Running</div><div class="dossier">7shifts · Queued</div></div><div class="detail"><div class="tabs">Overview <b>Resume · Review</b> Letter Answers Activity</div><div class="detail-body"><div class="preview-strip"><div class="paper" style="width:112px;height:140px"><div class="paper-name">HARSH SAW</div><div class="paper-rule"></div><div class="paper-line hot"></div><div class="paper-line"></div><div class="paper-line"></div><div class="paper-rule"></div><div class="paper-line hot"></div><div class="paper-line"></div></div></div><div class="review-box"><b>Ready for approval</b><p style="color:#a1a1aa;font-size:10px">12 checks passed<br>4 words changed<br>1 page</p><div class="btn approve">Approve</div><div class="btn regen" style="margin-top:6px">Regenerate</div></div></div></div></div>
+    </div>
+    <div class="tradeoff">Smallest UI change, but it hides the global queue and makes reviewing many resumes slower.</div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">Click A, B, or C. You can also tell me what to combine or change.</p>

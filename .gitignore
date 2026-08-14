@@ -43,3 +43,6 @@ session-artifacts/
 
 # Persistent service logs (launchd com.jobmachine.dashboard -> logs/dashboard.log)
 logs/
+
+# Local Playwright venv (job-apply automation)
+.venv-playwright/
