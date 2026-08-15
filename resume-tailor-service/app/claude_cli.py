@@ -1,5 +1,7 @@
 import json
 import subprocess
+from collections.abc import Callable
+
 from app.errors import ClaudeCliError
 
 # "claude-haiku-4-5" is a valid, current model id/alias for the `claude` CLI
@@ -10,8 +12,31 @@ from app.errors import ClaudeCliError
 # too slow for this workload and was timing out at 120s.
 MODEL_NAME = "claude-haiku-4-5"
 
+# This service needs a plain text completion, not an interactive coding
+# session. Left to its defaults the subprocess inherits the *user's* global
+# Claude Code config, which is not ours to control: `~/.claude/settings.json`
+# carries `"defaultMode": "plan"`, so the model answered every kit request with
+# "I'm in plan mode, so I can only read files and create a plan" instead of the
+# JSON, and `/tailor` + `/generate-kit` returned 502 for months (0 of 155 live
+# dossiers ever got a kit). It also loaded every MCP server and plugin on the
+# machine, which added ~70 startup events and minutes of latency per call.
+# These flags pin the subprocess to a hermetic, tool-free completion.
+# Do not drop them without re-testing against a plan-mode default.
+_ISOLATION_FLAGS = [
+    "--permission-mode", "default",   # ignore the user's plan-mode default
+    "--strict-mcp-config",            # ...and their MCP servers
+    "--mcp-config", '{"mcpServers":{}}',
+    "--disable-slash-commands",       # ...and their skills
+    "--allowedTools", "",             # no tools: this is a completion, not an agent
+]
 
-def run_claude(prompt: str, timeout: int = 300, model: str = MODEL_NAME) -> str:
+
+def run_claude(
+    prompt: str,
+    timeout: int = 300,
+    model: str = MODEL_NAME,
+    json_schema: dict | None = None,
+) -> str:
     """Run a headless Claude Code query via the `claude` CLI (print mode),
     using the user's Claude Code auth (subscription or configured key) — no
     separate ANTHROPIC_API_KEY required. Returns the assistant's raw text
@@ -23,10 +48,19 @@ def run_claude(prompt: str, timeout: int = 300, model: str = MODEL_NAME) -> str:
     assistant-message, rate_limit_event, ..., result), with the final
     element being the `{"type": "result", ...}` object. Both shapes are
     handled below.
+
+    `json_schema` forces structured output. Without it the model reliably
+    reasons *about* the task in prose before (or instead of) emitting the
+    object, which then fails `json.loads`; with it the CLI guarantees the
+    result field parses against the schema.
     """
+    command = ["claude", "-p", prompt, "--output-format", "json", "--model", model]
+    command += _ISOLATION_FLAGS
+    if json_schema is not None:
+        command += ["--json-schema", json.dumps(json_schema)]
     try:
         result = subprocess.run(
-            ["claude", "-p", prompt, "--output-format", "json", "--model", model],
+            command,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -62,4 +96,32 @@ def run_claude(prompt: str, timeout: int = 300, model: str = MODEL_NAME) -> str:
     text = payload.get("result")
     if not isinstance(text, str):
         raise ClaudeCliError(f"claude CLI JSON had no usable text field; keys={list(payload)}")
+    if not text.strip():
+        # Surfaces as a bare "Expecting value: line 1 column 1 (char 0)" two
+        # frames up otherwise, which reads like a prompt bug rather than an
+        # empty turn.
+        raise ClaudeCliError("claude CLI returned an empty response")
     return text
+
+
+def schema_completer(model_or_schema) -> Callable[[str], str]:
+    """A one-arg `complete` callable pinned to a JSON schema.
+
+    Accepts a Pydantic model class or an already-built schema dict — callers
+    that need a field the model marks optional (Pydantic omits any field with
+    a default from `required`, and structured decoding will then skip it) pass
+    a tightened dict.
+
+    Call sites take `complete: Callable[[str], str]` so tests can inject a
+    stub; this keeps that shape while still forcing structured output.
+    """
+    schema = (
+        model_or_schema.model_json_schema()
+        if hasattr(model_or_schema, "model_json_schema")
+        else model_or_schema
+    )
+
+    def complete(prompt: str) -> str:
+        return run_claude(prompt, json_schema=schema)
+
+    return complete

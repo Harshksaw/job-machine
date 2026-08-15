@@ -4,8 +4,11 @@ from pathlib import Path
 import pytest
 
 from app.application_kit import (
+    _fact_errors,
     _allowed_tokens,
+    _answer_schema,
     _fact_is_traceable,
+    _kit_schema,
     build_source_index,
     generate_answer,
     generate_kit,
@@ -255,3 +258,213 @@ def test_verified_relocation_preference_can_be_answered():
     )
     assert answer.needs_user_input is False
     assert answer.source_ids == ["profile.relocation"]
+
+
+def test_generate_kit_drops_keywords_absent_from_the_jd():
+    """A paraphrased keyword must not sink an otherwise valid kit.
+
+    Keywords are labels lifted off the posting, not claims about the
+    candidate, so they are filtered rather than treated as a fatal error.
+    """
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["keywords"] = ["FastAPI", "Kubernetes", "AWS"]
+
+    kit = generate_kit(
+        _job(), bank, complete=lambda _: json.dumps(payload), max_retries=0
+    )
+
+    # "Kubernetes" never appears in the JD, so it is dropped, not raised on.
+    assert kit.analysis.keywords == ["FastAPI", "AWS"]
+
+
+def test_generic_tech_vocabulary_is_not_treated_as_a_candidate_fact():
+    """"UI" and friends assert nothing about the candidate.
+
+    Before this, one incidental generic acronym failed traceability and 502'd
+    the whole request.
+    """
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["evidence"][0]["proof"] = (
+        "Built a FastAPI multi-tenant RAG platform, including its API and UI."
+    )
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+
+    assert errors == []
+
+
+def test_generic_stopwords_do_not_excuse_a_fabricated_technology():
+    """The traceability guarantee still holds for real credential claims."""
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["evidence"][0]["proof"] = (
+        "Built a FastAPI platform on Kubernetes and Elasticsearch."
+    )
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+
+    assert any("Elasticsearch" in error for error in errors)
+
+
+def test_kit_schema_demands_every_field_validation_depends_on():
+    """Pydantic drops defaulted fields from `required`, so structured decoding
+    was free to omit the cover letter -- and did, every time."""
+    schema = _kit_schema()
+
+    assert "cover_letter" in schema["required"]
+    analysis = schema["$defs"]["FitAnalysis"]
+    assert "evidence" in analysis["required"]
+    assert analysis["properties"]["evidence"]["minItems"] == 3
+
+
+def test_answer_schema_demands_an_answer():
+    schema = _answer_schema()
+
+    assert schema["required"] == ["answer", "source_ids"]
+
+
+def test_generic_vocabulary_is_allowed_inside_a_compound_fact():
+    """"GPU-level" is no more a credential than a bare "GPU"."""
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["gaps"] = ["No GPU-level kernel optimisation experience."]
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+
+    assert errors == []
+
+
+def test_trailing_punctuation_does_not_break_a_numeric_fact():
+    """"in 2026," must match the ledger's "2026"; the comma rode along."""
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    sources = build_source_index(bank)
+    allowed = " ".join(sources.values())
+    assert "2026" in allowed  # guards the fixture, not the behaviour
+
+    errors = _fact_errors("Graduating in 2026, ready to build.", allowed, "letter")
+
+    assert errors == []
+
+
+def test_cover_letter_may_use_the_short_company_name():
+    """A letter says "Cerebras", not "Cerebras Systems"."""
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    job = _job()
+    job.company = "Acme Cloud Systems"
+    payload = _valid_kit_payload()
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, job, build_source_index(bank))
+
+    assert not any("must name the company" in error for error in errors)
+
+
+def test_evidence_requirement_may_use_the_canonical_spelling():
+    """The posting may write "typescript"; the row names "TypeScript".
+
+    Requirements describe the job, not the candidate, so they are checked
+    against the whole verified corpus. Checking them against the JD alone
+    rejected rows whose terms sit in the resume bank.
+    """
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    job = _job()
+    job.jd_text += " We work in typescript and postgresql every day."
+    payload = _valid_kit_payload()
+    payload["analysis"]["evidence"][0]["requirement"] = "TypeScript and PostgreSQL"
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, job, build_source_index(bank))
+
+    assert errors == []
+
+
+def test_evidence_requirement_still_rejects_an_invented_technology():
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    # Mid-phrase on purpose: extract_facts deliberately ignores a
+    # sentence-initial capitalized word, since it cannot tell a proper noun
+    # from an ordinary sentence opener.
+    payload["analysis"]["evidence"][0]["requirement"] = "Experience with Fortran"
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+
+    assert any("Fortran" in error for error in errors)
+
+
+def test_gaps_may_name_technologies_the_candidate_lacks():
+    """A gap states what is missing, so it names things NOT in the bank.
+
+    Requiring traceability there is backwards and was rejecting honest
+    admissions -- the single largest cause of failed kits in the live run.
+    """
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["gaps"] = [
+        "No Jest, Cypress or Selenium experience.",
+        "No IoT background.",
+    ]
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+
+    assert errors == []
+
+
+def test_a_fabricated_credential_is_still_caught_outside_gaps():
+    """Relaxing gaps must not open a hole in the actual claims."""
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["analysis"]["role_thesis"] = "Engineer with deep Fortran experience."
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, _job(), build_source_index(bank))
+
+    assert any("Fortran" in error for error in errors)
+
+
+def test_short_and_long_product_names_are_one_fact():
+    """The bank writes "PostgreSQL"; a letter saying "Postgres" is the same
+    product, not a second, unverified one."""
+    allowed = _allowed_tokens("PostgreSQL, MongoDB, Kubernetes")
+
+    assert _fact_is_traceable("Postgres", allowed)
+    assert _fact_is_traceable("Mongo", allowed)
+    # An unrelated database is still untraceable.
+    assert not _fact_is_traceable("Cassandra", allowed)
+
+
+def test_dotted_compound_decomposes_to_its_bank_term():
+    """_allowed_tokens split on "." but _fact_is_traceable did not, so a bank
+    term stored bare ("Express") could not cover "Express.js"."""
+    allowed = _allowed_tokens("Express and NestJS")
+
+    assert _fact_is_traceable("Express.js", allowed)
+    assert not _fact_is_traceable("Fastify.js", allowed)
+
+
+def test_full_month_name_traces_to_the_banks_abbreviation():
+    """The bank writes "Dec 2026"; "December 2026" is the same fact."""
+    allowed = _allowed_tokens("Okanagan College, Dec 2026")
+
+    assert "december" in allowed
+    assert _fact_is_traceable("December", allowed)
+    # A month the ledger never mentions is still untraceable.
+    assert not _fact_is_traceable("March", allowed)
+
+
+def test_cover_letter_still_has_to_name_the_company_at_all():
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    job = _job()
+    job.company = "Globex"
+    payload = _valid_kit_payload()
+
+    kit = GeneratedApplicationKit.model_validate(payload)
+    errors = validate_kit(kit, job, build_source_index(bank))
+
+    assert any("must name the company" in error for error in errors)

@@ -2,7 +2,7 @@ import json
 from typing import Callable
 from pydantic import ValidationError
 from app.bank import ResumeBank
-from app.claude_cli import MODEL_NAME, run_claude
+from app.claude_cli import MODEL_NAME, schema_completer
 from app.errors import TailorValidationError
 from app.models import Manifest
 from app.validate import validate_manifest
@@ -75,7 +75,7 @@ def get_manifest(
     company: str,
     role: str,
     bank: ResumeBank,
-    complete: Callable[[str], str] = run_claude,
+    complete: Callable[[str], str] = schema_completer(Manifest),
     max_retries: int = 1,
 ) -> Manifest:
     previous_errors: list[str] | None = None

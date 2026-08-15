@@ -9,7 +9,7 @@ from typing import Callable
 from pydantic import ValidationError
 
 from app.bank import ResumeBank
-from app.claude_cli import run_claude
+from app.claude_cli import schema_completer
 from app.errors import JobGenerationError
 from app.models import (
     GeneratedAnswer,
@@ -19,7 +19,45 @@ from app.models import (
 from app.validate import extract_facts
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#/-]*")
-_FACT_STOPWORDS = {"i"}
+# Generic engineering vocabulary asserts nothing about *this* candidate, so it
+# is not a "fact" that needs a source. `extract_facts` treats every all-caps
+# token as a credential claim, so a single incidental "UI" in an otherwise
+# perfect kit failed validation and 502'd the whole request (observed live on
+# 2026-08-13). Deliberately excluded: nameable skills and products such as SQL,
+# HTML, CSS, JWT, SSO and RBAC. Those ARE credential claims, and they stay
+# traceable so a fabricated skill is still caught.
+_GENERIC_TECH_TERMS = {
+    "ui", "ux", "api", "apis", "rest", "restful", "crud", "json", "xml",
+    "http", "https", "url", "urls", "sdk", "cli", "ide", "os", "qa", "mvp",
+    "saas", "b2b", "b2c", "pr", "prs", "oop", "tdd", "etl", "sla", "mvc",
+    "cpu", "gpu", "ram", "uuid", "csv", "pdf", "e2e", "poc",
+    "iot", "jd", "llm", "llms", "ci", "cd",
+    # Concepts, roles, compliance regimes and business terms. None of these is
+    # a technology the candidate could claim to have used, so none is a
+    # credential -- but each is an all-caps token `extract_facts` would
+    # otherwise demand a source for.
+    "oss", "sre", "dx", "pii", "gdpr", "soc", "hipaa",
+    "kpi", "kpis", "okr", "okrs", "arr", "crm", "erp", "spa", "pwa", "sdlc",
+}
+_FACT_STOPWORDS = {"i"} | _GENERIC_TECH_TERMS
+_MONTH_ALIASES = {
+    "jan": "january", "feb": "february", "mar": "march", "apr": "april",
+    "jun": "june", "jul": "july", "aug": "august", "sep": "september",
+    "sept": "september", "oct": "october", "nov": "november",
+    "dec": "december",
+}
+# Equivalent names for one product. Strictly synonyms, never a different
+# technology, so this cannot let a fabricated skill through.
+_TECH_ALIASES = {
+    "postgresql": ("postgres",),
+    "postgres": ("postgresql",),
+    "mongodb": ("mongo",),
+    "mongo": ("mongodb",),
+    "kubernetes": ("k8s",),
+    "k8s": ("kubernetes",),
+    "javascript": ("js",),
+    "typescript": ("ts",),
+}
 _BANNED_COVER_PHRASES = (
     "i am writing to apply",
     "i believe i would be a great fit",
@@ -142,6 +180,18 @@ def _allowed_tokens(text: str) -> set[str]:
         for part in re.split(r"[/.-]", token):
             if part:
                 allowed.add(part.lower())
+                # The bank abbreviates months ("Dec 2026"); writing "December"
+                # is the same fact, not a new one. The prompt asks for the
+                # ledger's spelling and the model complies inconsistently, so
+                # accept both rather than fail an otherwise honest letter.
+                full = _MONTH_ALIASES.get(part.lower())
+                if full:
+                    allowed.add(full)
+                # Same idea for tech names the bank stores in one canonical
+                # form: "Postgres" and "PostgreSQL" are one product, not two
+                # facts, and rejecting the short form failed honest letters.
+                for alias in _TECH_ALIASES.get(part.lower(), ()):
+                    allowed.add(alias)
     return allowed
 
 
@@ -153,7 +203,10 @@ def _fact_is_traceable(fact: str, allowed_tokens: set[str]) -> bool:
     # or proper-noun-like sub-part traces to the bank. Lowercase connectives
     # ("powered", "based", "driven") are not facts and are ignored, so a
     # genuinely fabricated Capitalized/acronym sub-part is still caught.
-    parts = [p for p in re.split(r"[/-]", fact) if p]
+    # Split on "." as well, matching _allowed_tokens. Without it "Express.js"
+    # never decomposed into "Express" + "js", so a bank term stored bare
+    # ("Express") could not cover its dotted form.
+    parts = [p for p in re.split(r"[/.-]", fact) if p]
     if len(parts) < 2:
         return False
     for part in parts:
@@ -162,7 +215,13 @@ def _fact_is_traceable(fact: str, allowed_tokens: set[str]) -> bool:
             or part[:1].isupper()
             or any(c in ".+#" for c in part)
         )
-        if significant and part.lower() not in allowed_tokens:
+        if (
+            significant
+            and part.lower() not in allowed_tokens
+            and part.lower() not in _FACT_STOPWORDS
+        ):
+            # Generic vocabulary is no more a credential inside a compound
+            # ("GPU-level") than it is standing alone ("GPU").
             return False
     return True
 
@@ -172,7 +231,10 @@ def _fact_errors(text: str, allowed_text: str, label: str) -> list[str]:
     allowed_tokens = _allowed_tokens(allowed_text)
     allowed_lower = allowed_text.lower()
     for fact in extract_facts(text):
-        if fact.lower() in _FACT_STOPWORDS:
+        # A trailing comma/period rides along on numeric tokens ("in 2026,"),
+        # so the literal lookup missed a year the ledger really does contain.
+        fact = fact.strip().rstrip(",.;:!?")
+        if not fact or fact.lower() in _FACT_STOPWORDS:
             continue
         wordlike = any(char.isalpha() for char in fact) and not any(
             char.isdigit() or char == "%" for char in fact
@@ -222,10 +284,19 @@ def validate_kit(
             errors.append(f"evidence {index} has unknown source ids: {unknown}")
         if evidence.strength != "gap" and not evidence.source_ids:
             errors.append(f"evidence {index} needs at least one source id")
+        # Validate the requirement against the whole verified corpus, for the
+        # same reason as `proof` below. A requirement names the technology the
+        # row is about, and the model writes the canonical spelling
+        # ("TypeScript", "Node.js", "PostgreSQL") even when the posting
+        # abbreviates or lower-cases it -- so checking against the JD alone
+        # rejected rows whose terms are demonstrably real, sitting in the
+        # resume bank. Requirements describe the job, not the candidate; the
+        # credential claims live in `proof`, checked below, and in the source
+        # ids checked above.
         errors.extend(
             _fact_errors(
                 evidence.requirement,
-                job.jd_text,
+                allowed,
                 f"evidence requirement {index}",
             )
         )
@@ -250,8 +321,14 @@ def validate_kit(
 
     errors.extend(_fact_errors(analysis.verdict, allowed, "verdict"))
     errors.extend(_fact_errors(analysis.role_thesis, allowed, "role thesis"))
-    for index, gap in enumerate(analysis.gaps):
-        errors.extend(_fact_errors(gap, allowed, f"gap {index}"))
+    # Gaps are deliberately NOT fact-checked. A gap states what the candidate
+    # is missing ("no Jest or Cypress experience", "no IoT background"), so by
+    # construction it names things absent from the resume bank -- demanding
+    # traceability there is backwards, and it was rejecting honest, useful
+    # admissions. The anti-fabrication rule guards against *overstating*
+    # experience; an invented gap can only understate it. Real credential
+    # claims still run the full check via evidence proof, verdict, role
+    # thesis, positioning and the cover letter.
     for index, item in enumerate(analysis.positioning):
         errors.extend(_fact_errors(item, allowed, f"positioning {index}"))
 
@@ -271,7 +348,11 @@ def validate_kit(
             company_core,
             flags=re.IGNORECASE,
         ).strip()
-        if company_core and company_core.lower() not in cover.lower():
+        # A letter naturally writes "Cerebras", not "Cerebras Systems", so
+        # requiring the full registered name rejected correct letters. The
+        # distinctive first token is what actually names the company.
+        company_head = company_core.split()[0] if company_core.split() else ""
+        if company_head and company_head.lower() not in cover.lower():
             errors.append("cover letter must name the company")
     if cover:
         lowered = cover.lower()
@@ -354,12 +435,53 @@ Return ONLY JSON in this exact shape:
 }}"""
 
 
+def _drop_unquoted_keywords(kit: GeneratedApplicationKit, job: JobWorkspace) -> None:
+    """Discard keywords that are not verbatim in the JD, in place.
+
+    A keyword is a label lifted off the posting, not a claim about the
+    candidate, so a paraphrase ("TypeScript" for a JD that wrote "Typescript",
+    "iOS and Android" for "iOS/Android") is cosmetic. Failing the whole kit
+    over one -- and throwing away a correct analysis and cover letter with it
+    -- costs far more than dropping the label. Fabrication controls are
+    untouched: every candidate fact still has to trace to the source ledger.
+    """
+    jd_lower = job.jd_text.lower()
+    kit.analysis.keywords = [
+        keyword for keyword in kit.analysis.keywords
+        if keyword.strip() and keyword.strip().lower() in jd_lower
+    ]
+
+
+def _kit_schema() -> dict:
+    """`GeneratedApplicationKit`'s schema with every field this module actually
+    validates marked required.
+
+    Pydantic omits any field carrying a default from `required`, so the CLI's
+    structured decoder was free to skip `cover_letter` — and did, on every
+    attempt, producing kits that then failed the 120-360 word check. The same
+    holds for the analysis lists `validate_kit` depends on.
+    """
+    schema = GeneratedApplicationKit.model_json_schema()
+    schema["required"] = ["analysis", "cover_letter"]
+    analysis = schema["$defs"]["FitAnalysis"]
+    analysis["required"] = [
+        "score", "recommendation", "verdict", "role_thesis",
+        "keywords", "evidence", "gaps", "positioning",
+    ]
+    analysis["properties"]["evidence"]["minItems"] = 3  # validate_kit's floor
+    return schema
+
+
 def generate_kit(
     job: JobWorkspace,
     bank: ResumeBank,
     *,
-    complete: Callable[[str], str] = run_claude,
-    max_retries: int = 1,
+    complete: Callable[[str], str] = schema_completer(_kit_schema()),
+    # Validation failures are one-off word choices, not systematic: the
+    # correction loop feeds the exact errors back and the next draft almost
+    # always clears them. Two attempts left honest kits failing on a single
+    # stray token; a third costs ~90s only in the rare case it is needed.
+    max_retries: int = 2,
 ) -> GeneratedApplicationKit:
     if len(job.jd_text.strip()) < 80:
         raise JobGenerationError(
@@ -375,6 +497,7 @@ def generate_kit(
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:
             previous_errors = [f"response did not match the required JSON schema: {exc}"]
             continue
+        _drop_unquoted_keywords(kit, job)
         errors = validate_kit(kit, job, sources)
         if not errors:
             return kit
@@ -476,13 +599,21 @@ def validate_answer(
     return errors
 
 
+def _answer_schema() -> dict:
+    """`GeneratedAnswer` declares no required fields at all, so structured
+    decoding could satisfy it with `{}`. Demand the two that carry meaning."""
+    schema = GeneratedAnswer.model_json_schema()
+    schema["required"] = ["answer", "source_ids"]
+    return schema
+
+
 def generate_answer(
     job: JobWorkspace,
     bank: ResumeBank,
     question: str,
     constraints: str = "",
     *,
-    complete: Callable[[str], str] = run_claude,
+    complete: Callable[[str], str] = schema_completer(_answer_schema()),
     max_retries: int = 1,
 ) -> GeneratedAnswer:
     clarification = _judgment_clarification(question)
