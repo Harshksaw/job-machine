@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Queue</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --line:#262b36; --ink:#e7eaf0; --dim:#98a2b3;
+    --accent:#6ea8fe; --good:#3ddc97; --warn:#ffb454; --bad:#ff6b6b;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f7f9; --card:#fff; --line:#e3e6ec; --ink:#1a1d23; --dim:#5b6472;
+           --accent:#2563eb; --good:#0a8f5b; --warn:#b26a00; --bad:#c0392b; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{position:sticky;top:0;z-index:9;background:var(--bg);
+         border-bottom:1px solid var(--line);padding:14px 20px}
+  h1{margin:0 0 8px;font-size:18px;letter-spacing:.2px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .bar input,.bar select{background:var(--card);color:var(--ink);
+       border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
+  .bar input{min-width:220px}
+  .stat{color:var(--dim);font-size:13px}
+  main{padding:18px 20px 60px;max-width:1100px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:14px 16px;margin-bottom:12px}
+  .top{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .title{flex:1;min-width:260px}
+  .co{font-weight:650}
+  .role{color:var(--dim);font-size:14px}
+  .fit{font-weight:700;border-radius:999px;padding:3px 10px;font-size:13px;
+       border:1px solid var(--line);white-space:nowrap}
+  .f-hi{color:var(--good);border-color:var(--good)}
+  .f-mid{color:var(--warn);border-color:var(--warn)}
+  .f-lo{color:var(--bad);border-color:var(--bad)}
+  .chip{font-size:12px;color:var(--dim);border:1px solid var(--line);
+        border-radius:999px;padding:2px 9px}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  button,a.btn{font:inherit;font-size:13px;cursor:pointer;border-radius:8px;
+        padding:7px 12px;border:1px solid var(--line);background:transparent;
+        color:var(--ink);text-decoration:none;display:inline-block}
+  a.go{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button:hover,a.btn:hover{border-color:var(--accent)}
+  .body{margin-top:12px;display:none}
+  .card.open .body{display:block}
+  .sec{margin-top:12px}
+  .sec h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;
+          letter-spacing:.6px;color:var(--dim)}
+  pre.letter{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);
+       border-radius:8px;padding:12px;font:13px/1.6 inherit;margin:0;max-height:340px;
+       overflow:auto}
+  .qa{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px}
+  .q{font-weight:600;font-size:13px;margin-bottom:4px}
+  .a{font-size:13px;color:var(--dim);white-space:pre-wrap}
+  .need{border-color:var(--warn)}
+  .need .q::after{content:" — needs you";color:var(--warn);font-weight:400}
+  ul.tight{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--dim)}
+  .na{font-size:13px;color:var(--warn);margin-top:8px}
+  .empty{color:var(--dim);padding:40px 0;text-align:center}
+  iframe{width:100%;height:520px;border:1px solid var(--line);border-radius:8px;
+         background:#fff}
+</style>
+</head>
+<body>
+<header>
+  <h1>Launch Queue</h1>
+  <div class="bar">
+    <input id="q" placeholder="filter company or role...">
+    <select id="view">
+      <option value="kit">Ready to launch (has kit)</option>
+      <option value="ready">Status: ready</option>
+      <option value="need">Needs my input</option>
+      <option value="all">Everything active</option>
+    </select>
+    <span class="stat" id="stat">loading...</span>
+  </div>
+</header>
+<main id="list"><div class="empty">Loading dossiers...</div></main>
+
+<script>
+const $ = s => document.querySelector(s);
+let JOBS = [];
+
+const esc = s => (s ?? "").replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const fitClass = f => f >= 7 ? "f-hi" : f >= 5 ? "f-mid" : "f-lo";
+
+const safeHref = u => /^https?:\/\//i.test(u || "") ? u : null;
+
+async function load() {
+  const summaries = await fetch("/api/jobs").then(r => r.json());
+  const active = summaries.filter(j =>
+    !["rejected", "skipped", "archived", "applied"].includes(j.status));
+  const out = [];
+  // batched so the local single-process service is not hammered
+  for (let i = 0; i < active.length; i += 8) {
+    const slice = active.slice(i, i + 8);
+    out.push(...await Promise.all(
+      slice.map(s => fetch("/api/jobs/" + s.id).then(r => r.json()))));
+    JOBS = out;
+    render(JOBS);
+  }
+  JOBS = out;
+  render(JOBS);
+}
+
+function passesView(j, view) {
+  const hasKit = !!(j.cover_letter || "").trim();
+  const needs = (j.application_answers || []).some(a => a.needs_user_input);
+  if (view === "kit") return hasKit;
+  if (view === "ready") return j.status === "ready";
+  if (view === "need") return needs;
+  return true;
+}
+
+function render(jobs) {
+  const view = $("#view").value;
+  const term = $("#q").value.trim().toLowerCase();
+  let rows = jobs.filter(j => passesView(j, view));
+  if (term) rows = rows.filter(j =>
+    (j.company + " " + j.role).toLowerCase().includes(term));
+  rows.sort((a, b) => (b.fit_score || 0) - (a.fit_score || 0));
+
+  const withKit = jobs.filter(j => (j.cover_letter || "").trim()).length;
+  $("#stat").textContent =
+    rows.length + " shown / " + withKit + " with kit / " + jobs.length + " active";
+
+  $("#list").innerHTML = rows.length
+    ? rows.map(card).join("")
+    : '<div class="empty">Nothing matches yet.</div>';
+}
+
+function card(j) {
+  const fa = j.fit_analysis || {};
+  const url = safeHref(j.job_url);
+  const answers = j.application_answers || [];
+  const letter = (j.cover_letter || "").trim();
+  const pdf = j.tailored_resume_id
+    ? "/api/tailored/" + encodeURIComponent(j.tailored_resume_id) + "/pdf" : null;
+
+  return '<div class="card" id="c-' + j.id + '">' +
+    '<div class="top"><div class="title">' +
+      '<div class="co">' + esc(j.company) + '</div>' +
+      '<div class="role">' + esc(j.role) +
+        (j.location ? " &middot; " + esc(j.location) : "") + '</div>' +
+    '</div>' +
+    '<span class="fit ' + fitClass(j.fit_score) + '">fit ' +
+      (j.fit_score ?? "-") + '</span>' +
+    '<span class="chip">' + esc(j.status) + '</span>' +
+    (j.source ? '<span class="chip">' + esc(j.source) + '</span>' : "") +
+    '</div>' +
+    (j.next_action ? '<div class="na">&#9656; ' + esc(j.next_action) + '</div>' : "") +
+    '<div class="acts">' +
+      (url ? '<a class="btn go" href="' + esc(url) +
+             '" target="_blank" rel="noopener">Open posting</a>' : "") +
+      (letter ? '<button onclick="copyLetter(\'' + j.id +
+                '\')">Copy cover letter</button>' : "") +
+      (pdf ? '<a class="btn" href="' + pdf +
+             '" target="_blank" rel="noopener">Resume PDF</a>' : "") +
+      '<button onclick="toggle(\'' + j.id + '\')">Details</button>' +
+    '</div>' +
+    '<div class="body">' +
+      (fa.verdict ? '<div class="sec"><h4>Verdict</h4><div class="a">' +
+        esc(fa.verdict) + '</div></div>' : "") +
+      ((fa.gaps || []).length ? '<div class="sec"><h4>Gaps</h4><ul class="tight">' +
+        fa.gaps.map(g => "<li>" + esc(g) + "</li>").join("") + '</ul></div>' : "") +
+      ((fa.positioning || []).length ?
+        '<div class="sec"><h4>Positioning</h4><ul class="tight">' +
+        fa.positioning.map(p => "<li>" + esc(p) + "</li>").join("") +
+        '</ul></div>' : "") +
+      (letter ? '<div class="sec"><h4>Cover letter (' +
+        letter.split(/\s+/).length + ' words)</h4><pre class="letter" id="l-' +
+        j.id + '">' + esc(letter) + '</pre></div>' : "") +
+      (answers.length ? '<div class="sec"><h4>Prepared answers</h4>' +
+        answers.map((a, i) => '<div class="qa' +
+          (a.needs_user_input ? " need" : "") + '">' +
+          '<div class="q">' + esc(a.question) + '</div>' +
+          '<div class="a" id="a-' + j.id + '-' + i + '">' +
+          esc(a.needs_user_input
+              ? (a.clarification || "needs your decision")
+              : a.answer) + '</div>' +
+          (a.needs_user_input ? "" :
+            '<div class="acts"><button onclick="copyAnswer(\'' + j.id + '\',' + i +
+            ')">Copy</button></div>') +
+          '</div>').join("") + '</div>' : "") +
+      (pdf ? '<div class="sec"><h4>Tailored resume</h4><iframe src="' +
+        pdf + '"></iframe></div>' : "") +
+    '</div></div>';
+}
+
+function toggle(id) { document.getElementById("c-" + id).classList.toggle("open"); }
+
+function copyLetter(id) {
+  const el = document.getElementById("l-" + id);
+  if (el) copyText(el.textContent);
+}
+function copyAnswer(id, i) {
+  const el = document.getElementById("a-" + id + "-" + i);
+  if (el) copyText(el.textContent);
+}
+function copyText(t) {
+  navigator.clipboard.writeText(t).then(() => {
+    const n = document.createElement("div");
+    n.textContent = "copied";
+    n.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);" +
+      "background:#2563eb;color:#fff;padding:8px 16px;border-radius:8px;z-index:99";
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 1200);
+  });
+}
+
+$("#q").addEventListener("input", () => render(JOBS));
+$("#view").addEventListener("change", () => render(JOBS));
+load();
+</script>
+</body>
+</html>
