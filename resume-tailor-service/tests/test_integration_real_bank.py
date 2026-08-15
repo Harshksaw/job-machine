@@ -42,6 +42,14 @@ def _full_manifest() -> Manifest:
         ),
         job_selections=[
             JobSelection(
+                job_id="okanagan",
+                bullet_ids=[
+                    "okanagan.bullet.1",
+                    "okanagan.bullet.2",
+                    "okanagan.bullet.3",
+                ],
+            ),
+            JobSelection(
                 job_id="ommuse",
                 bullet_ids=[
                     "ommuse.bullet.1",
@@ -95,7 +103,7 @@ def _full_manifest() -> Manifest:
             "skill.cloud_devops",
             "skill.ai_genai",
         ],
-        job_trim_priority=["ommuse", "morethinks", "bwisher", "jythu"],
+        job_trim_priority=["okanagan", "ommuse", "morethinks", "bwisher", "jythu"],
     )
 
 
@@ -131,5 +139,10 @@ def test_full_real_bank_manifest_renders_and_fits_one_page(tmp_path):
     assert "PostgreSQL" in pdf_text
     assert "LangChain" in pdf_text
     assert "sync.Map" in pdf_text  # known bullet fragment (ommuse.bullet.2)
-    assert "Q&A" in pdf_text  # docintel project bullet -- proves & escaping compiled
+    # Proves `&` was escaped correctly through a genuine pdflatex compile.
+    # This used to anchor on "Q&A" from the docintel project bullet, but the
+    # bank now carries five jobs and the full manifest overflows, so the trim
+    # loop drops both projects before it fits. A job title is never trimmed
+    # away entirely, so it is a stable anchor for the same assertion.
+    assert "AI & Automation" in pdf_text
     assert "70%" in pdf_text  # jythu bullet -- proves % escaping compiled

@@ -1,4 +1,4 @@
-\documentclass{resume} 
+\documentclass{resume}
 \usepackage[left=0.2in,top=0.15in,right=0.2in,bottom=0.15in]{geometry}
 \usepackage{setspace}
 \setstretch{0.55}
@@ -6,10 +6,10 @@
 
 \name{\normalsize Harsh Saw}
 \address{\footnotesize +1 (778) 583-2260 \\ Kelowna, BC, Canada}
-\address{\footnotesize 
-  \href{mailto:mister.harshkumar@gmail.com}{mister.harshkumar@gmail.com} \\ 
-  \href{https://www.linkedin.com/in/harsh-kumar-s-32727b247/}{LinkedIn} \\ 
-  \href{https://github.com/Harshksaw}{GitHub} \\ 
+\address{\footnotesize
+  \href{mailto:mister.harshkumar@gmail.com}{mister.harshkumar@gmail.com} \\
+  \href{https://www.linkedin.com/in/harsh-kumar-s-32727b247/}{LinkedIn} \\
+  \href{https://github.com/Harshksaw}{GitHub} \\
   \href{https://harshsaw.me/}{harshsaw.me}
 }
 \begin{document}
@@ -21,10 +21,17 @@
 
 \begin{rSection}{Education}
 {\scriptsize \textbf{Bachelor of Computer Information Systems}, Okanagan College \hfill Expected Dec 2026}
-\end{rSection}\vspace{-0.5em}
+\end{rSection}\vspace{-0.2em}
 
 \begin{rSection}{Experience}
 \scriptsize
+
+\job{Software Engineer, AI \& Automation}{Okanagan College --- IT Services}{https://www.okanagan.bc.ca/}{Kelowna, BC}{Apr 2026 -- Present}
+\begin{jobitems}
+    \item Building OC Connect, a college-wide unified-services platform --- an agentic AI assistant on Azure AI Foundry that goes beyond retrieval to take action for staff and students, surfacing recommendations and initiating cross-system requests.
+    \item Architected a custom RAG layer over heterogeneous institutional data, with a microservice fabric integrating Banner SIS and multiple platform APIs behind a unified retrieval and action interface.
+    \item Shipped an org-wide workflow and issue-tracking system adopted across departments --- Jira-style process tracking with real-time collaboration, replacing manual coordination between staff, instructors, and students.
+\end{jobitems}
 
 \job{Software Engineer}{Ommuse}{https://ommuse.com/}{Seattle, US}{Nov 2025 -- Present}
 \begin{jobitems}
@@ -34,12 +41,6 @@
     \item Shipped features across a polyglot monorepo (\textbf{Go gRPC/protobuf}, TypeScript/React, Python) unified by \textbf{Bazel}, owning full deployment infrastructure --- \textbf{AWS} (S3, SQS, ECR), \textbf{Docker}, \textbf{Pulumi} IaC, Envoy proxy, and \textbf{GitHub Actions} CI/CD.
 \end{jobitems}
 
-\job{Full-Stack ML Engineer (Contract)}{Darwin X Global Solutions}{https://www.darwinxsolutions.com/}{Remote, USA}{Apr 2026 -- Jul 2026}
-\begin{jobitems}
-    \item Built the resume/JD parsing layer for a production AI job portal using \textbf{GLiNER} zero-shot NER, normalizing extracted skills, titles, and employers against a proprietary \textbf{30,000-entry skills taxonomy}.
-    \item Architected candidate--job matching with \textbf{bi-encoder} embedding retrieval and \textbf{cross-encoder} reranking, replacing monolithic external LLM calls with a staged, cost-aware inference pipeline.
-    \item Fine-tuned \textbf{Qwen3-4B} via \textbf{QLoRA/Unsloth} on logged production traffic to self-host resume rewriting, cutting per-resume LLM inference cost by 60\%.
-\end{jobitems}
 
 \job{Software Engineer Intern}{Bwisher Ltd}{https://bwishernepal.com/}{Remote}{Dec 2024 -- Jun 2025}
 \begin{jobitems}
@@ -61,7 +62,7 @@
 \scriptsize \textbf{Document Intelligence Platform (RAG)}
 {\scriptsize \textit{FastAPI, LangChain, Qdrant, Groq, Google Gemini, AWS ECS Fargate, Docker}}
 \hfill
-\href{https://aidoc.harshsaw.ca/}{Live Demo} | 
+\href{https://aidoc.harshsaw.ca/}{Live Demo} |
 \href{https://github.com/Harshksaw/document_portal}{GitHub}
 
 \begin{itemize}\itemsep -4pt

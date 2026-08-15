@@ -26,6 +26,18 @@ profile_facts:
     text: "Startups are preferred."
 
 jobs:
+  - id: okanagan
+    company: "Okanagan College — IT Services"
+    location: "Kelowna, BC"
+    title: "Software Engineer, AI & Automation"
+    dates: "Apr 2026 -- Present"
+    bullets:
+      - id: okanagan.bullet.1
+        text: "Building OC Connect, a college-wide unified-services platform -- an agentic AI assistant on Azure AI Foundry that goes beyond retrieval to take action for staff and students, surfacing recommendations and initiating cross-system requests."
+      - id: okanagan.bullet.2
+        text: "Architected a custom RAG layer over heterogeneous institutional data, with a microservice fabric integrating Banner SIS and multiple platform APIs behind a unified retrieval and action interface."
+      - id: okanagan.bullet.3
+        text: "Shipped an org-wide workflow and issue-tracking system adopted across departments -- Jira-style process tracking with real-time collaboration, replacing manual coordination between staff, instructors, and students."
   - id: ommuse
     company: "OmMuse"
     location: "Seattle, US"
@@ -122,5 +134,5 @@ skills:
     category: "Cloud & DevOps"
     items: "AWS, Azure, Docker, Kubernetes, Terraform, Pulumi, Bazel, Jenkins, GitHub Actions"
   - id: skill.ai_genai
-    category: "AI & GenAI"
-    items: "LangChain, LangSmith, AutoGen, RAG, FAISS, Pinecone, Qdrant, AstraDB, AWS Bedrock"
+    category: "AI & ML"
+    items: "PyTorch, Hugging Face Transformers, PEFT/LoRA/QLoRA, Unsloth, vLLM, embeddings, cross-encoder reranking, LangChain, LangSmith, AutoGen, RAG, Qdrant, FAISS, Pinecone, AstraDB, AWS Bedrock"
