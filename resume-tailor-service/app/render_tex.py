@@ -34,6 +34,9 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
             "location": latex_escape(job.location),
             "title": latex_escape(job.title),
             "dates": latex_escape(job.dates),
+            # Raw, like contact.email and the profile urls: it goes inside
+            # \href{} where escaping would corrupt the target.
+            "url": job.url,
             "bullets": [latex_escape(bullet_text[bid]) for bid in sel.bullet_ids],
         })
 
@@ -45,6 +48,8 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
         projects_ctx.append({
             "name": latex_escape(proj.name),
             "tech": latex_escape(proj.tech),
+            "demo_url": proj.demo_url,
+            "repo_url": proj.repo_url,
             "bullets": [latex_escape(bullet_text[bid]) for bid in ps.bullet_ids],
         })
 

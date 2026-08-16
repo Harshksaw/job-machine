@@ -1,54 +1,77 @@
+((# Mirrors harshsaw.tex (the canonical resume) structurally, so a tailored
+    PDF is the same document with different content selected -- same class,
+    same preamble, same macros, same spacing. Keep this file and harshsaw.tex
+    in step: if one changes shape, so must the other. #))
 \documentclass{resume}
-\name{(((contact.name)))}
-\address{(((contact.phone))) $|$ (((contact.location)))}
-\address{\href{mailto:(((contact.email)))}{(((contact.email)))} $|$ \href{(((contact.linkedin_url)))}{LinkedIn} $|$ \href{(((contact.github_url)))}{GitHub} $|$ \href{(((contact.website_url)))}{(((contact.website_display)))}}
+\usepackage[left=0.2in,top=0.15in,right=0.2in,bottom=0.15in]{geometry}
+\usepackage{setspace}
+\setstretch{0.55}
+\renewcommand{\labelitemi}{$\bullet$}
 
+\name{\normalsize (((contact.name)))}
+\address{\footnotesize (((contact.phone))) \\ (((contact.location)))}
+\address{\footnotesize
+  \href{mailto:(((contact.email)))}{(((contact.email)))} \\
+  \href{(((contact.linkedin_url)))}{LinkedIn} \\
+  \href{(((contact.github_url)))}{GitHub} \\
+  \href{(((contact.website_url)))}{(((contact.website_display)))}
+}
 \begin{document}
 
+\vspace{-.5em}
 \begin{rSection}{Summary}
-(((summary)))
-\end{rSection}
+{\scriptsize (((summary)))}
+\end{rSection}\vspace{-0.6em}
 
 \begin{rSection}{Education}
-\textbf{(((education.degree)))}, (((education.school))) \hfill (((education.date)))
-\end{rSection}
+{\scriptsize \textbf{(((education.degree)))}, (((education.school))) \hfill (((education.date)))}
+\end{rSection}\vspace{-0.2em}
 
 \begin{rSection}{Experience}
+\scriptsize
 ((* for job in jobs *))
-\begin{rSubsection}{(((job.company)))}{(((job.dates)))}{(((job.title)))}{(((job.location)))}
+\job{(((job.title)))}{(((job.company)))}{(((job.url)))}{(((job.location)))}{(((job.dates)))}
+\begin{jobitems}
 ((* for bullet in job.bullets *))
-\item (((bullet)))
+    \item (((bullet)))
 ((* endfor *))
-\end{rSubsection}
+\end{jobitems}
 ((* endfor *))
-\end{rSection}
+\end{rSection}\vspace{-0.7em}
 
 \begin{rSection}{Projects}
 ((* for project in projects *))
-\textbf{(((project.name)))} \hfill \textit{(((project.tech)))}
-\begin{list}{$\cdot$}{\leftmargin=1em \itemsep -0.3em \parsep 0pt \topsep 0.1em}
+\scriptsize \textbf{(((project.name)))}
+{\scriptsize \textit{(((project.tech)))}}
+((* if project.demo_url or project.repo_url *))
+\hfill
+((* if project.demo_url *))\href{(((project.demo_url)))}{Live Demo}((* endif *))((* if project.demo_url and project.repo_url *)) | ((* endif *))((* if project.repo_url *))\href{(((project.repo_url)))}{GitHub}((* endif *))
+((* endif *))
+
+\begin{itemize}\itemsep -4pt
 ((* for bullet in project.bullets *))
-\item (((bullet)))
+    \item (((bullet)))
 ((* endfor *))
-\end{list}
+\end{itemize}
 ((* endfor *))
-\end{rSection}
+\end{rSection}\vspace{-0.7em}
 
 \begin{rSection}{Technical Skills}
-{\renewcommand{\arraystretch}{0.8}
-\begin{tabular}{@{}ll@{}}
+\scriptsize
+\begin{itemize}[leftmargin=0em,label={},itemsep=0pt,topsep=1pt,parsep=0pt,partopsep=0pt]
 ((* for line in skills *))
-\textbf{(((line.category)))} & (((line.entries))) \\
+\item \textbf{(((line.category))):} (((line.entries)))
 ((* endfor *))
-\end{tabular}}
-\end{rSection}
+\end{itemize}
+\end{rSection}\vspace{-0.5em}
 
 \begin{rSection}{Achievements}
-\begin{list}{$\cdot$}{\leftmargin=1em \itemsep -0.3em \parsep 0pt \topsep 0.1em}
+\scriptsize
+\begin{itemize}\itemsep -7pt
 ((* for bullet in achievements *))
-\item (((bullet)))
+    \item (((bullet)))
 ((* endfor *))
-\end{list}
+\end{itemize}
 \end{rSection}
 
 \end{document}

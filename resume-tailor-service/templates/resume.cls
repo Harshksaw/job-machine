@@ -1,72 +1,69 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Medium Length Professional CV - RESUME CLASS FILE
-%
-% This template has been downloaded from:
 % http://www.LaTeXTemplates.com
-%
-% This class file defines the structure and design of the template. 
-%
-% Original header:
 % Copyright (C) 2010 by Trey Hunner
-%
-% Copying and distribution of this file, with or without modification,
-% are permitted in any medium without royalty provided the copyright
-% notice and this notice are preserved. This file is offered as-is,
-% without any warranty.
-%
 % Created by Trey Hunner and modified by www.LaTeXTemplates.com
-%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \ProvidesClass{resume}[2010/07/10 v0.9 Resume class]
 
-\LoadClass[10pt,letterpaper]{article} % Font size and paper type
+\LoadClass[11pt,letterpaper]{article}
 
-\usepackage[parfill]{parskip} % Remove paragraph indentation
-\usepackage{array} % Required for boldface (\bf and \bfseries) tabular columns
-\usepackage{ifthen} % Required for ifthenelse statements
-% Tightened margins so a full one-page resume's worth of real content (all
-% jobs/bullets, both projects, all achievements) fits on a single page --
-% the article class's ~1in default margins waste too much space for that
-% density.
-\usepackage[top=0.3in, bottom=0.3in, left=0.6in, right=0.6in]{geometry}
+\usepackage[parfill]{parskip}
+\usepackage{array}
+\usepackage{ifthen}
+\usepackage{enumitem}
 
-% Body text at 9pt/10.5pt (rather than the standard 10pt \normalsize) using
-% the kernel's own \@setfontsize -- plain \LoadClass[9pt]{article} isn't
-% valid (article only supports 10/11/12pt), and switching to the extsizes
-% `extarticle` class for a real 9pt option caused pdflatex to hang
-% indefinitely (some interaction with this file's \document redefinition
-% below), so this redefines \normalsize in place instead. Needed, together
-% with the tighter margins/list spacing throughout this file, to fit the
-% full one-page resume's worth of real content on a single page.
-\renewcommand{\normalsize}{\@setfontsize\normalsize{9pt}{10.5pt}}
-\normalsize
+% ATS FIX: default LaTeX bullet is a Type 3 bitmap that extracts as U+0088.
+% This forces a Type 1 glyph that extracts as a real U+2022 bullet.
+\renewcommand{\labelitemi}{$\bullet$}
+
+% One-line job header: Title | Company, Location .......... Dates
+\newcommand{\job}[5]{%
+  \vspace{3pt}%
+  \noindent\textbf{#1} \textbar{} \textbf{\href{#3}{#2}}, #4 \hfill #5\par
+  \vspace{-8pt}%
+}
+
+% Tight bullet list for job/project entries
+\newenvironment{jobitems}
+  {\begin{itemize}[leftmargin=1.1em,itemsep=0pt,topsep=3pt,parsep=0pt,partopsep=0pt,after=\vspace{2pt}]}
+  {\end{itemize}}
+
+% One-line education header: Degree | School, Location .......... Dates
+\newcommand{\edu}[4]{%
+  \vspace{2pt}%
+  \noindent\textbf{#1} \textbar{} \textbf{#2}, #3 \hfill #4\par
+  \vspace{-2pt}%
+}
+
+\newcommand{\coursework}[1]{%
+  \noindent\textit{Relevant coursework:} #1\par\vspace{2pt}%
+}
 
 \usepackage{hyperref}
 \hypersetup{
     colorlinks=true,
     linkcolor=blue,
-    filecolor=magenta,      
+    filecolor=magenta,
     urlcolor=blue,
 }
 
-\pagestyle{empty} % Suppress page numbers
+\pagestyle{empty}
 
 %----------------------------------------------------------------------------------------
-%	HEADINGS COMMANDS: Commands for printing name and address
+% HEADINGS COMMANDS
 %----------------------------------------------------------------------------------------
 
-\def \name#1{\def\@name{#1}} % Defines the \name command to set name
-\def \@name {} % Sets \@name to empty by default
+\def \name#1{\def\@name{#1}}
+\def \@name {}
 
-\def \addressSep {$|$} % Set default address separator to a diamond
+\def \addressSep {$|$}
 
-% One, two or three address lines can be specified 
 \let \@addressone \relax
 \let \@addresstwo \relax
 \let \@addressthree \relax
 
-% \address command can be used to set the first, second, and third address (last 2 optional)
 \def \address #1{
   \@ifundefined{@addressone}{
     \def \@addressone {#1}
@@ -78,7 +75,6 @@
   }}
 }
 
-% \printaddress is used to style an address line (given as input)
 \def \printaddress #1{
   \begingroup
     \def \\ {\addressSep\ }
@@ -88,7 +84,6 @@
   \addressskip
 }
 
-% \printname is used to print the name as a page header
 \def \printname {
   \begingroup
     \hfil{\MakeUppercase{\namesize\bf \@name}}\hfil
@@ -97,36 +92,32 @@
 }
 
 %----------------------------------------------------------------------------------------
-%	PRINT THE HEADING LINES
+% PRINT THE HEADING LINES
 %----------------------------------------------------------------------------------------
 
 \let\ori@document=\document
 \renewcommand{\document}{
-  \ori@document  % Begin document
-  \printname % Print the name specified with \name
-  \@ifundefined{@addressone}{}{ % Print the first address if specified
+  \ori@document
+  \printname
+  \@ifundefined{@addressone}{}{
     \printaddress{\@addressone}}
-  \@ifundefined{@addresstwo}{}{ % Print the second address if specified
+  \@ifundefined{@addresstwo}{}{
     \printaddress{\@addresstwo}}
-     \@ifundefined{@addressthree}{}{ % Print the third address if specified
+  \@ifundefined{@addressthree}{}{
     \printaddress{\@addressthree}}
 }
 
 %----------------------------------------------------------------------------------------
-%	SECTION FORMATTING
+% SECTION FORMATTING
 %----------------------------------------------------------------------------------------
 
-% Defines the rSection environment for the large sections within the CV
-\newenvironment{rSection}[1]{ % 1 input argument - section name
+\newenvironment{rSection}[1]{
   \sectionskip
-  \MakeUppercase{{\bf #1}} % Section title
+  \MakeUppercase{{\bf #1}}
   \sectionlineskip
-  \hrule % Horizontal line
-  \begin{list}{}{ % List for each individual item in the section
-    \setlength{\leftmargin}{0em} % Margin within the section
-    \setlength{\itemsep}{0pt} % Compress spacing between items (e.g. projects, achievements)
-    \setlength{\parsep}{0pt}
-    \setlength{\topsep}{0pt}
+  \hrule
+  \begin{list}{}{
+    \setlength{\leftmargin}{0em}
   }
   \item[]
 }{
@@ -134,30 +125,24 @@
 }
 
 %----------------------------------------------------------------------------------------
-%	WORK EXPERIENCE FORMATTING
+% WORK EXPERIENCE FORMATTING (legacy - unused)
 %----------------------------------------------------------------------------------------
 
-\newenvironment{rSubsection}[4]{ % 4 input arguments - company name, year(s) employed, job title and location
- {\bf #1} \hfill {#2} % Bold company name and date on the right
- \ifthenelse{\equal{#3}{}}{}{ % If the third argument is not specified, don't print the job title and location line
+\newenvironment{rSubsection}[4]{
+ {\bf #1} \hfill {#2}
+ \ifthenelse{\equal{#3}{}}{}{
   \\
-  {\em #3} \hfill {\em #4} % Italic job title and location
-  }
-  \begin{list}{$\cdot$}{\leftmargin=1em} % \cdot used for bullets, no indentation
-   % NOTE: \itemsep/\parsep/\topsep only affect spacing BETWEEN items (and
-   % around the whole list) -- do not add a raw \vspace here as well. An
-   % earlier version stacked a \vspace before this list on top of another
-   % \vspace at the list's start, and the two negative skips compounded to
-   % pull the first bullet up so far it visually overlapped the job
-   % title/location line above it. Keep this purely length-based.
-   \itemsep -0.3em \parsep 0pt \topsep 0.15em % Compress items in list together for aesthetics
+  {\em #3} \hfill {\em #4}
+  }\smallskip
+  \begin{list}{$\cdot$}{\leftmargin=0em}
+   \itemsep -0.5em \vspace{-0.5em}
   }{
   \end{list}
+  \vspace{0.5em}
 }
 
-% The below commands define the whitespace after certain things in the document - they can be \smallskip, \medskip or \bigskip
-\def\namesize{\Large} % Size of the name at the top of the document
-\def\addressskip{\vspace{0.02em}} % The space between the two address (or phone/email) lines
-\def\sectionlineskip{\vspace{0.02em}} % The space above the horizontal line for each section
-\def\nameskip{\vspace{0.05em}} % The space after your name at the top
-\def\sectionskip{\vspace{0.15em}} % The space after the heading section
+\def\namesize{\LARGE}
+\def\addressskip{\smallskip}
+\def\sectionlineskip{\medskip}
+\def\nameskip{\medskip}
+\def\sectionskip{\medskip}

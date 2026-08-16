@@ -74,6 +74,26 @@ def test_canonical_artifact_matches_pinned_hash(filename):
     )
 
 
+def test_tailoring_uses_the_canonical_class_verbatim():
+    """`/tailor` must render with the same class as the real resume.
+
+    These two drifted apart: the template copy was 6425 bytes with its own
+    `\\normalsize` override and no `\\job`/`jobitems`, so every tailored PDF
+    was a different document from the one Harsh actually sends. Byte equality
+    is the check, because a "mostly the same" class is exactly how the drift
+    happened the first time.
+    """
+    canonical = (REPO_ROOT / "resume.cls").read_bytes()
+    used_by_tailor = (
+        REPO_ROOT / "resume-tailor-service" / "templates" / "resume.cls"
+    ).read_bytes()
+
+    assert used_by_tailor == canonical, (
+        "templates/resume.cls has drifted from the canonical resume.cls; "
+        "copy the canonical file over it rather than patching one side."
+    )
+
+
 def test_canonical_source_is_not_a_placeholder():
     """Regression: harshsaw.tex was a 1-byte '/' placeholder before 2026-08-07."""
     source = (REPO_ROOT / "harshsaw.tex").read_text(encoding="utf-8")

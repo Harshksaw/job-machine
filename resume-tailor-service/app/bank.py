@@ -16,6 +16,9 @@ class Job(BaseModel):
     title: str
     dates: str
     bullets: list[Bullet]
+    # The canonical resume links the company name (\job's 3rd argument).
+    # Optional: an empty url renders the company as plain text.
+    url: str = ""
 
 
 class Project(BaseModel):
@@ -23,6 +26,10 @@ class Project(BaseModel):
     name: str
     tech: str
     bullets: list[Bullet]
+    # The canonical resume puts "Live Demo | GitHub" beside each project
+    # heading. Either may be empty; the template omits what is missing.
+    demo_url: str = ""
+    repo_url: str = ""
 
 
 class Contact(BaseModel):

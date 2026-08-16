@@ -31,6 +31,7 @@ jobs:
     location: "Kelowna, BC"
     title: "Software Engineer, AI & Automation"
     dates: "Apr 2026 -- Present"
+    url: "https://www.okanagan.bc.ca/"
     bullets:
       - id: okanagan.bullet.1
         text: "Building OC Connect, a college-wide unified-services platform -- an agentic AI assistant on Azure AI Foundry that goes beyond retrieval to take action for staff and students, surfacing recommendations and initiating cross-system requests."
@@ -43,6 +44,7 @@ jobs:
     location: "Seattle, US"
     title: "Software Engineer Intern"
     dates: "Nov 2025 -- Present"
+    url: "https://ommuse.com/"
     bullets:
       - id: ommuse.bullet.1
         text: "Architecting AI-powered semantic search and natural language chat for enterprise studio workflows using a RAG pipeline (MongoDB Vector Store, AWS Bedrock), enabling producers to query projects, tracks, and collaborators conversationally."
@@ -57,6 +59,7 @@ jobs:
     location: "Remote"
     title: "Software Engineer Intern"
     dates: "Dec 2024 -- Jun 2025"
+    url: "https://bwishernepal.com/"
     bullets:
       - id: bwisher.bullet.1
         text: "Architected a multi-channel marketing platform using Apache Kafka and BullMQ, orchestrating personalized SMS, email, and WhatsApp campaigns with custom offers across 30K+ users while feeding real-time CRM and analytics pipelines."
@@ -69,6 +72,7 @@ jobs:
     location: "Remote"
     title: "Full-Stack Developer Intern"
     dates: "Jan 2024 -- Dec 2024"
+    url: "https://jythu.com/"
     bullets:
       - id: jythu.bullet.1
         text: "Shipped two production React Native apps (LMS + admin panel) with Node.js backends serving 2K+ learners; provisioned full AWS infrastructure with Terraform and GitHub Actions CI/CD, with multi-layer anti-piracy controls including device-bound auth."
@@ -79,6 +83,8 @@ projects:
   - id: docintel
     name: "Document Intelligence Platform (RAG)"
     tech: "FastAPI, LangChain, Qdrant, Groq, Google Gemini, AWS ECS Fargate, Docker"
+    demo_url: "https://aidoc.harshsaw.ca/"
+    repo_url: "https://github.com/Harshksaw/document_portal"
     bullets:
       - id: project.docintel.bullet.1
         text: "Architected a multi-tenant RAG platform with session-isolated Qdrant indexes, enabling semantic search and conversational Q&A over PDF, DOCX, and TXT documents."
@@ -89,6 +95,8 @@ projects:
   - id: codexpo
     name: "CodeExpo -- Browser-Based IDE & Sandbox Environment"
     tech: "React, Node.js, WebSocket, Docker, Nginx, Zustand, xterm.js"
+    demo_url: "https://code.harshsaw.ca"
+    repo_url: "https://github.com/Harshksaw/Project-IDX-Codesandbox"
     bullets:
       - id: project.codexpo.bullet.1
         text: "Engineered a full-stack browser-based IDE replicating a local dev environment -- live terminal via xterm.js and WebSocket, real-time code execution with browser preview pane, and Socket.IO file synchronization across the workspace."
