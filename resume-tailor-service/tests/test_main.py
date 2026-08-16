@@ -20,7 +20,7 @@ def _fake_manifest():
         job_selections=[JobSelection(job_id="ommuse", bullet_ids=["ommuse.bullet.1"])],
         project_selections=[ProjectSelection(project_id="docintel", bullet_ids=["project.docintel.bullet.1"])],
         achievement_ids=["achievement.lms"],
-        job_trim_priority=["ommuse", "morethinks", "bwisher", "jythu"],
+        job_trim_priority=["okanagan", "ommuse", "bwisher", "jythu"],
     )
 
 

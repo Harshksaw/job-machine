@@ -52,16 +52,6 @@ jobs:
         text: "Engineered a cross-platform desktop uploader (Electron) with persistent folder-sync engine (chokidar + SQLite WAL), parallelized S3 multipart uploads, OAuth 2.0 PKCE auth flow, and a typed IPC bridge exposing 70+ gRPC service methods to the renderer."
       - id: ommuse.bullet.4
         text: "Shipped features across a polyglot monorepo (Go gRPC/protobuf, TypeScript/React, Python) unified by Bazel, owning full deployment infrastructure -- AWS (S3, SQS, ECR), Docker, Pulumi IaC, Envoy proxy, and GitHub Actions CI/CD."
-  - id: morethinks
-    company: "MoreThinks Solutions Ltd."
-    location: "Burnaby, BC"
-    title: "Full-Stack Developer Intern"
-    dates: "Jun 2025 -- Sept 2025"
-    bullets:
-      - id: morethinks.bullet.1
-        text: "Developed full-stack features using Qwik.js and SurrealDB in a monorepo, with CI/CD automation via AWS EKS and API Gateway."
-      - id: morethinks.bullet.2
-        text: "Engineered automated token generation and vector embedding pipelines, producing structured data consumed by ML services for recommendation."
   - id: bwisher
     company: "Bwisher Ltd"
     location: "Remote"

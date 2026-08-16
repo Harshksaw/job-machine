@@ -59,10 +59,6 @@ def _full_manifest() -> Manifest:
                 ],
             ),
             JobSelection(
-                job_id="morethinks",
-                bullet_ids=["morethinks.bullet.1", "morethinks.bullet.2"],
-            ),
-            JobSelection(
                 job_id="bwisher",
                 bullet_ids=["bwisher.bullet.1", "bwisher.bullet.2", "bwisher.bullet.3"],
             ),
@@ -103,7 +99,7 @@ def _full_manifest() -> Manifest:
             "skill.cloud_devops",
             "skill.ai_genai",
         ],
-        job_trim_priority=["okanagan", "ommuse", "morethinks", "bwisher", "jythu"],
+        job_trim_priority=["okanagan", "ommuse", "bwisher", "jythu"],
     )
 
 
