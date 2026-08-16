@@ -46,6 +46,13 @@ Below is the ONLY resume content that exists. You may only reference these
 exact IDs. You may NOT invent new bullet text, new IDs, or new facts.
 
 {_describe_bank(bank)}
+How much to select: fill one full page. The renderer drops the least relevant
+content automatically if the result overflows, so selecting generously is safe
+while selecting sparingly is not -- an under-filled resume wastes the page and
+reads as thin. Concretely: include every bullet that supports this JD, keep
+most bullets for the two most recent jobs, and include both projects unless
+one is clearly irrelevant to the role. Order within each list still matters:
+most relevant first, because that is the order the trimmer removes from.
 {correction}
 Respond with ONLY a JSON object (no prose, no markdown fences) matching this shape:
 {{
@@ -53,7 +60,7 @@ Respond with ONLY a JSON object (no prose, no markdown fences) matching this sha
   "job_selections": [{{"job_id": "<one of {job_ids}>", "bullet_ids": ["<ids from that job, most relevant first>"]}}, ... one entry per job, every job must appear],
   "project_selections": [{{"project_id": "<project id>", "bullet_ids": ["<ids from that project>"]}}, ... most relevant project first],
   "achievement_ids": ["<achievement ids, most relevant first>"],
-  "skill_ids": ["<4-5 most relevant skill category ids, most relevant first>"],
+  "skill_ids": ["<5-6 most relevant skill category ids, most relevant first>"],
   "job_trim_priority": ["<all job ids, ordered least-relevant to most-relevant to this JD>"]
 }}"""
 
