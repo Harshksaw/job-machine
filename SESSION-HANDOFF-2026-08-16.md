@@ -1,0 +1,116 @@
+# Session handoff — 2026-08-16
+
+Prep session. **Nothing was applied to and nothing was sent.** Harsh asked to
+research, tailor resumes, and get applications ready for his review while he
+was away. All changes are in the working tree; nothing is committed.
+
+## The headline: tailored resumes finally look like Harsh's resume
+
+His standing rule was "don't tailor, it breaks my formatting"
+(memory `resume-tailoring-rules`). There were two root causes, both now fixed,
+and a tailored PDF was visually diffed against `resume.pdf` to confirm.
+
+1. **Wrong document class** — `/tailor` rendered through
+   `templates/resume.cls` (6425 bytes) instead of the canonical root
+   `resume.cls` (3711 bytes). Fixed last session (`a403473`, `56b7b77`).
+2. **Missing keyword emphasis** — `harshsaw.tex` bolds 49 phrases inside
+   bullets (technologies and figures: "Apache Kafka", "2K+ learners", "70%").
+   The resume bank stored those same bullets as plain text, so every tailored
+   PDF rendered flat. This was almost certainly the bulk of the complaint.
+
+The bank now carries emphasis as `**phrase**`, `render_tex` converts it to a
+bold command *after* LaTeX escaping, and `bank.strip_emphasis` keeps the markers
+out of cover letters, prepared answers, and the traceability corpus. 18 bullets
+carry markup; a full render produces 65 bold spans and zero stray markers.
+
+## Throughput: the pipeline was failing ~35% of the time
+
+Everything below was a systematic validator or infrastructure bug, not a model
+problem. Tests went 180 -> 195, all passing.
+
+| Fix | What was broken |
+|---|---|
+| **`app/traceability.py` (new)** | The kit validator and the resume-summary validator had **duplicate** implementations of the same traceability rules, and the tailoring copy never received any of the kit copy's fixes. It rejected `'Node'` while the bank says `Node.js`. Both now share one module. |
+| plural handling | `'PDFs'` was untraceable because the bank says `PDF`. `singularize()` widens only plurals of terms the bank already contains. |
+| `cs`, `bs`, `phd`, `stem`… | A JD asking for a "CS degree" made the letter untraceable. Restating a requirement is not claiming a credential. |
+| company-name check | `"OneClick / IXL Learning"` only accepted "OneClick", so a letter correctly addressed to IXL Learning was rejected. Any segment's head token now counts. |
+| numeric prompt rules | The model restyled `2K+` as `2,000+`, and `30K+` plus `12K+` as `40K+`. Both prompts now demand figures be copied character-for-character. Invented numbers are still rejected — this closes the honest-restyle case only. |
+| empty LaTeX list | A job whose bullets were all trimmed emitted an empty `jobitems` environment, a **fatal** pdflatex error producing no PDF (this killed NEX2). The template now skips bulletless entries. |
+| CLI timeout 300s -> 600s | Under parallel load the CLI queued and lost otherwise-fine dossiers to a timeout rather than a real failure. |
+| manifest retries 1 -> 2 | Several dossiers were one correction short when attempts ran out. |
+
+## Parallelism
+
+`prep_batch`/`prep_tailor`/`prep_answers` ran **sequentially** at ~90s per unit
+— 104 answers alone was a 2.5-hour wall. The service is one uvicorn process
+whose sync endpoints run in a threadpool, `job_store` serialises writes behind
+an `RLock` with atomic replace, and each render writes to its own
+`output/<slug>/`, so concurrent requests are safe. Replaced all three with a
+single 5-worker pool covering kit -> tailor -> answers
+(scratchpad `run_loop.py`, env `WORKERS` / `PASSES` / `RETAILOR` / `REGEN_IDS`;
+every unit is skip-if-done and re-runnable).
+
+**Restarting the service SIGTERMs in-flight work** (exit 143) and severs pending
+HTTP calls — one mid-pass restart cost 121 re-queued units. Restart only between
+runs.
+
+## Research: about a quarter of the backlog was already dead
+
+Four agents swept ~40 postings. **19 are gone** — recorded as dossier activities
+with the exact evidence, `next_action` set to "confirm whether to archive", and
+per CLAUDE.md **none was auto-skipped or auto-archived**; that call is Harsh's.
+
+Removed: Recraft, PCMI, Thermal Works, American Express (req 26011769; note
+**26009300 is a live Data Engineer II** at the same site), Sundayy, Procare,
+Cerebras (both reqs), Canonical, Mitratech, Temporal, Oscilar, Spruce Systems
+(moved to Ashby, only a Senior role live), Konrad Group (x2, placeholder JDs).
+Filled: Voltus. Closed: NellaDerm, Finstock, MeeBoss.
+
+**24 JDs were backfilled or upgraded** — 9 dossiers had no description at all,
+and 15 held a 100-350 character hand-written summary too thin to argue a letter
+from. Their kits were regenerated against the real posting. This immediately
+produced more honest scoring: NellaDerm dropped 8 -> 6 once the real JD replaced
+its flattering summary.
+
+Fetch techniques are saved in memory `jd-fetch-techniques`. Most useful is
+`linkedin.com/jobs-guest/jobs/api/jobPosting/<jobId>`, which returns the full
+public description where `/jobs/view/` returns a login wall. **Greenhouse
+silently redirects expired jobs to the board index**, so a naive fetch returns a
+different live posting (one returned "Alliances Field Engineer" for a Canonical
+graduate-SWE URL). Always verify the returned role matches.
+
+## Worth Harsh's attention
+
+- **Applied Systems** — Associate SWE, lists **Toronto** alongside Chicago and
+  Dallas, hybrid or remote, $60-125k. Canada-eligible.
+- **Spring Financial** — entry-level, **Vancouver hybrid**, $74-87k, explicitly
+  an AI-native team wanting demonstrable AI-agent-built projects.
+- **Verkada** — the only survivor of the Greenhouse sweep; explicitly sponsors
+  and takes over visas, San Mateo on-site, $125-160k, asks 1+ years backend.
+- **Ledgebrook** — remote Canada, but wants 3+ years full-stack (Harsh has ~2),
+  and its real title is "Full Stack Engineer", not "Finance Engineering".
+- **Three Wellfound roles are unpaid/volunteer** (Edit on the Spot, LifeBonder,
+  LogistIQ) — probably not worth his time.
+- **HENNGE** is Tokyo-based and auto-rejects below 3 years production
+  TypeScript. Out of scope per his US+Canada-only relocation rule.
+
+## Still open
+
+1. **RDS discovery lane is down** — the Docker daemon is not running, so the
+   local :5433 mirror is unavailable and `jobs-pipeline` cannot query. This is
+   infrastructure, not code. It is the lane that properly targets Canada-eligible
+   and sponsoring roles; new-listing discovery was deliberately skipped this
+   session in favour of going deep on the 90+ dossiers already in hand.
+2. **`/api/applications` still 502s** (Apps Script sheet unreachable), so the
+   Pipeline and Board dashboard views stay broken. Dossiers and People work.
+3. **The 19 dead postings need Harsh's archive decision** — each is marked with
+   the reason but left active on purpose.
+4. Nothing is committed. `.vscode/` is untracked.
+
+## Where the output is
+
+- **Review page** — fit-sorted, expandable, every cover letter, fit-evidence
+  table and prepared answer inline, plus a "waiting on you" bucket. Published as
+  an Artifact; rebuild any time with scratchpad `build_review.py`.
+- **Launch queue** — http://127.0.0.1:8420/launch.html
+- **Loop progress** — scratchpad `loop_log.jsonl`, one JSON object per unit.
