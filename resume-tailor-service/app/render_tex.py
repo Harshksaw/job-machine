@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import jinja2
 from app.bank import ResumeBank
 from app.models import Manifest
@@ -21,6 +22,20 @@ def latex_escape(text: str) -> str:
     return "".join(_SPECIAL.get(ch, ch) for ch in text)
 
 
+# The bank marks Harsh's keyword emphasis as "**phrase**", mirroring the
+# \textbf{} spans in harshsaw.tex. Without this the tailored resume rendered
+# every bullet unemphasised while his real resume bolds the technologies and
+# the numbers -- the most visible way a tailored PDF stopped looking like his.
+# "*" is not in _SPECIAL, so the markers survive escaping untouched and are
+# converted here, afterwards, where the braces we emit are real LaTeX rather
+# than literal text.
+_EMPHASIS_RE = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
+
+
+def _escape_with_emphasis(text: str) -> str:
+    return _EMPHASIS_RE.sub(r"\\textbf{\1}", latex_escape(text))
+
+
 def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
     job_sel_by_id = {js.job_id: js for js in manifest.job_selections}
     jobs_ctx = []
@@ -37,7 +52,7 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
             # Raw, like contact.email and the profile urls: it goes inside
             # \href{} where escaping would corrupt the target.
             "url": job.url,
-            "bullets": [latex_escape(bullet_text[bid]) for bid in sel.bullet_ids],
+            "bullets": [_escape_with_emphasis(bullet_text[bid]) for bid in sel.bullet_ids],
         })
 
     project_by_id = {p.id: p for p in bank.projects}
@@ -50,11 +65,12 @@ def _build_context(manifest: Manifest, bank: ResumeBank) -> dict:
             "tech": latex_escape(proj.tech),
             "demo_url": proj.demo_url,
             "repo_url": proj.repo_url,
-            "bullets": [latex_escape(bullet_text[bid]) for bid in ps.bullet_ids],
+            "bullets": [_escape_with_emphasis(bullet_text[bid]) for bid in ps.bullet_ids],
         })
 
     achievement_text = {b.id: b.text for b in bank.achievements}
-    achievements_ctx = [latex_escape(achievement_text[aid]) for aid in manifest.achievement_ids]
+    achievements_ctx = [_escape_with_emphasis(achievement_text[aid])
+                    for aid in manifest.achievement_ids]
 
     contact = bank.contact
     contact_ctx = {

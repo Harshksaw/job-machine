@@ -1,12 +1,29 @@
 from __future__ import annotations
 from pathlib import Path
+import re
 import yaml
 from pydantic import BaseModel, Field
+
+# Bullets carry Harsh's keyword emphasis as "**phrase**", mirroring the
+# \textbf{} spans in harshsaw.tex. Only app.render_tex turns the marker into
+# bold; every other consumer wants the plain sentence, because a cover letter
+# quoting "**Apache Kafka**" would be wrong and a traceability corpus should
+# match on the word, not the punctuation around it.
+_EMPHASIS_RE = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
+
+
+def strip_emphasis(text: str) -> str:
+    return _EMPHASIS_RE.sub(r"\1", text)
 
 
 class Bullet(BaseModel):
     id: str
     text: str
+
+    @property
+    def plain(self) -> str:
+        """The bullet as prose, with presentation markers removed."""
+        return strip_emphasis(self.text)
 
 
 class Job(BaseModel):
@@ -101,11 +118,11 @@ def bank_text_blob(bank: ResumeBank) -> str:
     for job in bank.jobs:
         parts.append(job.company)
         parts.append(job.title)
-        parts.extend(b.text for b in job.bullets)
+        parts.extend(b.plain for b in job.bullets)
     for proj in bank.projects:
         parts.append(proj.name)
-        parts.extend(b.text for b in proj.bullets)
-    parts.extend(b.text for b in bank.achievements)
+        parts.extend(b.plain for b in proj.bullets)
+    parts.extend(b.plain for b in bank.achievements)
     parts.extend(s.items for s in bank.skills)
     parts.extend(fact.text for fact in bank.profile_facts)
     return " ".join(parts)

@@ -29,7 +29,11 @@
 
 \begin{rSection}{Experience}
 \scriptsize
-((* for job in jobs *))
+((# A job whose bullets were all trimmed away emits an empty jobitems, and a
+    LaTeX list with no \item is a fatal error ("Something's wrong--perhaps a
+    missing \item") that kills the whole render. A bare job header carries no
+    information anyway, so drop the entry entirely. #))
+((* for job in jobs if job.bullets *))
 \job{(((job.title)))}{(((job.company)))}{(((job.url)))}{(((job.location)))}{(((job.dates)))}
 \begin{jobitems}
 ((* for bullet in job.bullets *))
@@ -40,7 +44,8 @@
 \end{rSection}\vspace{-0.7em}
 
 \begin{rSection}{Projects}
-((* for project in projects *))
+((# Same empty-list hazard as the jobs loop above. #))
+((* for project in projects if project.bullets *))
 \scriptsize \textbf{(((project.name)))}
 {\scriptsize \textit{(((project.tech)))}}
 ((* if project.demo_url or project.repo_url *))

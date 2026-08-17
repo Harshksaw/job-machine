@@ -8,6 +8,7 @@ from typing import Callable
 
 from pydantic import ValidationError
 
+from app import traceability
 from app.bank import ResumeBank
 from app.claude_cli import schema_completer
 from app.errors import JobGenerationError
@@ -26,38 +27,16 @@ _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#/-]*")
 # 2026-08-13). Deliberately excluded: nameable skills and products such as SQL,
 # HTML, CSS, JWT, SSO and RBAC. Those ARE credential claims, and they stay
 # traceable so a fabricated skill is still caught.
-_GENERIC_TECH_TERMS = {
-    "ui", "ux", "api", "apis", "rest", "restful", "crud", "json", "xml",
-    "http", "https", "url", "urls", "sdk", "cli", "ide", "os", "qa", "mvp",
-    "saas", "b2b", "b2c", "pr", "prs", "oop", "tdd", "etl", "sla", "mvc",
-    "cpu", "gpu", "ram", "uuid", "csv", "pdf", "e2e", "poc",
-    "iot", "jd", "llm", "llms", "ci", "cd",
-    # Concepts, roles, compliance regimes and business terms. None of these is
-    # a technology the candidate could claim to have used, so none is a
-    # credential -- but each is an all-caps token `extract_facts` would
-    # otherwise demand a source for.
-    "oss", "sre", "dx", "pii", "gdpr", "soc", "hipaa",
-    "kpi", "kpis", "okr", "okrs", "arr", "crm", "erp", "spa", "pwa", "sdlc",
-}
-_FACT_STOPWORDS = {"i"} | _GENERIC_TECH_TERMS
-_MONTH_ALIASES = {
-    "jan": "january", "feb": "february", "mar": "march", "apr": "april",
-    "jun": "june", "jul": "july", "aug": "august", "sep": "september",
-    "sept": "september", "oct": "october", "nov": "november",
-    "dec": "december",
-}
-# Equivalent names for one product. Strictly synonyms, never a different
-# technology, so this cannot let a fabricated skill through.
-_TECH_ALIASES = {
-    "postgresql": ("postgres",),
-    "postgres": ("postgresql",),
-    "mongodb": ("mongo",),
-    "mongo": ("mongodb",),
-    "kubernetes": ("k8s",),
-    "k8s": ("kubernetes",),
-    "javascript": ("js",),
-    "typescript": ("ts",),
-}
+# The traceability vocabulary and the token/compound rules now live in
+# app.traceability, shared with the tailored-resume validator in app.validate.
+# They had been duplicated, and the tailoring copy silently missed every fix
+# made here -- rejecting "Node" while the bank says "Node.js".
+_GENERIC_TECH_TERMS = traceability.GENERIC_TECH_TERMS
+_FACT_STOPWORDS = traceability.FACT_STOPWORDS
+_MONTH_ALIASES = traceability.MONTH_ALIASES
+_TECH_ALIASES = traceability.TECH_ALIASES
+_allowed_tokens = traceability.allowed_tokens
+_fact_is_traceable = traceability.fact_is_traceable
 _BANNED_COVER_PHRASES = (
     "i am writing to apply",
     "i believe i would be a great fit",
@@ -120,18 +99,21 @@ def build_source_index(bank: ResumeBank) -> dict[str, str]:
         ),
         "profile.location": bank.contact.location,
     }
+    # `.plain`, not `.text`: the ledger is quoted into cover letters and form
+    # answers, which are prose. The bank's "**...**" spans are resume-render
+    # emphasis and would be copied verbatim into a letter otherwise.
     for job in bank.jobs:
         for bullet in job.bullets:
             sources[bullet.id] = (
-                f"{job.company}, {job.title}, {job.dates}: {bullet.text}"
+                f"{job.company}, {job.title}, {job.dates}: {bullet.plain}"
             )
     for project in bank.projects:
         for bullet in project.bullets:
             sources[bullet.id] = (
-                f"{project.name}; {project.tech}: {bullet.text}"
+                f"{project.name}; {project.tech}: {bullet.plain}"
             )
     for achievement in bank.achievements:
-        sources[achievement.id] = achievement.text
+        sources[achievement.id] = achievement.plain
     for skill in bank.skills:
         source_id = skill.id or f"skill.{_source_slug(skill.category)}"
         sources[source_id] = (
@@ -165,67 +147,6 @@ def _word_count(text: str) -> int:
     return len(re.findall(r"\b[\w+.#/-]+\b", text))
 
 
-def _allowed_tokens(text: str) -> set[str]:
-    # Include both whole tokens AND their "/"-, "-"- and "."-split sub-parts, so
-    # a bank compound like "CI/CD", "RAG-based" or "Qwik.js" also makes "ci",
-    # "cd", "rag", "based", "qwik", "js" traceable. Without splitting on "."
-    # too, a bank tech name stored in dotted form ("Qwik.js", "Node.js",
-    # "sync.Map") did not make its equally-truthful bare base name ("Qwik",
-    # "Node") traceable, so honest kits mentioning it failed validation and
-    # 502'd. The whole dotted token stays in the set as well, so exact dotted
-    # references ("Node.js") keep matching.
-    allowed: set[str] = set()
-    for token in _TOKEN_RE.findall(text):
-        allowed.add(token.lower())
-        for part in re.split(r"[/.-]", token):
-            if part:
-                allowed.add(part.lower())
-                # The bank abbreviates months ("Dec 2026"); writing "December"
-                # is the same fact, not a new one. The prompt asks for the
-                # ledger's spelling and the model complies inconsistently, so
-                # accept both rather than fail an otherwise honest letter.
-                full = _MONTH_ALIASES.get(part.lower())
-                if full:
-                    allowed.add(full)
-                # Same idea for tech names the bank stores in one canonical
-                # form: "Postgres" and "PostgreSQL" are one product, not two
-                # facts, and rejecting the short form failed honest letters.
-                for alias in _TECH_ALIASES.get(part.lower(), ()):
-                    allowed.add(alias)
-    return allowed
-
-
-def _fact_is_traceable(fact: str, allowed_tokens: set[str]) -> bool:
-    if fact.lower() in allowed_tokens:
-        return True
-    # Compound facts the model coins by gluing a bank term to a connective word
-    # ("RAG-powered", "Bazel-driven", "CI/CD"): traceable only if EVERY acronym-
-    # or proper-noun-like sub-part traces to the bank. Lowercase connectives
-    # ("powered", "based", "driven") are not facts and are ignored, so a
-    # genuinely fabricated Capitalized/acronym sub-part is still caught.
-    # Split on "." as well, matching _allowed_tokens. Without it "Express.js"
-    # never decomposed into "Express" + "js", so a bank term stored bare
-    # ("Express") could not cover its dotted form.
-    parts = [p for p in re.split(r"[/.-]", fact) if p]
-    if len(parts) < 2:
-        return False
-    for part in parts:
-        significant = (
-            (part.isupper() and len(part) >= 2)
-            or part[:1].isupper()
-            or any(c in ".+#" for c in part)
-        )
-        if (
-            significant
-            and part.lower() not in allowed_tokens
-            and part.lower() not in _FACT_STOPWORDS
-        ):
-            # Generic vocabulary is no more a credential inside a compound
-            # ("GPU-level") than it is standing alone ("GPU").
-            return False
-    return True
-
-
 def _fact_errors(text: str, allowed_text: str, label: str) -> list[str]:
     errors: list[str] = []
     allowed_tokens = _allowed_tokens(allowed_text)
@@ -242,7 +163,7 @@ def _fact_errors(text: str, allowed_text: str, label: str) -> list[str]:
         if wordlike:
             if not _fact_is_traceable(fact, allowed_tokens):
                 errors.append(f"{label} contains untraceable fact {fact!r}")
-        elif fact.lower() not in allowed_lower:
+        elif not traceability.literal_fact_is_traceable(fact, allowed_lower):
             errors.append(f"{label} contains untraceable fact {fact!r}")
     return errors
 
@@ -351,8 +272,19 @@ def validate_kit(
         # A letter naturally writes "Cerebras", not "Cerebras Systems", so
         # requiring the full registered name rejected correct letters. The
         # distinctive first token is what actually names the company.
-        company_head = company_core.split()[0] if company_core.split() else ""
-        if company_head and company_head.lower() not in cover.lower():
+        #
+        # A dossier may also carry two names for one employer, either an
+        # aggregator over the real one or a rebrand ("OneClick / IXL
+        # Learning"). Naming EITHER side is naming the company, so accept any
+        # segment's head token rather than only the very first -- otherwise a
+        # letter correctly addressed to IXL Learning was rejected for not
+        # saying "OneClick".
+        heads = {
+            segment.split()[0].lower()
+            for segment in re.split(r"\s*[/|]\s*", company_core)
+            if segment.split()
+        }
+        if heads and not any(head in cover.lower() for head in heads):
             errors.append("cover letter must name the company")
     if cover:
         lowered = cover.lower()
@@ -394,10 +326,11 @@ Candidate source ledger (the ONLY allowed candidate facts):
 Rules:
 1. Never invent experience, skills, dates, numbers, education, authorization,
    preferences, or company facts. Candidate proof must cite source_ids above.
-   Copy names, dates, month spellings, degree names, and acronyms exactly as
-   the source ledger writes them (keep "Dec 2026" as "Dec", keep "Computer
-   Information Systems" spelled out) -- do not expand, abbreviate, or coin an
-   acronym the ledger does not contain.
+   Copy names, dates, month spellings, degree names, acronyms and FIGURES
+   exactly as the source ledger writes them (keep "Dec 2026" as "Dec", keep
+   "Computer Information Systems" spelled out, keep "2K+" as "2K+" and never
+   restyle it as "2,000+") -- do not expand, abbreviate, round, total, or coin
+   an acronym or figure the ledger does not contain.
 2. Score fit from 1-10. Below 6 => "review"; 6 or above => "apply".
    "review" means keep the opportunity active so the user can improve or
    reconsider it later. Never recommend "skip" automatically.

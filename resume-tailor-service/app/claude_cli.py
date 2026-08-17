@@ -33,7 +33,10 @@ _ISOLATION_FLAGS = [
 
 def run_claude(
     prompt: str,
-    timeout: int = 300,
+    # 600s, not 300s. Under a parallel batch the CLI queues behind other
+    # in-flight calls, and the 2026-08-16 run lost five otherwise-fine
+    # dossiers to "timed out after 300s" rather than to any real failure.
+    timeout: int = 600,
     model: str = MODEL_NAME,
     json_schema: dict | None = None,
 ) -> str:

@@ -1,4 +1,5 @@
 import re
+from app import traceability
 from app.bank import (
     ResumeBank, all_job_ids, all_project_ids, all_achievement_ids,
     all_skill_ids, all_job_bullet_ids, all_project_bullet_ids, bank_text_blob,
@@ -8,10 +9,6 @@ from app.models import Manifest
 _NUMERIC_RE = re.compile(r"\d[\d,.]*\+?%?[KkMmBb]?\+?")
 _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#\-]*")
 _SENTENCE_END = (".", "!", "?")
-
-
-def _bank_word_set(bank: ResumeBank) -> set[str]:
-    return {w.lower() for w in _TOKEN_RE.findall(bank_text_blob(bank))}
 
 
 def extract_facts(text: str) -> set[str]:
@@ -89,16 +86,21 @@ def validate_manifest(manifest: Manifest, bank: ResumeBank) -> list[str]:
         )
 
     blob = bank_text_blob(bank)
-    bank_words = _bank_word_set(bank)
+    # Shared with the cover-letter/answer validator. This used to be a plain
+    # lowercase word set, which called "Node" untraceable even though the bank
+    # says "Node.js" -- rejecting honest resumes. Numeric facts still require a
+    # literal appearance in the bank, so an invented figure ("3+ years",
+    # "40K+ users") is still caught.
+    allowed = traceability.allowed_tokens(blob)
     for fact in extract_facts(manifest.summary):
         is_wordlike = any(c.isalpha() for c in fact) and not any(
             c.isdigit() or c in "%" for c in fact
         )
         if is_wordlike:
-            if fact.lower() not in bank_words:
+            if not traceability.fact_is_traceable(fact, allowed):
                 errors.append(f"untraceable fact in summary: {fact!r}")
         else:
-            if fact not in blob:
+            if not traceability.literal_fact_is_traceable(fact, blob.lower()):
                 errors.append(f"untraceable fact in summary: {fact!r}")
 
     return errors

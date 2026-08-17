@@ -10,17 +10,19 @@ from app.validate import validate_manifest
 
 def _describe_bank(bank: ResumeBank) -> str:
     lines: list[str] = []
+    # `.plain`: the selector only returns ids, so the "**...**" render markers
+    # would be noise in the prompt and could leak into the summary it writes.
     for job in bank.jobs:
         lines.append(f"JOB {job.id} ({job.company}, {job.title}, {job.dates}):")
         for b in job.bullets:
-            lines.append(f"  - {b.id}: {b.text}")
+            lines.append(f"  - {b.id}: {b.plain}")
     for proj in bank.projects:
         lines.append(f"PROJECT {proj.id} ({proj.name}):")
         for b in proj.bullets:
-            lines.append(f"  - {b.id}: {b.text}")
+            lines.append(f"  - {b.id}: {b.plain}")
     lines.append("ACHIEVEMENTS:")
     for b in bank.achievements:
-        lines.append(f"  - {b.id}: {b.text}")
+        lines.append(f"  - {b.id}: {b.plain}")
     lines.append("SKILL CATEGORIES:")
     for skill in bank.skills:
         lines.append(f"  - {skill.id}: {skill.category}: {skill.items}")
@@ -54,6 +56,15 @@ most bullets for the two most recent jobs, and include both projects unless
 one is clearly irrelevant to the role. Order within each list still matters:
 most relevant first, because that is the order the trimmer removes from.
 {correction}
+Rules for the summary, which is the only prose you write:
+- Every number must be copied character-for-character from the content above.
+  Never total, average, round or extrapolate. If two bullets say "30K+" and
+  "12K+", you may cite either, never "40K+". Never state a years-of-experience
+  figure unless that exact figure appears above.
+- Every product, tool and company name must appear above, spelled as it is
+  spelled above.
+- The safest summary reuses the wording of the bullets you selected.
+
 Respond with ONLY a JSON object (no prose, no markdown fences) matching this shape:
 {{
   "summary": "1-2 sentence summary using ONLY facts/numbers that appear above",
@@ -83,7 +94,10 @@ def get_manifest(
     role: str,
     bank: ResumeBank,
     complete: Callable[[str], str] = schema_completer(Manifest),
-    max_retries: int = 1,
+    # Two retries, not one. Each retry feeds the exact validator errors back,
+    # and in the 2026-08-16 batch several dossiers were one correction short of
+    # a valid manifest when attempts ran out.
+    max_retries: int = 2,
 ) -> Manifest:
     previous_errors: list[str] | None = None
     attempts = max_retries + 1
