@@ -35,8 +35,9 @@ resume-tailor-service/data/
 # app.main:app` serves the dashboard on a fresh checkout with no node build step.
 node_modules/
 
-# OS
+# OS / editor
 .DS_Store
+.vscode/
 
 # Session scratch: browser UI snapshots + screenshots from run sessions
 session-artifacts/
