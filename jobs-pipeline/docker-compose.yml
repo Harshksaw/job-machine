@@ -1,6 +1,6 @@
 services:
   jobs-db:
-    image: postgres:16
+    image: postgres:17          # must match RDS major (17.9) or pg_dump/restore aborts
     container_name: jobs-local
     restart: unless-stopped
     environment:

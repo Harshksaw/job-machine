@@ -20,16 +20,15 @@ docker compose up -d        # starts local Postgres on 127.0.0.1:5433
 
 ## 2. Initial full clone (the "firehose", run once; large -> background it)
 Loads the entire RDS `job_registry` (schema + all rows) into the local
-container. Uses the `postgres:16` image's `pg_dump`, so no local `psql` needed.
+container. Uses `postgres:17` to match RDS 17.9, and creates `pg_trgm` **before**
+restore so GIN `gin_trgm_ops` indexes do not abort the load.
 ```sh
-set -a; . ./.env; set +a
-nohup sh -c 'docker run --rm -i postgres:16 pg_dump --no-owner --no-acl "$RDS_DSN" \
-   | docker exec -i jobs-local psql -q -U postgres -d job_registry' \
-   > clone.out 2>&1 &
+chmod +x clone.sh
+nohup ./clone.sh > clone.out 2>clone.err &
 tail -f clone.out
 ```
-If `pg_dump` complains about server version, change `postgres:16` to match the
-RDS major version.
+The previous one-liner (`postgres:16` dump into a DB without `pg_trgm`) is what
+produced `clone.err`. Do not use it.
 
 ## 3. Inspect the real schema
 ```sh
