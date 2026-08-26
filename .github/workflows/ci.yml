@@ -1,7 +1,6 @@
 name: CI
 
-# Scoped to the service on purpose: jobs-pipeline/ churns daily with JSON and
-# markdown run artifacts, and none of that is code worth a CI run.
+# Scoped to the service: that is the only package with a test suite.
 on:
   push:
     paths:

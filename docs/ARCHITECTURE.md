@@ -1,19 +1,23 @@
 # Job Machine: End-to-End System Architecture
 
-Last verified: 2026-08-07 against branch `job-search/push-2026-08-01` @ `8d151cb`.
-Every claim below was checked against source, live service state, or CI output.
+Last verified: 2026-08-25. The RDS `job_registry` / `jobs-pipeline`
+bulk-discovery lane has been removed; it no longer exists. Remaining
+live-service claims below were last checked 2026-08-07 against
+`job-search/push-2026-08-01` @ `8d151cb`.
 
 ---
 
 ## 1. What the system is
 
-Three loosely coupled subsystems plus one agent driving them:
+Two loosely coupled subsystems plus one agent driving them:
 
 | # | Subsystem | Lives in | Runtime | Owns |
 |---|---|---|---|---|
 | 1 | **Agent / browser lane** | `CLAUDE.md`, `prompts/`, `browser-profile/` | Claude Code CLI + Playwright MCP on the host | Searching, reading listings, filling and submitting forms, outreach |
 | 2 | **Resume-tailor service** | `resume-tailor-service/` | FastAPI on `127.0.0.1:8420`, supervised by launchd | Dossiers, tailored PDFs, application kits, people, dashboard UI |
-| 3 | **Jobs pipeline** | `jobs-pipeline/` | `uv` scripts + local Docker Postgres on `127.0.0.1:5433` | Bulk job discovery from the RDS `job_registry` mirror |
+
+Discovery is LinkedIn, Wellfound, and company ATS only. There is no RDS jobs
+database and no local Postgres mirror.
 
 Two external dependencies: the **Anthropic models** (reached through the local
 `claude` CLI, no API key) and a **Google Apps Script webhook** (compact sheet log).
@@ -29,16 +33,9 @@ flowchart LR
       STORE[("data/jobs.json<br/>data/people.json")]
       OUT[("output/slug-hash/<br/>resume.pdf + meta.json")]
     end
-    subgraph pipe["jobs-pipeline"]
-      PG[("local Postgres :5433<br/>job_registry mirror")]
-      CSV["relevant_jobs.csv<br/>shortlist_top25.csv"]
-    end
     CLI["claude CLI (headless -p)"]
   end
 
-  RDS[("RDS job_registry<br/>~608k rows")] -->|jobs.py sync| PG
-  PG -->|jobs.py query| CSV
-  CSV --> CC
   CC <--> PW
   PW -->|LinkedIn / Wellfound / ATS| WEB[("Job boards + ATS")]
   CC -->|REST| API
@@ -180,27 +177,7 @@ a `"Listing revisited"` activity instead of a no-op revision.
 
 ---
 
-## 4. Jobs pipeline
-
-`jobs-pipeline/jobs.py` (420 LOC) is a standalone CLI, deliberately outside the
-service and outside CI.
-
-| Command | Does |
-|---|---|
-| `schema` | Introspects the RDS jobs table: picks table, PK, watermark column |
-| `sync` | Watermark-based incremental copy RDS -> local Postgres (idempotent) |
-| `query` | Regex profile filter -> `relevant_jobs.csv` |
-| `shortlist` | Ranked `shortlist_top25.csv`, with `--eligible` / `--canada-only` |
-| `count` | Row counts |
-
-The filter encodes the targeting rules as regexes: `INCLUDE` (SWE / full-stack /
-backend / AI-ML / mobile), `EXCLUDE` (senior / staff / lead / director / VP),
-`NOSPONSOR`, `CLEARANCE`, `ELIGIBLE_GEO`, `US_ONLY`, `CANADA_REMOTE`, `STACK`.
-Secrets (`RDS_DSN`, `LOCAL_DSN`) live only in the gitignored `.env`.
-
----
-
-## 5. Deployment and CI
+## 4. Deployment and CI
 
 ```mermaid
 flowchart TD
@@ -224,8 +201,7 @@ file against a fresh render, so drift is detectable. Verified in sync on
 `start.sh` is the manual per-session runner that also starts the mock sheet when
 `APPS_SCRIPT_URL` points at loopback.
 
-**CI** (`.github/workflows/ci.yml`), path-scoped to `resume-tailor-service/**` so
-the daily churn in `jobs-pipeline/` never triggers a run:
+**CI** (`.github/workflows/ci.yml`) is path-scoped to `resume-tailor-service/**`:
 
 - **`tests`**: `uv sync --frozen` + `pytest -q` on a clean checkout with no
   `.env`. That absence is the assertion: the suite must not depend on local secrets.
@@ -240,7 +216,7 @@ wheels the dependencies publish.
 
 ---
 
-## 6. Verified live state (2026-08-07)
+## 5. Verified live state (2026-08-07)
 
 | Check | Result |
 |---|---|
@@ -254,7 +230,7 @@ wheels the dependencies publish.
 
 ---
 
-## 7. Codex's contribution, and the gaps it exposed
+## 6. Codex's contribution, and the gaps it exposed
 
 Codex ran twice against this repo (`~/.codex/sessions/2026/08/01` and `08/05`).
 It wrote **no code and made no commits**. Every commit in the log is authored by
@@ -299,8 +275,7 @@ final report.
 3. **The approved queue + console is unbuilt.** No SQLite queue, no worker pool,
    no review inbox; tailoring is still synchronous inside the `/tailor` request.
 4. **CI covers the service only.** No build, typecheck, or test for `dashboard/`
-   (the SPA ships as committed `app/static/` assets), and nothing at all for
-   `jobs-pipeline/`.
+   (the SPA ships as committed `app/static/` assets).
 5. **No auth, by design.** Loopback-only; the token gate was removed in
    `eacc562`. Correct for a single-user local tool, and a hard blocker to ever
    exposing this beyond `127.0.0.1`.

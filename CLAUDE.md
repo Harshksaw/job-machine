@@ -15,6 +15,13 @@ TypeScript, Python, Go, Bash | React/Next.js/React Native/Qwik/Electron | NestJS
 ## Targeting
 Software Engineer / Full-Stack / Backend / AI-ML / Mobile (React Native). New grad or early career. Startups preferred. Open to relocation. Skip listings with hard "no sponsorship ever" language — pause and ask me if wording is ambiguous. No salary floor, no remote-only restriction.
 
+## Discovery sources
+Search and apply via LinkedIn, Wellfound, and company ATS only. There is **no**
+RDS `job_registry`, no `jobs-pipeline/`, and no local Postgres jobs mirror.
+Do not start Docker for a jobs DB, do not look for `RDS_DSN`, and do not treat
+"RDS discovery lane is down" in old session notes as a current task. Existing
+dossiers with `source: job_registry (RDS)` stay as historical records.
+
 ## Contact / links
 mister.harshkumar@gmail.com | +1 (778) 583-2260 | linkedin.com/in/harsh-kumar-s-32727b247 | github.com/Harshksaw | harshsaw.me
 Resume: ./resume.pdf (use for every upload field)
