@@ -94,6 +94,7 @@ export interface PersonInput {
   title: string;
   company: string;
   role: string | null;
+  job_id: string;
   linkedin_url: string;
   links: Link[];
   status: string;
@@ -202,19 +203,26 @@ export interface JobSummary {
   job_url: string;
   source: string;
   location: string;
+  work_mode: string;
   status: string;
   priority: string;
   fit_score: number | null;
   recommendation: "apply" | "review" | "skip" | null;
   next_action: string;
   deadline: string;
+  notes: string;
   tailored_resume_id: string | null;
+  has_cover_letter: boolean;
+  needs_user_input: boolean;
+  person_count: number;
   answer_count: number;
   activity_count: number;
   revision_count: number;
   created_at: string;
   updated_at: string;
 }
+
+export type JobDecision = "approve" | "hold" | "applied";
 
 export interface SheetImportResult {
   imported_rows: number;

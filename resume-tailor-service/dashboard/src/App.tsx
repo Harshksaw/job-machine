@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BriefcaseBusiness,
   Columns3,
+  Inbox as InboxIcon,
   Loader2,
   RefreshCw,
   Table2,
@@ -23,11 +24,13 @@ import StatsHeader from "./components/StatsHeader";
 import FilterBar from "./components/FilterBar";
 import People from "./components/People";
 import JobWorkspace from "./components/JobWorkspace";
+import Inbox from "./components/Inbox";
 
-type View = "workspace" | "board" | "table" | "people";
+type View = "inbox" | "workspace" | "board" | "table" | "people";
 type LoadPhase = "loading" | "ready" | "error";
 
 const NAV_ITEMS = [
+  { id: "inbox" as const, label: "Inbox", icon: InboxIcon },
   { id: "workspace" as const, label: "Dossiers", icon: BriefcaseBusiness },
   { id: "table" as const, label: "Pipeline", icon: Table2 },
   { id: "board" as const, label: "Board", icon: Columns3 },
@@ -41,7 +44,7 @@ export default function App() {
 
   const [people, setPeople] = useState<Person[]>([]);
 
-  const [view, setView] = useState<View>("workspace");
+  const [view, setView] = useState<View>("inbox");
   const [selected, setSelected] = useState<Application | null>(null);
   const [workspaceFocusId, setWorkspaceFocusId] = useState<string | null>(null);
 
@@ -226,7 +229,9 @@ export default function App() {
               Job Machine
             </h1>
             <p className="truncate text-xs text-zinc-600">
-              {view === "workspace"
+              {view === "inbox"
+                ? "Pick a ticket and approve it"
+                : view === "workspace"
                 ? "Private application workspace"
                 : view === "people"
                   ? `${people.length} outreach contact${people.length === 1 ? "" : "s"}`
@@ -260,7 +265,7 @@ export default function App() {
                 );
               })}
             </div>
-            {view !== "workspace" && (
+            {view !== "workspace" && view !== "inbox" && (
               <button
                 type="button"
                 onClick={() => void refreshAll()}
@@ -277,14 +282,22 @@ export default function App() {
 
       <main
         className={`mx-auto w-full max-w-[1680px] flex-1 px-3 sm:px-4 ${
-          view === "workspace" ? "py-3" : "space-y-4 py-5"
+          view === "workspace" || view === "inbox" ? "py-3" : "space-y-4 py-5"
         }`}
       >
-        {view === "workspace" ? (
+        {view === "inbox" ? (
+          <Inbox
+            onOpenDossier={(jobId) => {
+              setWorkspaceFocusId(jobId);
+              setView("workspace");
+            }}
+            onPeopleChanged={loadPeople}
+          />
+        ) : view === "workspace" ? (
           <JobWorkspace
-            people={people}
             focusJobId={workspaceFocusId}
             onFocusConsumed={consumeWorkspaceFocus}
+            onPeopleChanged={loadPeople}
           />
         ) : view === "people" ? (
           <People people={people} companies={companies} onChanged={loadPeople} />

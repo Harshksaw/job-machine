@@ -1,0 +1,24 @@
+---
+description: Job Machine fact routing for every agent. Read AGENTS.md and the playbook first.
+alwaysApply: true
+---
+
+# Job Machine routing
+
+Read @AGENTS.md first (canonical brief and fact-routing table), then
+@docs/AGENT-PLAYBOOK.md for operating techniques and unauthenticated ATS JD
+fetches. Do not restate facts from those files; follow them.
+
+- Experience, dates, metrics, skills: only
+  @resume-tailor-service/content/resume_bank.yaml. Never fabricate.
+- Street, salary, exact work status, DOB, French, start date:
+  `docs/PERSONAL-ANSWERS.md` (gitignored). If a value is blank, stop and ask
+  Harsh. Never invent one.
+- Live queue: dashboard `http://127.0.0.1:8420/`, then the newest
+  `SESSION-HANDOFF-*.md`.
+- Browser / CDP: @docs/BROWSER_PROFILE.md. One process on `browser-profile/`
+  at a time.
+- Origin is PUBLIC. Never commit `docs/PERSONAL-ANSWERS.md` or
+  `SESSION-HANDOFF-*.md`.
+- Never re-send an application. Never send LinkedIn outreach without Harsh's
+  approval of the exact message. No em-dashes in messages, drafts, or notes.

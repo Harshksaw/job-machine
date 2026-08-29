@@ -1,4 +1,4 @@
-import type { Person } from "../types";
+import type { Person, PersonInput } from "../types";
 
 export const PERSON_STATUSES = ["to-reach", "queued", "sent", "replied", "skip"] as const;
 
@@ -33,6 +33,23 @@ export function matchesApplication(p: Person, app: { company: string; role: stri
   if (companyKey(p.company) !== companyKey(app.company)) return false;
   if (p.role && p.role.trim()) return companyKey(p.role) === companyKey(app.role);
   return true;
+}
+
+/** True when a person belongs on this job ticket. Prefer a saved job_id. */
+export function matchesJob(
+  person: Person,
+  job: { id: string; company: string; role: string }
+): boolean {
+  if (person.job_id) return person.job_id === job.id;
+  return matchesApplication(person, job);
+}
+
+/** Keep an existing contact's scope stable unless a dedicated reassignment UI changes it. */
+export function preserveJobAssociation(
+  input: PersonInput,
+  existing: Pick<Person, "job_id">,
+): PersonInput {
+  return { ...input, job_id: existing.job_id };
 }
 
 /** Only http(s) links are safe to render as hrefs. */

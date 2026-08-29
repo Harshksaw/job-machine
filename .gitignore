@@ -2,6 +2,13 @@
 browser-profile/
 .playwright-mcp/
 
+# Personal application answers and session handoffs. These hold street address,
+# DOB, salary numbers, ATS confirmation codes, and dossier UUIDs, and the origin
+# remote is PUBLIC. The committed shape lives in docs/PERSONAL-ANSWERS.example.md;
+# agents read the real file from the working tree, never from git.
+docs/PERSONAL-ANSWERS.md
+SESSION-HANDOFF-*.md
+
 # Claude Code linked git worktrees — these are separate checkouts (their branches
 # live on origin already); committing them embeds a broken repo reference.
 .claude/worktrees/
@@ -29,6 +36,7 @@ resume-tailor-service/output/
 
 # Local job-dossier and people/outreach stores (personal runtime data)
 resume-tailor-service/data/
+resume-tailor-service/backups/
 
 # Node / dashboard tooling. NOTE: resume-tailor-service/app/static/ (the built
 # dashboard UI) is intentionally NOT ignored — it is committed so `uvicorn

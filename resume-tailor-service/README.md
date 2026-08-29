@@ -61,12 +61,14 @@ Returns `{"pdf_path": "...", "manifest": {...}, "pages": 1}`.
 
 ## Dashboard UI
 
-A dashboard (job dossiers, applications board/table, tailored-resume inspector,
-and a People/outreach view) is served at **http://localhost:8420/** — the same
-FastAPI app and port as the API above (`GET /health`, `POST /tailor`,
-`GET /api/*` all still work side by side; the UI is mounted last so it
-never shadows them). The dashboard loads directly with no login or token
-gate — the service is local-only, has no auth, and binds to 127.0.0.1.
+A dashboard (Inbox decision queue, job dossiers, applications board/table,
+tailored-resume inspector, and People/outreach view) is served at
+**http://localhost:8420/** — the same FastAPI app and port as the API above
+(`GET /health`, `POST /tailor`, `GET /api/*` all still work side by side; the
+UI is mounted last so it never shadows them). Inbox is the default view and
+derives its queues from canonical dossier statuses; Dossiers remains the full
+record editor. The dashboard loads directly with no login or token gate — the
+service is local-only, has no auth, and binds to 127.0.0.1.
 
 The built assets live in `app/static/` and are committed to the repo, so a
 fresh checkout serves the dashboard with no Node/npm build step — just
@@ -85,11 +87,11 @@ then commit alongside your source change.
 
 ## Job dossiers
 
-The default dashboard view is the canonical per-listing workspace. Each dossier
-stores the complete JD, company research, fit score, evidence and gaps, exact
-source IDs, positioning, next action, deadline, cover letter, unusual form
-answers, tailored-resume ID, session activity, and complete restorable
-revisions.
+The dashboard opens on Inbox, the operational decision queue. Dossiers remains
+the canonical per-listing workspace; each record stores the complete JD,
+company research, fit score, evidence and gaps, exact source IDs, positioning,
+next action, deadline, cover letter, unusual form answers, tailored-resume ID,
+session activity, and complete restorable revisions.
 
 Dossiers live in `data/jobs.json`, which is local and gitignored. Google Sheets
 is still supported as a compact pipeline log; **Import** merges its rows into
@@ -110,10 +112,16 @@ GET/PUT/DELETE /api/jobs/{id}
 POST           /api/jobs/capture
 POST           /api/jobs/import-sheet
 POST           /api/jobs/{id}/activity
+POST           /api/jobs/{id}/decision
+GET/POST       /api/jobs/{id}/people
 POST           /api/jobs/{id}/generate-kit
 POST           /api/jobs/{id}/answers/generate
 POST           /api/jobs/{id}/restore/{revision_id}
 ```
+
+Inbox decisions are status-guarded: approve/hold accept only `discovered` or
+`researching`, while applied accepts only `ready` or `applying`. Invalid
+transitions return HTTP 409 and leave the dossier unchanged.
 
 `generate-kit` produces a structured fit decision plus a cover letter. Every
 candidate evidence row cites IDs from `resume_bank.yaml`; IDs and traceable
@@ -135,10 +143,35 @@ tie back to a job/application. A person tied to a company also shows up
 under that company's card in the job inspector.
 
 People are stored in `data/people.json` — gitignored and local-only, never
-committed. The list is managed entirely through `GET/POST/PUT/DELETE
-/api/people` (see `app/people.py` and `app/people_store.py`); like the rest
-of the API, these routes have no auth and are only reachable on
-127.0.0.1.
+committed. A person can be pinned to one dossier with `job_id`; older contacts
+without one remain available to same-company jobs, with an optional role match.
+Mutations refuse to overwrite the file when it is unreadable or malformed.
+The global list is managed through `GET/POST/PUT/DELETE /api/people`, while
+`GET/POST /api/jobs/{id}/people` powers the Inbox and dossier views (see
+`app/people.py`, `app/people_store.py`, and `app/jobs.py`). Like the rest of the
+API, these routes have no auth and are only reachable on 127.0.0.1.
+
+## Session narrative
+
+Cross-job session events live in append-only `data/sessions.jsonl`. Labeled
+dossier activities and Inbox mutations are mirrored there; browser or agent
+actions that do not belong in a dossier can be recorded directly. An
+`external_id` is idempotent within one session. Mirroring is best-effort after
+the primary dossier/person write: an I/O failure is logged without turning an
+already-persisted action into a misleading failed response.
+
+```text
+GET  /api/sessions
+GET  /api/sessions/events?session=...&job_id=...&limit=100
+POST /api/sessions/event
+```
+
+## Back up local data
+
+Run `./scripts/backup-job-data.sh` from this directory. It copies the complete
+`data/` directory—including dossiers, people, and `sessions.jsonl`—plus
+`output/` when present into a timestamped ignored directory under `backups/`.
+Pass a destination path as the first argument to store the backup elsewhere.
 
 ## How it works
 

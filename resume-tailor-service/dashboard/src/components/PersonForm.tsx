@@ -8,20 +8,21 @@ interface Props {
   companies: string[];
   defaultCompany?: string;
   defaultRole?: string;
+  defaultJobId?: string;
   onCancel: () => void;
   onSave: (body: PersonInput) => Promise<void>;
 }
 
 const EMPTY: PersonInput = {
-  name: "", title: "", company: "", role: null, linkedin_url: "",
+  name: "", title: "", company: "", role: null, job_id: "", linkedin_url: "",
   links: [], status: "to-reach", hook: "", message: "", notes: "",
 };
 
-export default function PersonForm({ initial, companies, defaultCompany, defaultRole, onCancel, onSave }: Props) {
+export default function PersonForm({ initial, companies, defaultCompany, defaultRole, defaultJobId, onCancel, onSave }: Props) {
   const [form, setForm] = useState<PersonInput>(() =>
     initial
       ? { ...initial }
-      : { ...EMPTY, company: defaultCompany ?? "", role: defaultRole ?? null }
+      : { ...EMPTY, company: defaultCompany ?? "", role: defaultRole ?? null, job_id: defaultJobId ?? "" }
   );
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");

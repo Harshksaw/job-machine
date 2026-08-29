@@ -11,7 +11,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import type { JobWorkspace, JobWorkspaceInput, Person } from "../types";
+import type { JobWorkspace, JobWorkspaceInput } from "../types";
 import {
   deleteJob,
   generateJobKit,
@@ -38,10 +38,10 @@ type Tab = "overview" | "resume" | "letter" | "answers" | "activity";
 
 interface Props {
   job: JobWorkspace;
-  people: Person[];
   onUpdated: (job: JobWorkspace) => void;
   onDeleted: (jobId: string) => void;
   onDirtyChange: (dirty: boolean) => void;
+  onPeopleChanged?: () => void;
 }
 
 const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
@@ -54,10 +54,10 @@ const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
 
 export default function JobDetail({
   job,
-  people,
   onUpdated,
   onDeleted,
   onDirtyChange,
+  onPeopleChanged,
 }: Props) {
   const [draft, setDraft] = useState<JobWorkspaceInput>(() => toJobInput(job));
   const [tab, setTab] = useState<Tab>("overview");
@@ -325,7 +325,12 @@ export default function JobDetail({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "overview" && (
-          <JobOverview draft={draft} people={people} onChange={change} />
+          <JobOverview
+            jobId={job.id}
+            draft={draft}
+            onChange={change}
+            onPeopleChanged={onPeopleChanged}
+          />
         )}
         {tab === "resume" && (
           <JobResume

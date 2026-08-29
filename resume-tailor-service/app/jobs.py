@@ -2,22 +2,34 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app import application_kit, job_store, sheets
+from app import application_kit, job_store, people_store, session_store, sheets
 from app.bank import load_bank
 from app.dashboard import index_tailored
-from app.errors import ClaudeCliError, JobGenerationError, SheetsError
+from app.errors import (
+    ClaudeCliError,
+    JobDecisionConflictError,
+    JobGenerationError,
+    JobStoreError,
+    PeopleStoreError,
+    SheetsError,
+)
 from app.models import (
     Application,
     ApplicationAnswerInput,
     GenerateAnswerRequest,
     JobActivityInput,
     JobCaptureInput,
+    JobDecisionInput,
     JobSummary,
+    Person,
+    PersonInput,
+    SessionEventInput,
     TailoredResumeMeta,
     JobWorkspace,
     JobWorkspaceInput,
@@ -30,6 +42,7 @@ BANK_PATH = BASE_DIR / "content" / "resume_bank.yaml"
 OUTPUT_DIR = BASE_DIR / "output"
 
 _ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -45,6 +58,38 @@ def _get_job_or_404(job_id: str) -> JobWorkspace:
     if job is None:
         raise HTTPException(status_code=404, detail="job dossier not found")
     return job
+
+
+def _mirror_activity(job_id: str, data: JobActivityInput) -> None:
+    if not data.session:
+        return
+    try:
+        session_store.append_event(
+            SessionEventInput(
+                session=data.session,
+                kind=data.kind,
+                title=data.title,
+                detail=data.detail,
+                job_id=job_id,
+                occurred_at=data.occurred_at or getattr(data, "created_at", None),
+                external_id=data.external_id,
+            )
+        )
+    except OSError:
+        logger.exception(
+            "job activity persisted but could not be mirrored to the session log",
+            extra={"job_id": job_id, "session": data.session},
+        )
+
+
+def _append_job_activity(
+    job_id: str,
+    data: JobActivityInput,
+) -> JobWorkspace | None:
+    updated = job_store.add_activity(job_id, data)
+    if updated is not None:
+        _mirror_activity(job_id, data)
+    return updated
 
 
 def _enrich_from_tailored_meta(
@@ -93,7 +138,23 @@ def list_jobs(
         ]
     if status and status.strip():
         jobs = [job for job in jobs if job.status == status.strip().lower()]
-    return jobs
+    people = people_store.load_people()
+    return [
+        job.model_copy(
+            update={
+                "person_count": sum(
+                    people_store.person_matches_job(
+                        person,
+                        job.id,
+                        job.company,
+                        job.role,
+                    )
+                    for person in people
+                )
+            }
+        )
+        for job in jobs
+    ]
 
 
 @router.post("/api/jobs", response_model=JobWorkspace, status_code=201)
@@ -171,6 +232,78 @@ def get_job(job_id: str) -> JobWorkspace:
     return _get_job_or_404(job_id)
 
 
+@router.get("/api/jobs/{job_id}/people", response_model=list[Person])
+def list_job_people(job_id: str) -> list[Person]:
+    job = _get_job_or_404(job_id)
+    return people_store.people_for_job(job.id, job.company, job.role)
+
+
+@router.post("/api/jobs/{job_id}/people", response_model=Person, status_code=201)
+def add_job_person(
+    job_id: str,
+    data: PersonInput,
+    session: str = Query(default="Inbox"),
+) -> Person:
+    job = _get_job_or_404(job_id)
+    payload = data.model_copy(
+        update={
+            "job_id": job.id,
+            "company": data.company.strip() or job.company,
+            "role": data.role or job.role,
+        }
+    )
+    person = people_store.add_person(payload)
+    try:
+        updated = _append_job_activity(
+            job_id,
+            JobActivityInput(
+                kind="research",
+                title=f"Added {person.name} to reach",
+                detail=(
+                    f"{person.name}"
+                    + (f", {person.title}" if person.title else "")
+                    + f" saved on this listing. Status {person.status}."
+                ),
+                session=session,
+            ),
+        )
+    except (JobStoreError, OSError):
+        logger.exception(
+            "person persisted but the job activity could not be recorded",
+            extra={"job_id": job_id, "person_id": person.id},
+        )
+        return person
+
+    if updated is None:
+        try:
+            people_store.delete_person(person.id)
+            still_exists = people_store.person_exists(person.id)
+        except (OSError, PeopleStoreError, ValueError):
+            logger.exception(
+                "job disappeared and the newly created person could not be rolled back",
+                extra={"job_id": job_id, "person_id": person.id},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "job disappeared after person creation and contact rollback failed"
+                ),
+            )
+        if still_exists:
+            logger.error(
+                "job disappeared and the newly created person remains pinned to it",
+                extra={"job_id": job_id, "person_id": person.id},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "job disappeared after person creation and contact rollback failed"
+                ),
+            )
+        raise HTTPException(status_code=404, detail="job dossier no longer exists")
+    return person
+
+
 @router.put("/api/jobs/{job_id}", response_model=JobWorkspace)
 def replace_job(
     job_id: str,
@@ -184,6 +317,23 @@ def replace_job(
     return updated
 
 
+@router.post("/api/jobs/{job_id}/decision", response_model=JobWorkspace)
+def decide_job(job_id: str, data: JobDecisionInput) -> JobWorkspace:
+    _get_job_or_404(job_id)
+    try:
+        updated = job_store.apply_decision(
+            job_id,
+            data.decision,
+            session=data.session,
+        )
+    except JobDecisionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if updated is None:
+        raise HTTPException(status_code=404, detail="job dossier not found")
+    _mirror_activity(job_id, updated.activities[-1])
+    return updated
+
+
 @router.delete("/api/jobs/{job_id}", status_code=204)
 def delete_job(job_id: str) -> None:
     _validate_id(job_id)
@@ -194,7 +344,7 @@ def delete_job(job_id: str) -> None:
 @router.post("/api/jobs/{job_id}/activity", response_model=JobWorkspace)
 def add_activity(job_id: str, data: JobActivityInput) -> JobWorkspace:
     _get_job_or_404(job_id)
-    updated = job_store.add_activity(job_id, data)
+    updated = _append_job_activity(job_id, data)
     if updated is None:
         raise HTTPException(status_code=404, detail="job dossier not found")
     return updated

@@ -35,6 +35,10 @@ npx playwright install chromium
 Why `--user-data-dir`: the browser keeps its own profile folder, so you
 log in to LinkedIn + Wellfound ONCE and stay logged in for every future run.
 
+**Cursor / browser-use:** start an isolated job Chrome that does not touch your
+daily browser — see [`docs/BROWSER_PROFILE.md`](docs/BROWSER_PROFILE.md) and
+`./scripts/start-job-chrome.sh`.
+
 Verify: run `claude`, then type `/mcp` — playwright should show ✔ Connected.
 (First check may fail while npx downloads; wait a few seconds, retry.)
 
@@ -67,12 +71,10 @@ tell me when you see my feed. Then open wellfound.com, same thing.
 Log in by hand in the window that opens. Done — sessions persist in ./browser-profile.
 
 ## 5. Test the webhook
-```
-Open this URL with playwright and tell me the response:
-https://script.google.com/macros/s/AKfycbz4hpb7VnQIsHEiOyN6wa-7R254QOdo3n0QK-pNw7gJ52a3BbKltIx0pY1PqYkfD2SJLA/exec?company=CCTest&role=SWE&status=test
-```
-Expect {"ok":true} + a row in the sheet. If you get a Google login page instead,
-redeploy the Apps Script with access = "Anyone" (Deploy → Manage deployments → edit).
+Open the sheet webhook from `AGENTS.md` in the browser (Google session required),
+with `company=CCTest&role=SWE&status=test`. Expect `{"ok":true}` plus a row in
+the sheet. If you get a Google login page instead, redeploy the Apps Script with
+access = "Anyone" (Deploy → Manage deployments → edit).
 
 ## 6. Daily usage
 ```bash
@@ -86,14 +88,17 @@ Then one of:
 - `Read prompts/linkedin-run.md and execute it`
 - `Read prompts/outreach-run.md and execute it`
 
-CLAUDE.md in this folder is loaded automatically every session — it holds your
-profile, rules, and webhook so the run prompts stay short.
+Every agent reads `AGENTS.md` first (hard rules, dossier + sheet contracts).
+`CLAUDE.md` is a thin Claude Code pointer to that file. The run prompts stay
+short and point at `AGENTS.md` instead of copying the contract.
 
-The dashboard opens on **Dossiers**, the detailed source of truth for each job:
-full JD, fit evidence and gaps, company context, tailored PDF, cover letter,
-application answers, linked people, next action, session activity, and
-restorable revisions. **Pipeline** remains the compact Google-Sheet view.
-Use **Import** in Dossiers to pull existing Sheet rows into local job records.
+The dashboard opens on **Inbox**, the ticket-style decision queue for approving,
+holding, and tracking applications. **Dossiers** remains the detailed source of
+truth for each job: full JD, fit evidence and gaps, company context, tailored
+PDF, cover letter, application answers, job-linked people, next action, session
+activity, and restorable revisions. **Pipeline** remains the compact
+Google-Sheet view. Use **Import** in Dossiers to pull existing Sheet rows into
+local job records.
 
 ## 7. Volume lane — ApplyPilot (add later, optional)
 ```bash
@@ -108,15 +113,6 @@ https://github.com/Skyvern-AI/skyvern — self-host per README.
 
 ---
 
-## Safety rails (already baked into prompts)
-- LinkedIn: human pace, max ~12 connection requests/session, no bulk anything
-- Never fabricate experience in any answer or form
-- Low-fit listings remain active for review; only you can mark one skipped or
-  archived
-- Every listing and action is captured in its local dossier; every content
-  update creates a restorable revision
-- External milestones also log to the sheet — statuses: applied /
-  people-mined / outreach-sent / outreach-queued / replied / interview /
-  rejected
-- Salary, authorization/sponsorship, start-date, demographic, and other
-  unknown personal questions are never guessed; the answer flow requests input
+## Safety rails
+Canonical rules are in `AGENTS.md` (hard rules, eligibility, dossier + sheet
+contracts). The run prompts point there instead of copying them.

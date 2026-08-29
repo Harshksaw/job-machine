@@ -86,6 +86,7 @@ class PersonInput(BaseModel):
     title: str = ""
     company: str
     role: str | None = None
+    job_id: str = ""
     linkedin_url: str = ""
     links: list[Link] = []
     status: str = "to-reach"
@@ -128,6 +129,7 @@ JOB_STATUSES = (
     "archived",
 )
 JOB_PRIORITIES = ("low", "normal", "high", "dream")
+JOB_DECISIONS = ("approve", "hold", "applied")
 # ``skip`` remains readable for dossiers created before low-fit review became
 # the default. New generation accepts only ``apply`` or ``review``.
 FIT_RECOMMENDATIONS = ("apply", "review", "skip")
@@ -216,6 +218,65 @@ class JobActivityInput(BaseModel):
 class JobActivity(JobActivityInput):
     id: str
     created_at: str
+
+
+class JobDecisionInput(BaseModel):
+    decision: str
+    session: str = "Inbox"
+
+    @field_validator("decision")
+    @classmethod
+    def _known_decision(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in JOB_DECISIONS:
+            raise ValueError(f"decision must be one of {JOB_DECISIONS}")
+        return value
+
+    @field_validator("session")
+    @classmethod
+    def _clean_session(cls, value: str) -> str:
+        return value.strip()
+
+
+class SessionEventInput(BaseModel):
+    session: str
+    kind: str = "note"
+    title: str
+    detail: str = ""
+    job_id: str = ""
+    occurred_at: str | None = None
+    external_id: str | None = None
+
+    @field_validator("session", "kind", "title")
+    @classmethod
+    def _session_event_not_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("must not be blank")
+        return value.strip()
+
+    @field_validator("job_id")
+    @classmethod
+    def _clean_job_id(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("external_id")
+    @classmethod
+    def _clean_external_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class SessionEvent(SessionEventInput):
+    id: str
+    created_at: str
+
+
+class SessionSummary(BaseModel):
+    session: str
+    event_count: int
+    last_event_at: str
+    last_title: str = ""
 
 
 class JobWorkspaceInput(BaseModel):
@@ -319,13 +380,18 @@ class JobSummary(BaseModel):
     job_url: str
     source: str
     location: str
+    work_mode: str = ""
     status: str
     priority: str
     fit_score: int | None
     recommendation: str | None
     next_action: str
     deadline: str
+    notes: str = ""
     tailored_resume_id: str | None
+    has_cover_letter: bool = False
+    needs_user_input: bool = False
+    person_count: int = 0
     answer_count: int
     activity_count: int
     revision_count: int

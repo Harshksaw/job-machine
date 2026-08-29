@@ -23,7 +23,7 @@ from app.models import (
     JobWorkspace,
     JobWorkspaceInput,
 )
-from app.errors import JobStoreError
+from app.errors import JobDecisionConflictError, JobStoreError
 from app.slug import safe_slug
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,6 +41,18 @@ _SHEET_STATUS_MAP = {
     "rejected": "rejected",
     "skip": "skipped",
     "skipped": "skipped",
+}
+
+_DECISION_PATCH = {
+    "approve": ("ready", "Apply", "decision", "Approved to apply"),
+    "hold": ("researching", "Review later", "decision", "Held for later review"),
+    "applied": ("applied", "Await response", "applied", "Marked applied from inbox"),
+}
+
+_DECISION_ALLOWED_STATUSES = {
+    "approve": {"discovered", "researching"},
+    "hold": {"discovered", "researching"},
+    "applied": {"ready", "applying"},
 }
 
 
@@ -158,6 +170,7 @@ def list_summaries() -> list[JobSummary]:
             job_url=job.job_url,
             source=job.source,
             location=job.location,
+            work_mode=job.work_mode,
             status=job.status,
             priority=job.priority,
             fit_score=job.fit_score,
@@ -166,7 +179,12 @@ def list_summaries() -> list[JobSummary]:
             ),
             next_action=job.next_action,
             deadline=job.deadline,
+            notes=job.notes,
             tailored_resume_id=job.tailored_resume_id,
+            has_cover_letter=bool(job.cover_letter.strip()),
+            needs_user_input=any(
+                answer.needs_user_input for answer in job.application_answers
+            ),
             answer_count=len(job.application_answers),
             activity_count=len(job.activities),
             revision_count=len(job.revisions),
@@ -260,6 +278,84 @@ def update_job(
                 id=current.id,
                 activities=[*current.activities, activity],
                 revisions=[*current.revisions, revision],
+                created_at=current.created_at,
+                updated_at=now,
+            )
+            items[index] = updated.model_dump(mode="json")
+            _write_unlocked(items)
+            return updated
+        return None
+
+
+def apply_decision(
+    job_id: str,
+    decision: str,
+    *,
+    session: str = "Inbox",
+) -> JobWorkspace | None:
+    with _LOCK:
+        items = _read_unlocked()
+        for index, raw in enumerate(items):
+            try:
+                current = JobWorkspace.model_validate(raw)
+            except ValueError:
+                continue
+            if current.id != job_id:
+                continue
+
+            allowed_statuses = _DECISION_ALLOWED_STATUSES[decision]
+            if current.status not in allowed_statuses:
+                allowed_label = ", ".join(sorted(allowed_statuses))
+                raise JobDecisionConflictError(
+                    f"cannot {decision} a job in status {current.status}; "
+                    f"expected one of: {allowed_label}"
+                )
+
+            status, next_action, kind, title = _DECISION_PATCH[decision]
+            if (current.fit_score or 0) >= 8:
+                if decision == "approve":
+                    next_action = "Apply; reach out to people at the company"
+                elif decision == "applied":
+                    next_action = "Reach out to people at the company"
+
+            before = _input_from_job(current)
+            after = before.model_copy(
+                update={"status": status, "next_action": next_action}
+            )
+            changed_fields = [
+                key
+                for key in ("status", "next_action")
+                if getattr(before, key) != getattr(after, key)
+            ]
+            now = _now()
+            activity = _activity(
+                JobActivityInput(
+                    kind=kind,
+                    title=title,
+                    detail=(
+                        f"{current.company} — {current.role}. "
+                        f"Status set to {status}."
+                    ),
+                    session=session,
+                ),
+                created_at=now,
+            )
+            revisions = current.revisions
+            if changed_fields:
+                revisions = [
+                    *revisions,
+                    _revision(
+                        after,
+                        reason=title,
+                        changed_fields=changed_fields,
+                        created_at=now,
+                    ),
+                ]
+            updated = JobWorkspace(
+                **after.model_dump(),
+                id=current.id,
+                activities=[*current.activities, activity],
+                revisions=revisions,
                 created_at=current.created_at,
                 updated_at=now,
             )

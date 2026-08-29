@@ -1,24 +1,22 @@
-import { ExternalLink, Linkedin, Target, UserRound } from "lucide-react";
-import type { JobWorkspaceInput, Person } from "../types";
-import { matchesApplication, safeHref } from "../lib/people";
+import { Target } from "lucide-react";
+import type { JobWorkspaceInput } from "../types";
+import JobPeople from "./JobPeople";
 
 interface Props {
+  jobId: string;
   draft: JobWorkspaceInput;
-  people: Person[];
   onChange: <K extends keyof JobWorkspaceInput>(
     key: K,
     value: JobWorkspaceInput[K]
   ) => void;
+  onPeopleChanged?: () => void;
 }
 
 const field =
   "mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30";
 const label = "text-xs font-medium text-zinc-500";
 
-export default function JobOverview({ draft, people, onChange }: Props) {
-  const contacts = people.filter((person) =>
-    matchesApplication(person, { company: draft.company, role: draft.role })
-  );
+export default function JobOverview({ jobId, draft, onChange, onPeopleChanged }: Props) {
   const analysis = draft.fit_analysis;
 
   return (
@@ -237,56 +235,12 @@ export default function JobOverview({ draft, people, onChange }: Props) {
       </section>
 
       <section className="px-4 py-5 lg:px-6">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-200">
-          <UserRound className="h-4 w-4 text-zinc-500" />
-          People at {draft.company || "company"}
-        </h3>
-        {contacts.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600">No linked contacts.</p>
-        ) : (
-          <div className="mt-3 divide-y divide-zinc-800 border-y border-zinc-800">
-            {contacts.map((person) => (
-              <div
-                key={person.id}
-                className="flex flex-wrap items-center gap-2 py-3 text-sm"
-              >
-                <span className="font-medium text-zinc-200">{person.name}</span>
-                {person.title && <span className="text-zinc-500">{person.title}</span>}
-                <span className="rounded-md border border-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">
-                  {person.status}
-                </span>
-                <div className="ml-auto flex gap-1">
-                  {safeHref(person.linkedin_url) && (
-                    <a
-                      href={safeHref(person.linkedin_url)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-cyan-300"
-                      aria-label={`Open ${person.name} on LinkedIn`}
-                    >
-                      <Linkedin className="h-4 w-4" />
-                    </a>
-                  )}
-                  {person.links.map(
-                    (link, index) =>
-                      safeHref(link.url) && (
-                        <a
-                          key={`${link.url}-${index}`}
-                          href={safeHref(link.url)!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-cyan-300"
-                          aria-label={link.label || "Open link"}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      )
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <JobPeople
+          jobId={jobId}
+          company={draft.company}
+          role={draft.role}
+          onChanged={onPeopleChanged}
+        />
       </section>
     </div>
   );

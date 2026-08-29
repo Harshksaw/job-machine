@@ -17,8 +17,10 @@ def _validate_id(person_id: str) -> None:
 
 
 @router.get("/api/people", response_model=list[Person])
-def list_people(company: str | None = None) -> list[Person]:
+def list_people(company: str | None = None, job_id: str | None = None) -> list[Person]:
     people = people_store.load_people()
+    if job_id:
+        return [p for p in people if p.job_id == job_id]
     if company:
         key = company.strip().lower()
         people = [p for p in people if p.company.strip().lower() == key]

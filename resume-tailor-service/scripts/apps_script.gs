@@ -6,7 +6,7 @@
  * published as a Web App. It handles TWO actions via doGet(e):
  *
  *   1. APPEND (default / unchanged) — the existing webhook contract used by
- *      CLAUDE.md's logging instructions:
+ *      AGENTS.md's logging instructions:
  *        GET /exec?company=&role=&source=&jobUrl=&status=&fit=&people=&hooks=&outreach=&notes=
  *      Appends one row to the sheet and returns {"ok":true}. No secret
  *      required — do not change this path's params or return shape, other
@@ -46,7 +46,7 @@
  * 3. VERIFY APPEND COLUMN ORDER. This script appends columns in the order
  *    company, role, source, jobUrl, status, fit, people, hooks, outreach,
  *    notes, then a timestamp as the last column — matching the query-param
- *    order in the CLAUDE.md webhook URL. If your sheet's actual columns are
+ *    order in the AGENTS.md webhook URL. If your sheet's actual columns are
  *    in a different order, either reorder the sheet's columns to match, or
  *    edit the array inside appendRow(...) in handleAppend_() to match your
  *    sheet.

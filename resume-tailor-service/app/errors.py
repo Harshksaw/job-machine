@@ -28,3 +28,11 @@ class JobGenerationError(Exception):
 
 class JobStoreError(Exception):
     """Raised when the dossier store cannot be read without risking data loss."""
+
+
+class JobDecisionConflictError(Exception):
+    """Raised when an inbox decision is invalid for the dossier's current status."""
+
+
+class PeopleStoreError(Exception):
+    """Raised when mutating the people store could risk overwriting local data."""

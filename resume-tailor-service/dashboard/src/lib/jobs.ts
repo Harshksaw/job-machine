@@ -112,3 +112,63 @@ export function fitTone(score: number | null): string {
   if (score >= 6) return "border-amber-700/70 bg-amber-950/50 text-amber-300";
   return "border-rose-800/70 bg-rose-950/40 text-rose-300";
 }
+
+export const INBOX_QUEUES = [
+  "decide",
+  "ready",
+  "applied",
+  "needs-you",
+  "all",
+] as const;
+
+export type InboxQueue = (typeof INBOX_QUEUES)[number];
+
+export const INBOX_QUEUE_LABEL: Record<InboxQueue, string> = {
+  decide: "Needs decision",
+  ready: "Approved",
+  applied: "Applied",
+  "needs-you": "Needs you",
+  all: "All",
+};
+
+const CLOSED = new Set(["rejected", "skipped", "archived"]);
+const DECIDE = new Set(["discovered", "researching"]);
+const READY = new Set(["ready", "applying"]);
+const APPLIED = new Set(["applied", "outreach", "interview", "offer"]);
+
+export function inInboxQueue(
+  job: {
+    status: string;
+    needs_user_input?: boolean;
+  },
+  queue: InboxQueue
+): boolean {
+  if (queue === "all") return !CLOSED.has(job.status);
+  if (queue === "needs-you") return Boolean(job.needs_user_input) && !CLOSED.has(job.status);
+  if (queue === "decide") return DECIDE.has(job.status);
+  if (queue === "ready") return READY.has(job.status);
+  return APPLIED.has(job.status);
+}
+
+export function sortInbox<
+  T extends { fit_score: number | null; updated_at: string; priority: string },
+>(jobs: T[]): T[] {
+  const rank = (priority: string) =>
+    priority === "dream" ? 0 : priority === "high" ? 1 : priority === "normal" ? 2 : 3;
+  return [...jobs].sort((a, b) => {
+    const fit = (b.fit_score ?? -1) - (a.fit_score ?? -1);
+    if (fit !== 0) return fit;
+    const pri = rank(a.priority) - rank(b.priority);
+    if (pri !== 0) return pri;
+    return b.updated_at.localeCompare(a.updated_at);
+  });
+}
+
+export function countByStatus(jobs: { status: string }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const status of JOB_STATUSES) counts[status] = 0;
+  for (const job of jobs) {
+    counts[job.status] = (counts[job.status] ?? 0) + 1;
+  }
+  return counts;
+}

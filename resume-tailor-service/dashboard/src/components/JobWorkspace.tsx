@@ -14,7 +14,6 @@ import type {
   JobSummary,
   JobWorkspace as JobWorkspaceType,
   JobWorkspaceInput,
-  Person,
 } from "../types";
 import {
   createJob,
@@ -33,15 +32,15 @@ import JobDetail from "./JobDetail";
 import JobForm from "./JobForm";
 
 interface Props {
-  people: Person[];
   focusJobId?: string | null;
   onFocusConsumed?: () => void;
+  onPeopleChanged?: () => void;
 }
 
 export default function JobWorkspace({
-  people,
   focusJobId = null,
   onFocusConsumed,
+  onPeopleChanged,
 }: Props) {
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(focusJobId);
@@ -364,10 +363,10 @@ export default function JobWorkspace({
             ) : selected ? (
               <JobDetail
                 job={selected}
-                people={people}
                 onUpdated={updated}
                 onDeleted={(jobId) => void deleted(jobId)}
                 onDirtyChange={setDetailDirty}
+                onPeopleChanged={onPeopleChanged}
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-zinc-600">

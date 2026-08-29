@@ -14,8 +14,8 @@ GET /exec?company=&role=&source=&jobUrl=&status=&fit=&people=&hooks=&outreach=&n
 ```
 
 Appends one row to the sheet, returns `{"ok":true}`. This is the exact
-contract from CLAUDE.md's logging instructions — params, order, and return
-shape are untouched.
+contract from `AGENTS.md`'s sheet-logging instructions — params, order, and
+return shape are untouched.
 
 **Read (new, secret-guarded)**
 
@@ -116,7 +116,7 @@ it returns `{"ok":false}` and never reads the sheet.
 
 - The original `doGet` source wasn't available in this repo, so the append
   path was reconstructed from the documented webhook contract (query params
-  and `{"ok":true}` return) in the project's `CLAUDE.md`. Column order and
+  and `{"ok":true}` return) in `AGENTS.md`. Column order and
   "append to the active sheet" are best-effort assumptions — verify them
   against your actual sheet before relying on it in production.
 - Both `handleAppend_` and `handleRead_` operate on

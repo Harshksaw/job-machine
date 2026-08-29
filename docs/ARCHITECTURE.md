@@ -1,8 +1,8 @@
 # Job Machine: End-to-End System Architecture
 
-Last verified: 2026-08-25. The RDS `job_registry` / `jobs-pipeline`
-bulk-discovery lane has been removed; it no longer exists. Remaining
-live-service claims below were last checked 2026-08-07 against
+Last code and local-build verification: 2026-08-27. The RDS `job_registry` /
+`jobs-pipeline` bulk-discovery lane has been removed; it no longer exists.
+Launchd-specific claims below were last checked 2026-08-07 against
 `job-search/push-2026-08-01` @ `8d151cb`.
 
 ---
@@ -13,8 +13,8 @@ Two loosely coupled subsystems plus one agent driving them:
 
 | # | Subsystem | Lives in | Runtime | Owns |
 |---|---|---|---|---|
-| 1 | **Agent / browser lane** | `CLAUDE.md`, `prompts/`, `browser-profile/` | Claude Code CLI + Playwright MCP on the host | Searching, reading listings, filling and submitting forms, outreach |
-| 2 | **Resume-tailor service** | `resume-tailor-service/` | FastAPI on `127.0.0.1:8420`, supervised by launchd | Dossiers, tailored PDFs, application kits, people, dashboard UI |
+| 1 | **Agent / browser lane** | `AGENTS.md`, `prompts/`, `browser-profile/` | Claude Code CLI + Playwright MCP on the host | Searching, reading listings, filling and submitting forms, outreach |
+| 2 | **Resume-tailor service** | `resume-tailor-service/` | FastAPI on `127.0.0.1:8420`, supervised by launchd | Inbox, dossiers, session history, tailored PDFs, application kits, people, dashboard UI |
 
 Discovery is LinkedIn, Wellfound, and company ATS only. There is no RDS jobs
 database and no local Postgres mirror.
@@ -25,12 +25,12 @@ Two external dependencies: the **Anthropic models** (reached through the local
 ```mermaid
 flowchart LR
   subgraph host["Host (macOS)"]
-    CC["Claude Code CLI<br/>CLAUDE.md rules + prompts/"]
+    CC["Claude Code CLI<br/>AGENTS.md + prompts/"]
     PW["Playwright MCP<br/>persistent browser-profile/"]
     subgraph svc["resume-tailor-service :8420 (launchd)"]
       API["FastAPI app.main"]
       SPA["React SPA<br/>app/static (prebuilt)"]
-      STORE[("data/jobs.json<br/>data/people.json")]
+      STORE[("data/jobs.json<br/>data/people.json<br/>data/sessions.jsonl")]
       OUT[("output/slug-hash/<br/>resume.pdf + meta.json")]
     end
     CLI["claude CLI (headless -p)"]
@@ -52,7 +52,7 @@ flowchart LR
 
 ## 2. Control flow of one application
 
-This is the contract in `CLAUDE.md`, enforced by convention rather than by code.
+This is the contract in `AGENTS.md`, enforced by convention rather than by code.
 
 ```mermaid
 sequenceDiagram
@@ -79,6 +79,7 @@ sequenceDiagram
   A->>B: upload PDF, paste cover letter, answer questions
   Note over A: needs_user_input answers (salary, sponsorship,<br/>start date) STOP and ask the user
   A->>S: POST /api/jobs/{id}/activity (kind=applied)
+  S->>S: append labeled activity to sessions.jsonl
   A->>G: GET webhook?status=applied
 ```
 
@@ -89,15 +90,17 @@ sequenceDiagram
 ### 3.1 Module map
 
 ```
-app/main.py          FastAPI app; /health, /tailor; mounts 3 routers; SPA last
+app/main.py          FastAPI app; /health, /tailor; mounts 4 routers; SPA last
 ├─ app/dashboard.py  /api/applications, /api/tailored/{id}[/pdf], /api/resume-bank
-├─ app/jobs.py       /api/jobs …  (17 routes: CRUD, capture, import-sheet,
-│                    activity, restore, generate-kit, answers CRUD + generate)
-└─ app/people.py     /api/people CRUD
+├─ app/jobs.py       /api/jobs …  CRUD, capture, decisions, job people,
+│                    activity, restore, generate-kit, answers CRUD + generate
+├─ app/people.py     /api/people CRUD
+└─ app/sessions.py   /api/sessions summaries, filtered events, append
 
-app/job_store.py     718 LOC, the real core. JSON store with threading.RLock,
+app/job_store.py     the real core. JSON store with threading.RLock,
                      atomic writes, revisions, activity log, dedup on capture
 app/people_store.py  same pattern, simpler
+app/session_store.py append-only JSONL narrative with per-session idempotency
 app/application_kit.py  kit + answer generation AND their fact-traceability gate
 app/tailor.py        prompt build -> model -> parse -> validate -> 1 retry
 app/validate.py      manifest id + fact checks against the bank
@@ -106,10 +109,10 @@ app/render.py        pdflatex x2 -> pypdf page count -> trim loop
 app/bank.py          loads content/resume_bank.yaml (the only source of facts)
 app/claude_cli.py    headless `claude -p --output-format json --model haiku-4-5`
 app/sheets.py        reads the Apps Script sheet for import
-app/models.py        365 LOC of Pydantic contracts shared by API + store
+app/models.py        Pydantic contracts shared by API + stores
 ```
 
-The SPA is mounted **last** (`main.py:100`) so `StaticFiles` can never shadow an
+The SPA is mounted **last** so `StaticFiles` can never shadow an
 API route, and is guarded by an `is_dir()` check so the API still boots when the
 frontend has not been built.
 
@@ -157,19 +160,34 @@ code:
 - `_BANNED_COVER_PHRASES` blocks filler like "I'm passionate about".
 - `_JUDGMENT_QUESTION_PATTERNS` detects salary / sponsorship / start-date /
   demographic questions and returns `needs_user_input=true` with a clarification
-  instead of guessing. `CLAUDE.md` rule 5 forbids bypassing that flag.
+  instead of guessing. `AGENTS.md` rule 5 forbids bypassing that flag.
 
 Commit `5ca2699` loosened this after over-strict traceability caused 502s on
 `generate-kit`; `118a63b` allowed employer and project names in summaries.
 
 ### 3.4 Persistence
 
-No database in the service. `data/jobs.json` (154 dossiers, 898 KB) and
-`data/people.json` (5 people) are read and written whole under an `RLock` with an
-atomic replace. Each dossier carries its own `activities[]` (append-only event
-log) and `revisions[]` (restorable snapshots), so history lives inside the
-record. Timestamps are ISO 8601 UTC. Tailored PDFs are content-addressed by
-directory: `output/<company-role-slug>-<8 hex>/{resume.tex,resume.pdf,meta.json}`.
+No database in the service. `data/jobs.json` and `data/people.json` are read and
+written whole under process-local locks with atomic replacement. Each dossier
+carries its own `activities[]` (append-only event log) and `revisions[]`
+(restorable snapshots), so job history lives inside the record.
+`data/sessions.jsonl` adds a cross-job, append-only narrative: explicit dossier
+activities and Inbox mutations with a session label are mirrored there, while
+direct browser/agent events use `POST /api/sessions/event`. External IDs are
+idempotent within a session, reads and appends share a re-entrant lock,
+malformed JSONL rows are skipped, and reads are bounded to the most recent 8
+MiB. Mirroring is best-effort after the primary mutation so an auxiliary I/O
+failure is logged without returning a false failure for data already saved.
+
+People can be pinned to a dossier by `job_id`. Legacy people without a job ID
+remain company-level and optionally role-specific. Inbox summary counts and
+nested job people use the same association matcher. Nested creation compensates
+by removing the new person if the target dossier disappears before its activity
+can be recorded. People-store mutations use strict reads and refuse to
+overwrite unreadable or malformed local data.
+
+Timestamps are ISO 8601 UTC. Tailored PDFs are content-addressed by directory:
+`output/<company-role-slug>-<8 hex>/{resume.tex,resume.pdf,meta.json}`.
 
 `capture_job` is the idempotency point: it matches on company + role + URL,
 patches only non-empty incoming fields, and when nothing actually changed writes
@@ -216,25 +234,25 @@ wheels the dependencies publish.
 
 ---
 
-## 5. Verified live state (2026-08-07)
+## 5. Verification state
 
 | Check | Result |
 |---|---|
-| `GET /health` | `{"status":"ok"}` |
-| `GET /` (dashboard) | `200` |
-| launchd agent | `state = running`, pid 4184, never exited |
-| plist vs `install-launchd.sh` | in sync |
-| Test suite | 150 tests collected |
+| Backend suite (2026-08-27 working tree) | 222 passed |
+| Dashboard test/typecheck/build (2026-08-27 working tree) | 2 tests passed; Vite 5.4.21, 1,604 modules |
+| `GET /health` (2026-08-27 isolated server) | `200`, `{"status":"ok"}` |
+| Inbox dashboard smoke test (2026-08-27) | real ticket list/detail rendered; Dossiers navigation worked; no browser console errors |
+| `GET /api/sessions`, `/launch.html` (2026-08-27) | both `200` |
+| launchd agent (2026-08-07) | `state = running`, pid 4184, never exited |
+| plist vs `install-launchd.sh` (2026-08-07) | in sync |
 | CI, latest 3 runs | success (`31136508123` on this branch) |
-| Dossiers / people | 154 / 5 |
 
 ---
 
-## 6. Codex's contribution, and the gaps it exposed
+## 6. Prior audits and current integration
 
-Codex ran twice against this repo (`~/.codex/sessions/2026/08/01` and `08/05`).
-It wrote **no code and made no commits**. Every commit in the log is authored by
-Harsh. Its output was audit findings and approved designs:
+The 2026-08-01 and 2026-08-05 Codex sessions wrote no code or commits. Their
+output was audit findings and approved designs:
 
 **2026-08-01, resume tailoring audit.** Traced the pipeline and found the core
 mismatch: the service does not edit the canonical resume. It rebuilds a new
@@ -254,6 +272,13 @@ real pytest totals. One false alarm along the way: loopback was blocked by its
 own command sandbox, not by the service. That session ended without a written
 final report.
 
+**2026-08-27, Inbox/session integration.** The working tree adds a default
+ticket-style Inbox, a concurrency-safe server-side decision command,
+guarded status transitions, job-specific people with legacy fallback,
+append-only session events, data backup tooling, and matching backend/frontend
+contracts. Generated SPA assets ship with the source so the Python-only
+runtime still serves the current UI.
+
 ### Open gaps
 
 1. **The canonical verifier is designed but not built.**
@@ -272,8 +297,10 @@ final report.
    `tests/test_canonical_baseline.py` (7 tests), which proves a fresh compile
    reproduces the published base PDF: 1 page, 612x792, identical font set,
    identical normalized text, and only the one known Overfull hbox warning.
-3. **The approved queue + console is unbuilt.** No SQLite queue, no worker pool,
-   no review inbox; tailoring is still synchronous inside the `/tailor` request.
+3. **The approved tailoring queue + console is unbuilt.** No SQLite tailoring
+   queue, worker pool, or resume approval console exists; tailoring is still
+   synchronous inside the `/tailor` request. The dossier Inbox added in 2026-08
+   is a separate job-decision workflow.
 4. **CI covers the service only.** No build, typecheck, or test for `dashboard/`
    (the SPA ships as committed `app/static/` assets).
 5. **No auth, by design.** Loopback-only; the token gate was removed in

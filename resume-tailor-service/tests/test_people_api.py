@@ -63,3 +63,25 @@ def test_delete(client):
     pid = _mk(client).json()["id"]
     assert client.delete(f"/api/people/{pid}").status_code == 204
     assert client.delete(f"/api/people/{pid}").status_code == 404
+
+
+def test_create_persists_job_id_and_list_filters(client):
+    job_id = "abc123job"
+    created = _mk(client, name="Pat Recruiter", company="Zip", job_id=job_id, role="SWE New Grad")
+    assert created.status_code == 201
+    assert created.json()["job_id"] == job_id
+    only = client.get("/api/people", params={"job_id": job_id}).json()
+    assert len(only) == 1 and only[0]["name"] == "Pat Recruiter"
+    other = client.get("/api/people", params={"job_id": "nope"}).json()
+    assert other == []
+
+
+def test_create_never_overwrites_a_malformed_people_store(client):
+    malformed = "not valid json"
+    store.STORE_PATH.write_text(malformed, encoding="utf-8")
+    safe_client = TestClient(client.app, raise_server_exceptions=False)
+
+    response = _mk(safe_client, name="Alex", company="Acme")
+
+    assert response.status_code == 500
+    assert store.STORE_PATH.read_text(encoding="utf-8") == malformed

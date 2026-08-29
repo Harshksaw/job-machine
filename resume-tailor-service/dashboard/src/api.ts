@@ -5,6 +5,7 @@ import type {
   Application,
   ApplicationAnswerInput,
   JobActivityInput,
+  JobDecision,
   JobSummary,
   JobWorkspace,
   JobWorkspaceInput,
@@ -100,10 +101,35 @@ export function resetBankCache(): void {
   bankPromise = null;
 }
 
-export async function listPeople(): Promise<Person[]> {
-  const res = await apiFetch("/api/people");
+export async function listPeople(company?: string, jobId?: string): Promise<Person[]> {
+  const params = new URLSearchParams();
+  if (company) params.set("company", company);
+  if (jobId) params.set("job_id", jobId);
+  const query = params.toString();
+  const res = await apiFetch(query ? `/api/people?${query}` : "/api/people");
   if (!res.ok) throw new ApiError(`Failed to load people (HTTP ${res.status}).`, res.status);
   return (await res.json()) as Person[];
+}
+
+export function listJobPeople(jobId: string): Promise<Person[]> {
+  return jsonRequest<Person[]>(
+    `/api/jobs/${encodeURIComponent(jobId)}/people`,
+    {},
+    "Failed to load people for this job."
+  );
+}
+
+export function addJobPerson(jobId: string, body: PersonInput, session = "Inbox"): Promise<Person> {
+  const query = session ? `?session=${encodeURIComponent(session)}` : "";
+  return jsonRequest<Person>(
+    `/api/jobs/${encodeURIComponent(jobId)}/people${query}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    "Failed to save this person on the job."
+  );
 }
 
 async function writePerson(path: string, method: string, body: PersonInput): Promise<Person> {
@@ -339,4 +365,20 @@ export async function deleteApplicationAnswer(
       res.status
     );
   }
+}
+
+export function decideJob(
+  jobId: string,
+  decision: JobDecision,
+  session = "Inbox"
+): Promise<JobWorkspace> {
+  return jsonRequest<JobWorkspace>(
+    `/api/jobs/${encodeURIComponent(jobId)}/decision`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, session }),
+    },
+    "Failed to save the inbox decision."
+  );
 }

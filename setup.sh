@@ -159,5 +159,7 @@ cat <<'EOF'
   First run only: in the claude window, /mcp should show playwright ✔ Connected,
   then open linkedin.com once and log in — ./browser-profile keeps you signed in.
 
+  Cursor agents: ./scripts/start-job-chrome.sh  (see docs/BROWSER_PROFILE.md)
+
   Where the last run left off:  docs/sessions/2026-07-24-linkedin-run.md
 EOF

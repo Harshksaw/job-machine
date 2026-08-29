@@ -1,26 +1,44 @@
 import json
+from pathlib import Path
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app import application_kit, job_store, jobs, sheets
+from app import (
+    application_kit,
+    job_store,
+    jobs,
+    people_store,
+    session_store,
+    sheets,
+)
 from app.models import (
     Application,
     FitAnalysis,
     GeneratedApplicationKit,
+    JobWorkspaceInput,
     JobSelection,
     Manifest,
+    PersonInput,
     ProjectSelection,
     TailoredResumeMeta,
 )
 
 
-def _client(monkeypatch, tmp_path) -> TestClient:
+def _client(
+    monkeypatch,
+    tmp_path,
+    *,
+    raise_server_exceptions: bool = True,
+) -> TestClient:
     monkeypatch.setattr(job_store, "STORE_PATH", tmp_path / "jobs.json")
+    monkeypatch.setattr(people_store, "STORE_PATH", tmp_path / "people.json")
+    monkeypatch.setattr(session_store, "STORE_PATH", tmp_path / "sessions.jsonl")
     monkeypatch.setattr(jobs, "OUTPUT_DIR", tmp_path / "output")
     app = FastAPI()
     app.include_router(jobs.router)
-    return TestClient(app)
+    return TestClient(app, raise_server_exceptions=raise_server_exceptions)
 
 
 def _create(client: TestClient) -> dict:
@@ -44,6 +62,10 @@ def test_job_crud_activity_and_restore(monkeypatch, tmp_path):
     listed = client.get("/api/jobs").json()
     assert listed[0]["id"] == job_id
     assert "revisions" not in listed[0]
+    assert listed[0]["has_cover_letter"] is False
+    assert listed[0]["needs_user_input"] is False
+    assert listed[0]["work_mode"] == ""
+    assert "notes" in listed[0]
 
     original_revision = created["revisions"][0]["id"]
     update_payload = {
@@ -215,3 +237,318 @@ def test_sheet_import_backfills_jd_from_tailored_metadata(monkeypatch, tmp_path)
     detail = client.get(f"/api/jobs/{imported['job_ids'][0]}").json()
     assert detail["tailored_resume_id"] == "acme-swe-resume"
     assert detail["jd_text"].startswith("Complete job description")
+
+
+def test_job_people_are_pinned_counted_and_logged(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    job_id = job["id"]
+
+    listed = client.get("/api/jobs").json()
+    assert listed[0]["person_count"] == 0
+
+    added = client.post(
+        f"/api/jobs/{job_id}/people",
+        json={"name": "Alex Recruiter", "company": "Acme", "title": "Recruiter"},
+    )
+    assert added.status_code == 201
+    body = added.json()
+    assert body["job_id"] == job_id
+    assert body["company"] == "Acme"
+    assert body["role"] == "Backend Engineer"
+
+    people = client.get(f"/api/jobs/{job_id}/people").json()
+    assert len(people) == 1 and people[0]["name"] == "Alex Recruiter"
+
+    listed = client.get("/api/jobs").json()
+    assert listed[0]["person_count"] == 1
+
+    detail = client.get(f"/api/jobs/{job_id}").json()
+    assert detail["activities"][-1]["title"] == "Added Alex Recruiter to reach"
+    session_events = session_store.list_events(job_id=job_id)
+    assert len(session_events) == 1
+    assert session_events[0].title == "Added Alex Recruiter to reach"
+    assert session_events[0].session == "Inbox"
+
+
+def test_inbox_approve_preserves_unrelated_dossier_fields(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    payload = {key: job[key] for key in JobWorkspaceInput.model_fields}
+    payload.update(
+        {
+            "fit_score": 8,
+            "notes": "New agent research that must survive the decision.",
+            "cover_letter": "Dear team,",
+        }
+    )
+    saved = client.put(f"/api/jobs/{job['id']}", json=payload)
+    assert saved.status_code == 200
+
+    response = client.post(
+        f"/api/jobs/{job['id']}/decision",
+        json={"decision": "approve", "session": "Inbox 2026-08-27"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ready"
+    assert body["next_action"] == "Apply; reach out to people at the company"
+    assert body["notes"] == "New agent research that must survive the decision."
+    assert body["cover_letter"] == "Dear team,"
+    assert body["activities"][-1]["title"] == "Approved to apply"
+    assert body["activities"][-1]["session"] == "Inbox 2026-08-27"
+    assert body["revisions"][-1]["changed_fields"] == ["status", "next_action"]
+    events = session_store.list_events(job_id=job["id"])
+    assert len(events) == 1
+    assert events[0].title == "Approved to apply"
+
+
+@pytest.mark.parametrize(
+    ("initial_status", "decision", "expected_status", "expected_next_action"),
+    [
+        ("discovered", "hold", "researching", "Review later"),
+        ("researching", "approve", "ready", "Apply"),
+        ("researching", "hold", "researching", "Review later"),
+        ("ready", "applied", "applied", "Await response"),
+        ("applying", "applied", "applied", "Await response"),
+    ],
+)
+def test_inbox_decision_maps_remaining_actions(
+    monkeypatch,
+    tmp_path,
+    initial_status,
+    decision,
+    expected_status,
+    expected_next_action,
+):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    if initial_status != job["status"]:
+        payload = {key: job[key] for key in JobWorkspaceInput.model_fields}
+        payload["status"] = initial_status
+        saved = client.put(f"/api/jobs/{job['id']}", json=payload)
+        assert saved.status_code == 200
+
+    response = client.post(
+        f"/api/jobs/{job['id']}/decision",
+        json={"decision": decision, "session": "Inbox"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == expected_status
+    assert response.json()["next_action"] == expected_next_action
+
+
+def test_inbox_decision_rejects_unknown_action_without_mutation(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+
+    response = client.post(
+        f"/api/jobs/{job['id']}/decision",
+        json={"decision": "delete", "session": "Inbox"},
+    )
+
+    assert response.status_code == 422
+    unchanged = client.get(f"/api/jobs/{job['id']}").json()
+    assert unchanged["status"] == "discovered"
+    assert unchanged["next_action"] == ""
+
+
+@pytest.mark.parametrize(
+    ("status", "decision"),
+    [
+        ("interview", "approve"),
+        ("interview", "hold"),
+        ("discovered", "applied"),
+    ],
+)
+def test_inbox_decision_rejects_invalid_transition_without_mutation(
+    monkeypatch,
+    tmp_path,
+    status,
+    decision,
+):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    payload = {key: job[key] for key in JobWorkspaceInput.model_fields}
+    payload.update({"status": status, "next_action": "Keep current action"})
+    saved = client.put(f"/api/jobs/{job['id']}", json=payload)
+    assert saved.status_code == 200
+    before = client.get(f"/api/jobs/{job['id']}").json()
+
+    response = client.post(
+        f"/api/jobs/{job['id']}/decision",
+        json={"decision": decision, "session": "Inbox"},
+    )
+
+    assert response.status_code == 409
+    assert client.get(f"/api/jobs/{job['id']}").json() == before
+
+
+def test_job_people_summary_count_matches_nested_association(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    backend = _create(client)
+    frontend_response = client.post(
+        "/api/jobs",
+        json={
+            "company": "Acme",
+            "role": "Frontend Engineer",
+            "jd_text": "B" * 120,
+        },
+    )
+    assert frontend_response.status_code == 201
+    frontend = frontend_response.json()
+
+    people_store.add_person(
+        PersonInput(name="Backend Recruiter", company="Acme", role="Backend Engineer")
+    )
+    people_store.add_person(PersonInput(name="Company Recruiter", company="Acme"))
+    people_store.add_person(
+        PersonInput(
+            name="Pinned Frontend Recruiter",
+            company="Acme",
+            role="Backend Engineer",
+            job_id=frontend["id"],
+        )
+    )
+
+    summaries = {row["id"]: row for row in client.get("/api/jobs").json()}
+    backend_people = client.get(f"/api/jobs/{backend['id']}/people").json()
+    frontend_people = client.get(f"/api/jobs/{frontend['id']}/people").json()
+
+    assert summaries[backend["id"]]["person_count"] == len(backend_people) == 2
+    assert summaries[frontend["id"]]["person_count"] == len(frontend_people) == 2
+
+
+def test_blank_legacy_person_role_matches_company_job(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    people_store.add_person(
+        PersonInput(name="Company Recruiter", company="Acme", role="   ")
+    )
+
+    summary = client.get("/api/jobs").json()[0]
+    nested = client.get(f"/api/jobs/{job['id']}/people").json()
+
+    assert summary["person_count"] == 1
+    assert [person["name"] for person in nested] == ["Company Recruiter"]
+
+
+def test_decision_stays_successful_when_session_mirror_is_unavailable(
+    monkeypatch,
+    tmp_path,
+):
+    client = _client(monkeypatch, tmp_path, raise_server_exceptions=False)
+    job = _create(client)
+
+    def fail_to_append(_):
+        raise OSError("session store unavailable")
+
+    monkeypatch.setattr(session_store, "append_event", fail_to_append)
+    response = client.post(
+        f"/api/jobs/{job['id']}/decision",
+        json={"decision": "approve", "session": "Inbox"},
+    )
+
+    assert response.status_code == 200
+    persisted = client.get(f"/api/jobs/{job['id']}").json()
+    assert persisted["status"] == "ready"
+    assert [
+        event["title"]
+        for event in persisted["activities"]
+        if event["kind"] == "decision"
+    ] == ["Approved to apply"]
+
+
+def test_person_creation_stays_successful_when_activity_log_is_unavailable(
+    monkeypatch,
+    tmp_path,
+):
+    client = _client(monkeypatch, tmp_path, raise_server_exceptions=False)
+    job = _create(client)
+
+    def fail_to_log(*_args, **_kwargs):
+        raise OSError("job activity store unavailable")
+
+    monkeypatch.setattr(job_store, "add_activity", fail_to_log)
+    response = client.post(
+        f"/api/jobs/{job['id']}/people",
+        json={"name": "Alex Recruiter", "company": "Acme"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["job_id"] == job["id"]
+    assert [person.name for person in people_store.load_people()] == [
+        "Alex Recruiter"
+    ]
+
+
+def test_person_creation_rolls_back_when_job_disappears(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    monkeypatch.setattr(job_store, "add_activity", lambda *_args, **_kwargs: None)
+
+    response = client.post(
+        f"/api/jobs/{job['id']}/people",
+        json={"name": "Alex Recruiter", "company": "Acme"},
+    )
+
+    assert response.status_code == 404
+    assert people_store.load_people() == []
+
+
+def test_person_creation_reports_failed_rollback_when_job_disappears(
+    monkeypatch,
+    tmp_path,
+):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    monkeypatch.setattr(job_store, "add_activity", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(people_store, "delete_person", lambda _person_id: False)
+
+    response = client.post(
+        f"/api/jobs/{job['id']}/people",
+        json={"name": "Alex Recruiter", "company": "Acme"},
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == (
+        "job disappeared after person creation and contact rollback failed"
+    )
+
+
+def test_person_creation_reports_unreadable_store_during_rollback(
+    monkeypatch,
+    tmp_path,
+):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    unreadable = False
+    original_read_text = Path.read_text
+
+    def disappear_after_person_creation(*_args, **_kwargs):
+        nonlocal unreadable
+        unreadable = True
+        return None
+
+    def fail_people_read(path, *args, **kwargs):
+        if unreadable and path == people_store.STORE_PATH:
+            raise PermissionError("people store unreadable")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(job_store, "add_activity", disappear_after_person_creation)
+    monkeypatch.setattr(Path, "read_text", fail_people_read)
+    response = client.post(
+        f"/api/jobs/{job['id']}/people",
+        json={"name": "Alex Recruiter", "company": "Acme"},
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == (
+        "job disappeared after person creation and contact rollback failed"
+    )
+    unreadable = False
+    assert [person.name for person in people_store.load_people()] == [
+        "Alex Recruiter"
+    ]
