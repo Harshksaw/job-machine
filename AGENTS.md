@@ -52,10 +52,22 @@ street address, DOB, salary figure, or ATS confirmation code into a committed fi
    save the reason/gaps, and never mark it skipped or archive it automatically. Harsh may
    improve or reconsider it later. 8+ = people-mining eligible.
 3. LinkedIn: human pace only. Max 12 connection requests per session. Every outreach
-   message shown to Harsh for approval BEFORE sending. No exceptions.
-4. Wellfound note field = custom per company: their product/mission hook, then one
-   relevant real project of his, then a genuine close. 3-4 sentences. No "I'm passionate
-   about."
+   message shown to Harsh for approval BEFORE sending. No exceptions. Message content
+   depends on who they are: **only a recruiter, talent, or HR contact is told which role
+   he applied to.** An engineer, founder, hiring manager, or anyone else never hears about
+   the application and is never asked for a referral: open with their hook, ask one real
+   question about the problem the company is working on, and tie it to one real thing of
+   his that aligns with it. Keep both sides general ("building AI systems", "search and
+   retrieval"): **no tech stack in an outreach message**, no languages, frameworks,
+   databases, or model names, unless it is one genuinely impactful detail verified from
+   their own writing that he has real matching work for. Ambiguous title = treat as
+   non-recruiter. No em-dashes in any of it. The full recipe is step 2 of
+   `prompts/outreach-run.md`.
+4. Wellfound note field, which is part of the application itself, so naming the role is
+   fine here = custom per company: their product/mission hook, then one relevant real
+   project of his, then a genuine close. 3-4 sentences. No "I'm passionate about." Same
+   generality rule as rule 3: describe his work as the kind of system it is, not a stack
+   list, and no em-dashes.
 5. Pause and ask Harsh only for: any dossier answer marked `needs_user_input`, ambiguous
    sponsorship wording, unusual questions the validated answer flow cannot resolve,
    salary questions, or anything requiring a judgment call about him.

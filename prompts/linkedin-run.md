@@ -11,7 +11,7 @@ dossier capture, artifact request, answer, and activity event.
 
 1. Open linkedin.com/jobs (logged in via persistent profile).
 2. Search: "Software Engineer New Grad", "Backend Engineer", "Full Stack Engineer",
-   "AI Engineer" — filter: posted past week, then past 24h for a second pass.
+   "AI Engineer". Filter: posted past week, then past 24h for a second pass.
    Prioritize Easy Apply + small companies.
 3. Per listing: read the complete JD, score fit 1–10, capture the dossier per
    `AGENTS.md`, and keep the returned `id`. Generate the kit (including below-6
@@ -29,7 +29,7 @@ dossier capture, artifact request, answer, and activity event.
      using the webhook in `AGENTS.md`, then move on.
 4. Small startups (<50 people) with fit ≥ 8: open company page → People tab.
    Capture founders / founding-senior engineers / hiring manager: name, title,
-   profile URL, one hook each (recent post or activity — check their last 2-3 posts).
+   profile URL, one hook each (recent post or activity, check their last 2-3 posts).
    - Add each person through `POST /api/people`, append a dossier `research`
      activity, then log status=people-mined, people, hooks using the webhook in
      `AGENTS.md`.

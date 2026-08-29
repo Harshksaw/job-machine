@@ -10,7 +10,7 @@ Set one session label at the start: `Wellfound <YYYY-MM-DD>`. Use it on every
 dossier capture, artifact request, answer, activity event, and People record.
 
 1. Open wellfound.com/jobs (already logged in via the persistent profile).
-2. Search wide — run each title, take the union: "Software Engineer",
+2. Search wide, run each title, take the union: "Software Engineer",
    "Backend Engineer", "AI Engineer", "Full-Stack Engineer", plus the internship
    variants ("Software Engineer Intern", "Backend Intern", "AI/ML Intern").
    - Seniority band: **internship through ~3 years experience.** KEEP internships,
@@ -32,10 +32,10 @@ dossier capture, artifact request, answer, activity event, and People record.
 4. People + email capture (every applied company):
    - Capture the founders shown on the Wellfound company profile (names +
      titles). If fit ≥ 8, also open the company's site /team or /about and their
-     GitHub org if linked — capture engineers + one real hook each (recent
+     GitHub org if linked, capture engineers + one real hook each (recent
      launch, funding, repo, post).
    - Find a public email for each person (company /team page, GitHub profile,
-     personal site). Do NOT guess or pattern-invent an address — only record one
+     personal site). Do NOT guess or pattern-invent an address, only record one
      that is actually published somewhere.
    - Add each person via `POST /api/people` with the exact company/role, the
      LinkedIn profile URL, `status=to-reach`, `hook`, and any real email stored
@@ -43,16 +43,22 @@ dossier capture, artifact request, answer, activity event, and People record.
      address in `notes`. If no public email exists, record the person without one.
    - Append a `research` activity to the dossier, then log status=people-mined
      using the webhook in `AGENTS.md`.
-5. Curated LinkedIn outreach — draft, batch-approve, then send (in this session):
-   - Draft one connection-request note per curated person. Framing: lead with a
-     shipped production win from the resume bank mapped to a concrete problem
-     their company is solving — "here's how I solved a problem you're working on."
-     Experienced-hire tone; do NOT open with "I'm a student/intern looking for…".
+5. Curated LinkedIn outreach: draft, batch-approve, then send (in this session):
+   - Draft one connection-request note per curated person using the recipe in
+     step 2 of `prompts/outreach-run.md` (`AGENTS.md` rule 3). These people are
+     founders and engineers, so the note NEVER mentions the application just
+     sent to their company and never asks for a referral: their hook, then one
+     real question about the problem their company is working on, then the one
+     thing of mine that aligns, stated generally ("building AI systems"), not
+     as a feature list. No tech stack unless it is one genuinely impactful
+     detail verified from their own writing. No em-dashes. Only a recruiter or
+     talent contact hears which role I applied to.
+     Experienced-hire tone: do NOT open with "I'm a student/intern looking for".
      ≤ 300 chars (LinkedIn note cap; see playbook). Custom per company. No
-     fabrication — every claim traces to `resume-tailor-service/content/resume_bank.yaml`.
+     fabrication: every claim traces to `resume-tailor-service/content/resume_bank.yaml`.
    - Save each note as the person's `message` and set `status=queued`.
    - Cap sends per `AGENTS.md` rule 3 (highest-fit companies first). Anything
-     beyond the cap stays `to-reach`/`queued` for a later session — say so.
+     beyond the cap stays `to-reach`/`queued` for a later session, say so.
    - STOP and show the full batch in one view (person | company | note) for
      approval/edits BEFORE sending anything (`AGENTS.md` rule 3).
    - Only after approval: send each LinkedIn connect-with-note at human pace,
