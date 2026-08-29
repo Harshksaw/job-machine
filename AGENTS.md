@@ -70,7 +70,10 @@ street address, DOB, salary figure, or ATS confirmation code into a committed fi
    list, and no em-dashes.
 5. Pause and ask Harsh only for: any dossier answer marked `needs_user_input`, ambiguous
    sponsorship wording, unusual questions the validated answer flow cannot resolve,
-   salary questions, or anything requiring a judgment call about him.
+   salary questions, or anything requiring a judgment call about him. **A cover letter is
+   never on this list.** The generated cover letter goes into the form without review, so
+   do not stop to show it or ask. A tailored resume is the one document he must see before
+   it is sent.
 6. One-line summary per company as you go. Otherwise do not ask permission between
    listings.
 7. Never leave a browser action only in chat. The dossier event must be written before
@@ -168,14 +171,17 @@ Content-Type: application/json
 
 For every application, build the evidence-backed kit first:
 `POST /api/jobs/<id>/generate-kit?session=<session>`. Use its cover letter when the form
-asks for one. For an unusual question, call `POST /api/jobs/<id>/answers/generate` with
+asks for one, with no approval step: it is already evidence-backed, so paste it and move
+on. For an unusual question, call `POST /api/jobs/<id>/answers/generate` with
 `{question,constraints,session}` and check the saved answer before using it. The endpoint
 intentionally returns `needs_user_input=true` for salary, sponsorship/authorization,
 start-date, and other unknown personal judgments. **Never bypass that flag.**
 
 **Resume:** upload the original `./resume.pdf` as-is. Do not tailor unless a role really
-requires it, and then confirm with Harsh first (treat it like an outreach send). When you
-do tailor, include `job_id`, `job_url`, and `session` in the `POST /tailor` body so the PDF
+requires it. If you do tailor, **show Harsh the actual tailored resume before it is sent**
+and wait for his yes. He approves the document itself, not the idea of tailoring, so print
+what changed against the original. This is the only artifact gated this way.
+Include `job_id`, `job_url`, and `session` in the `POST /tailor` body so the PDF
 attaches to the dossier and the artifact is logged. Details in `docs/AGENT-PLAYBOOK.md`.
 
 ## Sheet logging (MANDATORY after external actions)

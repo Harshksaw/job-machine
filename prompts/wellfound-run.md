@@ -22,10 +22,11 @@ dossier capture, artifact request, answer, activity event, and People record.
    Generate the kit (including below-6 listings) and any unusual-question answers
    per `AGENTS.md`. Pause on `needs_user_input`.
    - Fit below 6: retain for review per `AGENTS.md` rule 2, then next listing.
-   - Fit 6+: use the saved cover letter if the form asks for one. If the apply
-     form has a note field, write it per `AGENTS.md` rule 4. Upload `./resume.pdf`
-     as-is unless the role truly requires a tailored PDF (confirm with Harsh
-     first; see `AGENTS.md`). Submit, mark applied, append an `applied` activity
+   - Fit 6+: paste the saved cover letter if the form asks for one, no approval
+     step. If the apply form has a note field, write it per `AGENTS.md` rule 4.
+     Upload `./resume.pdf` as-is unless the role truly requires a tailored PDF,
+     and if it does, show Harsh the tailored resume itself before sending (see
+     `AGENTS.md`). Submit, mark applied, append an `applied` activity
      with form/confirmation details, then log the sheet row using the webhook in
      `AGENTS.md`. Prefer the company's own ATS when `atsSource` is present (see
      playbook).

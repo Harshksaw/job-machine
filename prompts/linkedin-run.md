@@ -19,8 +19,9 @@ dossier capture, artifact request, answer, and activity event.
    per `AGENTS.md`. Pause on `needs_user_input`.
    - Fit below 6: retain for review per `AGENTS.md` rule 2, then next listing.
    - Fit 6+ Easy Apply: fill with verified facts. Upload `./resume.pdf` as-is
-     unless the role truly requires a tailored PDF (confirm with Harsh first;
-     see `AGENTS.md`). Use the dossier cover letter when requested. Submit, then
+     unless the role truly requires a tailored PDF, and if it does, show Harsh
+     the tailored resume itself before sending (`AGENTS.md`). Paste the dossier
+     cover letter whenever one is asked for, no approval step. Submit, then
      mark applied and log the sheet row using the webhook in `AGENTS.md`.
    - Fit 6+ external-redirect: if the external form is quick (Lever/Ashby style),
      complete it; if it's a Workday/Greenhouse marathon, set dossier
