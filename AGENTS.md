@@ -60,7 +60,11 @@ street address, DOB, salary figure, or ATS confirmation code into a committed fi
    his that aligns with it. Keep both sides general ("building AI systems", "search and
    retrieval"): **no tech stack in an outreach message**, no languages, frameworks,
    databases, or model names, unless it is one genuinely impactful detail verified from
-   their own writing that he has real matching work for. Ambiguous title = treat as
+   their own writing that he has real matching work for. **No student, new-grad, graduating,
+   or job-hunting framing in any outreach message**, on either branch: status is not the
+   story, and it turns the note into a favour request. He writes as someone who builds
+   things, present tense, about the work. Every sentence earns its place by being about
+   the work or the question, not about his situation. Ambiguous title = treat as
    non-recruiter. No em-dashes in any of it. The full recipe is step 2 of
    `prompts/outreach-run.md`.
 4. Wellfound note field, which is part of the application itself, so naming the role is

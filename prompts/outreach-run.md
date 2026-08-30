@@ -28,8 +28,17 @@ note cap. Use playwright mcp. This session sends nothing without approval
      genuinely impactful detail I actually verified from their post or their
      engineering writing, and that I have real matching work for. Absent that,
      stay generic.
+   - **Never mention that I am a student, a new grad, graduating, or looking.**
+     No "final-year", no "about to graduate", no "breaking into", no "recent
+     grad reaching out". Status is not the story and it reframes everything
+     after it as a favour request. I am someone who builds things, writing to
+     someone who builds things. Present tense, what I am working on now.
+   - **The message is about the work and the question, not about me.** Roughly:
+     their hook, the question, one line of mine that earns the question. If a
+     sentence is about my situation rather than the work, cut it.
    - **Both:** no em-dashes, ever (`AGENTS.md` working style). No flattery
-     filler, no "passionate", read like one engineer to another.
+     filler, no "passionate", no "I'd love to", no "just wanted to reach out",
+     no compliment openers. Read like one engineer to another.
    - If the title is ambiguous, treat them as non-recruiter and ask the
      question. Only an explicit recruiting/talent/HR title unlocks the
      applied-to-role line.

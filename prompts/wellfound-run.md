@@ -54,7 +54,8 @@ dossier capture, artifact request, answer, activity event, and People record.
      as a feature list. No tech stack unless it is one genuinely impactful
      detail verified from their own writing. No em-dashes. Only a recruiter or
      talent contact hears which role I applied to.
-     Experienced-hire tone: do NOT open with "I'm a student/intern looking for".
+     Experienced-hire tone: never mention being a student, an intern, a new
+     grad, or that I am looking. Present tense, what I am building now.
      ≤ 300 chars (LinkedIn note cap; see playbook). Custom per company. No
      fabrication: every claim traces to `resume-tailor-service/content/resume_bank.yaml`.
    - Save each note as the person's `message` and set `status=queued`.
