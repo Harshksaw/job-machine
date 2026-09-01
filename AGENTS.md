@@ -205,25 +205,34 @@ Statuses: `applied` | `people-mined` | `outreach-sent` | `outreach-queued` | `re
 
 ## Automation browser
 
-**Default:** Harsh's **regular Chrome** with CDP attach. Fully quit Chrome
-(`Cmd+Q`), then `./scripts/start-chrome-debug.sh`, probe with
-`curl -fsS http://127.0.0.1:9222/json/version` (or
-`./scripts/ensure-regular-chrome-cdp.sh`), then
-`export BU_CDP_URL=http://127.0.0.1:9222`. Port is **9222** unless
-`JOB_MACHINE_CDP_PORT` overrides it. Full setup: `docs/BROWSER_PROFILE.md`.
+**Default:** the **isolated job profile**. `JOB_MACHINE_CDP_PORT=9223
+./scripts/start-job-chrome.sh`, probe with
+`curl -fsS http://127.0.0.1:9223/json/version`, then
+`export BU_CDP_URL=http://127.0.0.1:9223`. It runs alongside daily Chrome.
+Full setup: `docs/BROWSER_PROFILE.md`.
+
+**Regular Chrome over CDP no longer works and cannot be fixed.** Chrome 136 and
+later refuse remote debugging on the default user data directory. Chrome still
+accepts `--remote-debugging-port` and still binds the socket, then serves 404 on
+every `/json/*` endpoint. Verified 2026-08-31 on Chrome 152: the default profile
+404s while the isolated profile answers normally, same binary, same minute. **A
+404 means this, not "Chrome is not running with debugging"**, which would be
+connection refused. Do not diagnose it as a misconfiguration and do not tell
+Harsh to quit Chrome and retry, because the retry returns the same 404.
+`scripts/start-chrome-debug.sh` is retained only for older Chrome.
 
 Playwright MCP and browser-use **attach** to that Chrome (`--cdp-endpoint` /
 `BU_CDP_URL`). They must not launch a separate Chromium with a relative
 `--user-data-dir`. The attach config is committed so every agent gets it without
 setup: `.mcp.json` for Claude Code and `.cursor/mcp.json` for Cursor, both pinned
-to `--cdp-endpoint http://127.0.0.1:9222` and neither setting a profile path. The
+to `--cdp-endpoint http://127.0.0.1:9223` and neither setting a profile path. The
 launcher owns the profile, the port is the only contract. `claude-in-chrome` is
 the exception: it attaches through the Chrome extension rather than CDP, so it is
 always in the regular Chrome and never in the isolated job profile.
 
-**Job profile (`./browser-profile/`) only when Harsh explicitly requests it:**
-`./scripts/start-job-chrome.sh` (isolated instance, can run alongside daily
-Chrome). Same CDP port and `BU_CDP_URL`. If the port differs, probe before use.
+The job profile keeps its own logins. If LinkedIn or Wellfound is signed out
+there, sign in once in that window. Never copy the default Chrome profile into
+`browser-profile/`.
 
 **Only one writer per profile at a time.** Regular Chrome: one automation
 driver set. Job profile: quit other users of `browser-profile/` first. Check with

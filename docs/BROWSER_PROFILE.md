@@ -1,8 +1,14 @@
 # Browser automation: CDP attach
 
-Job-machine automation attaches to Chrome over CDP. **Default:** Harsh's regular
-Chrome (LinkedIn already signed in). **Optional:** isolated job profile only when
-he explicitly asks.
+Job-machine automation attaches to Chrome over CDP. **Default:** the isolated job
+profile on port 9223.
+
+> **Regular Chrome over CDP is dead on Chrome 136 and later.** Chrome refuses remote
+> debugging on the default user data directory. It accepts the flag, binds the port, then
+> returns **404 on every `/json/*` endpoint**. Confirmed 2026-08-31 on Chrome 152, with
+> the isolated profile working on the same binary at the same moment. A 404 is this
+> restriction; connection refused is a browser that is not running. Re-running
+> `start-chrome-debug.sh` cannot fix a 404.
 
 Profile data for the isolated lane lives in
 `/Users/harshsaw/job-machine/browser-profile/` (gitignored).
@@ -46,7 +52,7 @@ browser-use --doctor
 
 **Claude Code (Playwright MCP):**
 
-Playwright MCP attaches via `--cdp-endpoint=http://127.0.0.1:9222`, defined in the
+Playwright MCP attaches via `--cdp-endpoint=http://127.0.0.1:9223`, defined in the
 committed `.mcp.json` at the repo root. It does **not** launch its own Chromium. Start
 regular Chrome first, then verify with `/mcp` → playwright connected.
 
@@ -137,7 +143,8 @@ Persist `BU_CDP_URL` across terminals by adding the export line to `~/.zshrc`.
 | Symptom | Fix |
 |---|---|
 | "Allow remote debugging?" popup | Click **Allow**, or run `browser-use mac-approve` |
-| CDP not responding | `./scripts/ensure-regular-chrome-cdp.sh` for instructions |
+| `/json/version` returns **404** | Default-profile restriction on Chrome 136+. Use `JOB_MACHINE_CDP_PORT=9223 ./scripts/start-job-chrome.sh`. Quitting and relaunching regular Chrome will not help |
+| `/json/version` refused | Nothing is running. Start the job profile |
 | "Chrome is running but CDP is not available" | Quit Chrome fully (`Cmd+Q`), then `./scripts/start-chrome-debug.sh` |
 | Playwright launches its own browser | Its args lost `--cdp-endpoint`. Restore `.mcp.json` at the repo root, then restart the session. A relative `--user-data-dir` is the usual culprit: it resolves against the server's working directory, so it silently makes an empty profile |
 | Agents landing in different browsers | Check for a duplicate `playwright` entry in `~/.claude.json`. A stale one registered under an old repo path is inert, but a live one overrides the committed config |

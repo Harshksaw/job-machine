@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED on Chrome 136+. Chrome refuses remote debugging on the DEFAULT user data
+# directory: it binds the port, then serves 404 on every /json/* endpoint. Verified
+# 2026-08-31 on Chrome 152. Use ./scripts/start-job-chrome.sh instead. Kept for older
+# Chrome only.
+#
 # Launch Google Chrome with your **default macOS profile** and remote debugging
 # on port 9222. No --user-data-dir — uses the same cookies/sessions as daily Chrome
 # (LinkedIn, Wellfound, etc. already signed in).
