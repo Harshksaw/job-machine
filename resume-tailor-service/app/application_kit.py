@@ -240,6 +240,19 @@ def validate_kit(
                 )
             )
 
+    # Em-dashes are banned everywhere in this repo (AGENTS.md working style).
+    # The prompt asks for it, but a prompt only asks: the first generated letter
+    # came back with three. Enforce it here so a violation triggers the same
+    # correction retry as any other invalid kit.
+    for label, text in (
+        ("verdict", analysis.verdict),
+        ("role thesis", analysis.role_thesis),
+        ("cover letter", kit.cover_letter),
+        *((f"positioning {i}", v) for i, v in enumerate(analysis.positioning)),
+    ):
+        if "\u2014" in (text or ""):
+            errors.append(f"{label} contains an em-dash, which is banned; use a comma, period or colon")
+
     errors.extend(_fact_errors(analysis.verdict, allowed, "verdict"))
     errors.extend(_fact_errors(analysis.role_thesis, allowed, "role thesis"))
     # Gaps are deliberately NOT fact-checked. A gap states what the candidate
