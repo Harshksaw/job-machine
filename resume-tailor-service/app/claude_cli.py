@@ -75,7 +75,13 @@ def run_claude(
     except subprocess.TimeoutExpired as exc:
         raise ClaudeCliError(f"claude CLI timed out after {timeout}s") from exc
     if result.returncode != 0:
-        raise ClaudeCliError(f"claude CLI failed (exit {result.returncode}): {result.stderr[-500:]}")
+        # The CLI reports usage limits, auth problems and rate limits on stdout,
+        # not stderr, so a stderr-only message loses the reason entirely and the
+        # failure reads as a bare "exit 1".
+        detail = (result.stderr or "").strip()[-500:] or (result.stdout or "").strip()[-500:]
+        raise ClaudeCliError(
+            f"claude CLI failed (exit {result.returncode}): {detail or '<no output on stderr or stdout>'}"
+        )
     try:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError as exc:
