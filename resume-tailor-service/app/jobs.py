@@ -150,7 +150,17 @@ def list_jobs(
                         job.role,
                     )
                     for person in people
-                )
+                ),
+                "queued_person_count": sum(
+                    person.status == "queued"
+                    and people_store.person_matches_job(
+                        person,
+                        job.id,
+                        job.company,
+                        job.role,
+                    )
+                    for person in people
+                ),
             }
         )
         for job in jobs
@@ -380,8 +390,18 @@ def generate_kit(
         kit = application_kit.generate_kit(job, bank)
     except JobGenerationError as exc:
         status_code = 422 if "job description" in str(exc).lower() else 502
+        logger.error(
+            "generate-kit failed for %s (%s / %s): %s",
+            job_id, job.company, job.role, exc,
+        )
         raise HTTPException(status_code=status_code, detail=str(exc))
     except ClaudeCliError as exc:
+        # The reason only ever existed in the response body, so any caller that
+        # dropped it (curl -f, a client that logs status only) lost it for good.
+        logger.error(
+            "generate-kit claude CLI failed for %s (%s / %s): %s",
+            job_id, job.company, job.role, exc,
+        )
         raise HTTPException(status_code=502, detail=f"generation service failed: {exc}")
     updated = job_store.apply_generated_kit(job_id, kit, session=session)
     if updated is None:
