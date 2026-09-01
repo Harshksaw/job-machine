@@ -44,7 +44,11 @@ note cap. Use playwright mcp. This session sends nothing without approval
      applied-to-role line.
 3. Show ALL drafts in one batch: person | company | draft. Wait for approval/edits.
 4. After approval: save the approved text on the Person record, then send each
-   request at human pace (30-60s apart, browse the profile briefly first).
+   request at human pace (30-60s apart, browse the profile briefly first). Use the
+   job profile on CDP 9223 with `new_tab(profile_url)` per send (background tab,
+   close only that tab after verify). Regular Chrome cannot serve CDP on Chrome
+   136+, see `AGENTS.md`. Tab etiquette: `docs/AGENT-PLAYBOOK.md` "Outreach send
+   workflow" and "Regular Chrome: do not disturb existing tabs".
    Update the Person to `sent`; append an `outreach` activity with the exact
    message to the matching dossier; then log status=outreach-sent using the
    webhook in `AGENTS.md`.
