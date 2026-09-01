@@ -344,7 +344,10 @@ Rules:
    close directly. Sound like one engineer writing to another. No generic
    enthusiasm, flattery, placeholders, "passionate", or "I am writing to apply".
 7. A low score must not delete, archive, or skip the dossier.
-8. NEVER state availability, a start date, a notice period, or any date that is
+8. NEVER use an em-dash. Not in the cover letter, the role thesis, positioning,
+   evidence, or any other field. Use a comma, a period, a colon, or restructure
+   the sentence. This is a hard style rule for every string you emit.
+9. NEVER state availability, a start date, a notice period, or any date that is
    not already in the ledger. The candidate's earliest start is deliberately not
    recorded, so any month or year you supply is fabricated and the traceability
    guard will reject the whole kit. Do not write "available from", "starting in",
