@@ -16,8 +16,10 @@ fetches. Do not restate facts from those files; follow them.
   Harsh. Never invent one.
 - Live queue: dashboard `http://127.0.0.1:8420/`, then the newest
   `SESSION-HANDOFF-*.md`.
-- Browser / CDP: @docs/BROWSER_PROFILE.md. One process on `browser-profile/`
-  at a time.
+- Browser / CDP: @docs/BROWSER_PROFILE.md. Default regular Chrome via
+  `start-chrome-debug.sh` + `BU_CDP_URL`; job profile only when Harsh asks.
+  Attach on port 9222, never launch your own Chromium: `.cursor/mcp.json` is
+  already pinned to `--cdp-endpoint`. One driver per profile at a time.
 - Origin is PUBLIC. Never commit `docs/PERSONAL-ANSWERS.md` or
   `SESSION-HANDOFF-*.md`.
 - Never re-send an application. Never send LinkedIn outreach without Harsh's

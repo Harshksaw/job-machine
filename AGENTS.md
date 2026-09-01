@@ -205,21 +205,31 @@ Statuses: `applied` | `people-mined` | `outreach-sent` | `outreach-queued` | `re
 
 ## Automation browser
 
-Default is the isolated job Chrome: `./scripts/start-job-chrome.sh` writes to
-`./browser-profile/` and exposes CDP on **9222 by default**
-(`JOB_MACHINE_CDP_PORT` overrides it), then `export BU_CDP_URL=http://127.0.0.1:9222`.
-Recent sessions have run on **9223**, so confirm the live port with
-`curl -fsS http://127.0.0.1:<port>/json/version` instead of assuming. Full setup:
-`docs/BROWSER_PROFILE.md`.
+**Default:** Harsh's **regular Chrome** with CDP attach. Fully quit Chrome
+(`Cmd+Q`), then `./scripts/start-chrome-debug.sh`, probe with
+`curl -fsS http://127.0.0.1:9222/json/version` (or
+`./scripts/ensure-regular-chrome-cdp.sh`), then
+`export BU_CDP_URL=http://127.0.0.1:9222`. Port is **9222** unless
+`JOB_MACHINE_CDP_PORT` overrides it. Full setup: `docs/BROWSER_PROFILE.md`.
 
-When Harsh says use his **standard/regular Chrome profile**, use
-`./scripts/start-chrome-debug.sh` (default profile, no `--user-data-dir`; he must Cmd+Q
-Chrome first).
+Playwright MCP and browser-use **attach** to that Chrome (`--cdp-endpoint` /
+`BU_CDP_URL`). They must not launch a separate Chromium with a relative
+`--user-data-dir`. The attach config is committed so every agent gets it without
+setup: `.mcp.json` for Claude Code and `.cursor/mcp.json` for Cursor, both pinned
+to `--cdp-endpoint http://127.0.0.1:9222` and neither setting a profile path. The
+launcher owns the profile, the port is the only contract. `claude-in-chrome` is
+the exception: it attaches through the Chrome extension rather than CDP, so it is
+always in the regular Chrome and never in the isolated job profile.
 
-**Only one process may drive `browser-profile/` at a time.** Check with
-`ps aux | grep [c]laude` and `ps aux | grep [p]laywright-mcp` before starting. Concurrent
-writers have corrupted dossier status and fired unintended LinkedIn invites. See the
-playbook.
+**Job profile (`./browser-profile/`) only when Harsh explicitly requests it:**
+`./scripts/start-job-chrome.sh` (isolated instance, can run alongside daily
+Chrome). Same CDP port and `BU_CDP_URL`. If the port differs, probe before use.
+
+**Only one writer per profile at a time.** Regular Chrome: one automation
+driver set. Job profile: quit other users of `browser-profile/` first. Check with
+`ps aux | grep [c]laude` and `ps aux | grep [p]laywright-mcp`. Concurrent
+writers have corrupted dossier status and fired unintended LinkedIn invites. See
+the playbook.
 
 ## Working style
 
