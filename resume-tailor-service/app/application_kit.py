@@ -344,6 +344,12 @@ Rules:
    close directly. Sound like one engineer writing to another. No generic
    enthusiasm, flattery, placeholders, "passionate", or "I am writing to apply".
 7. A low score must not delete, archive, or skip the dossier.
+8. NEVER state availability, a start date, a notice period, or any date that is
+   not already in the ledger. The candidate's earliest start is deliberately not
+   recorded, so any month or year you supply is fabricated and the traceability
+   guard will reject the whole kit. Do not write "available from", "starting in",
+   or a graduation-adjacent date the ledger does not contain. Say nothing about
+   when the candidate can begin.
 {correction}
 Return ONLY JSON in this exact shape:
 {{
