@@ -183,6 +183,111 @@ def test_capture_upserts_full_listing_context(monkeypatch, tmp_path):
     assert second.next_action == "Find the hiring manager"
 
 
+def _capture(company: str, role: str, job_url: str):
+    return job_store.capture_job(
+        JobCaptureInput(
+            company=company,
+            role=role,
+            job_url=job_url,
+            source="LinkedIn",
+            session="LinkedIn 2026-08-28",
+        )
+    )
+
+
+def test_capture_matches_greenhouse_board_host_variants(monkeypatch, tmp_path):
+    """boards.greenhouse.io and job-boards.greenhouse.io serve the same posting."""
+    _use_temp_store(monkeypatch, tmp_path)
+    first, _ = _capture(
+        "Faire",
+        "Product Engineer - Brand",
+        "https://boards.greenhouse.io/faire/jobs/8654106002",
+    )
+    second, created_again = _capture(
+        "Faire",
+        "Product Engineer - Brand",
+        "https://job-boards.greenhouse.io/faire/jobs/8654106002",
+    )
+    assert created_again is False
+    assert second.id == first.id
+
+
+def test_capture_matches_ashby_application_suffix(monkeypatch, tmp_path):
+    """The Ashby apply page is the same posting as its job page."""
+    _use_temp_store(monkeypatch, tmp_path)
+    base = "https://jobs.ashbyhq.com/cerebras/c0d8fa46-fd9e-49b5-80c9-040bbd0da916"
+    first, _ = _capture("Cerebras Systems", "Software Engineer - Tools", base)
+    second, created_again = _capture(
+        "Cerebras Systems", "Software Engineer - Tools", f"{base}/application"
+    )
+    assert created_again is False
+    assert second.id == first.id
+
+
+def test_capture_ignores_linkedin_tracking_parameters(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    first, _ = _capture(
+        "CCX Technologies",
+        "Software Engineer",
+        "https://www.linkedin.com/jobs/view/4457990642/?refId=abc&trackingId=xyz%3D",
+    )
+    second, created_again = _capture(
+        "CCX Technologies",
+        "Software Engineer",
+        "https://linkedin.com/jobs/view/4457990642",
+    )
+    assert created_again is False
+    assert second.id == first.id
+
+
+def test_capture_keeps_distinct_postings_on_identity_query_params(monkeypatch, tmp_path):
+    """gh_jid identifies the posting, so it must never be stripped as tracking."""
+    _use_temp_store(monkeypatch, tmp_path)
+    first, _ = _capture(
+        "CookUnity",
+        "AI Native Engineer",
+        "https://careers.cookunity.com/open-roles?gh_jid=7751648003",
+    )
+    second, created_again = _capture(
+        "CookUnity",
+        "AI Native Engineer",
+        "https://careers.cookunity.com/open-roles?gh_jid=9999999999",
+    )
+    assert created_again is True
+    assert second.id != first.id
+
+
+def test_applied_activity_advances_a_pending_status(monkeypatch, tmp_path):
+    """A logged submission must move the dossier to 'applied'.
+
+    The re-send gate reads status, so an 'applied' event on a dossier still marked
+    'applying' would let a later session submit the same listing twice.
+    """
+    _use_temp_store(monkeypatch, tmp_path)
+    created = job_store.add_job(
+        JobWorkspaceInput(company="Acme", role="SWE", status="applying")
+    )
+    updated = job_store.add_activity(
+        created.id,
+        JobActivityInput(kind="applied", title="LinkedIn Easy Apply submitted"),
+    )
+    assert updated is not None
+    assert updated.status == "applied"
+
+
+def test_applied_activity_never_regresses_a_later_status(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    created = job_store.add_job(
+        JobWorkspaceInput(company="Acme", role="SWE", status="interview")
+    )
+    updated = job_store.add_activity(
+        created.id,
+        JobActivityInput(kind="applied", title="Logged the original submission late"),
+    )
+    assert updated is not None
+    assert updated.status == "interview"
+
+
 def test_malformed_store_is_never_overwritten(monkeypatch, tmp_path):
     _use_temp_store(monkeypatch, tmp_path)
     job_store.STORE_PATH.write_text("{broken", encoding="utf-8")

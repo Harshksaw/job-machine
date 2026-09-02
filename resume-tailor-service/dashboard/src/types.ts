@@ -215,6 +215,7 @@ export interface JobSummary {
   has_cover_letter: boolean;
   needs_user_input: boolean;
   person_count: number;
+  queued_person_count: number;
   answer_count: number;
   activity_count: number;
   revision_count: number;

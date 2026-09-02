@@ -12,9 +12,8 @@ interface Props {
   onPeopleChanged?: () => void;
 }
 
-const field =
-  "mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30";
-const label = "text-xs font-medium text-zinc-500";
+const field = "jm-input mt-1";
+const label = "text-sm font-medium text-zinc-300";
 
 export default function JobOverview({ jobId, draft, onChange, onPeopleChanged }: Props) {
   const analysis = draft.fit_analysis;
@@ -227,7 +226,7 @@ export default function JobOverview({ jobId, draft, onChange, onPeopleChanged }:
         <label className={label}>
           Full job description
           <textarea
-            className={`${field} min-h-[28rem] resize-y whitespace-pre-wrap font-mono text-xs leading-relaxed`}
+            className={`${field} min-h-[28rem] resize-y whitespace-pre-wrap font-mono text-sm leading-relaxed`}
             value={draft.jd_text}
             onChange={(event) => onChange("jd_text", event.target.value)}
           />

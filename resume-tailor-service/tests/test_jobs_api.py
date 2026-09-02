@@ -246,10 +246,16 @@ def test_job_people_are_pinned_counted_and_logged(monkeypatch, tmp_path):
 
     listed = client.get("/api/jobs").json()
     assert listed[0]["person_count"] == 0
+    assert listed[0]["queued_person_count"] == 0
 
     added = client.post(
         f"/api/jobs/{job_id}/people",
-        json={"name": "Alex Recruiter", "company": "Acme", "title": "Recruiter"},
+        json={
+            "name": "Alex Recruiter",
+            "company": "Acme",
+            "title": "Recruiter",
+            "status": "queued",
+        },
     )
     assert added.status_code == 201
     body = added.json()
@@ -262,6 +268,7 @@ def test_job_people_are_pinned_counted_and_logged(monkeypatch, tmp_path):
 
     listed = client.get("/api/jobs").json()
     assert listed[0]["person_count"] == 1
+    assert listed[0]["queued_person_count"] == 1
 
     detail = client.get(f"/api/jobs/{job_id}").json()
     assert detail["activities"][-1]["title"] == "Added Alex Recruiter to reach"
@@ -310,6 +317,8 @@ def test_inbox_approve_preserves_unrelated_dossier_fields(monkeypatch, tmp_path)
         ("discovered", "hold", "researching", "Review later"),
         ("researching", "approve", "ready", "Apply"),
         ("researching", "hold", "researching", "Review later"),
+        ("ready", "hold", "researching", "Review later"),
+        ("applying", "hold", "researching", "Review later"),
         ("ready", "applied", "applied", "Await response"),
         ("applying", "applied", "applied", "Await response"),
     ],

@@ -218,17 +218,20 @@ export default function App() {
   }, [filteredApps]);
 
   return (
-    <div className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">
-      <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center gap-3 px-3 py-2.5 sm:px-4">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-teal-800/70 bg-teal-950/40 text-teal-300">
+    <div className="flex min-h-full flex-col bg-canvas text-ink">
+      <a href="#content" className="skip-link">
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-20 border-b border-zinc-700 bg-canvas/95 backdrop-blur">
+        <div className="flex w-full flex-wrap items-center gap-3 px-3 py-3 sm:px-4 lg:px-6">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-teal-700 bg-teal-950/40 text-teal-200">
             <BriefcaseBusiness className="h-4 w-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold leading-tight text-zinc-100">
+            <h1 className="text-base font-semibold leading-tight text-zinc-100">
               Job Machine
             </h1>
-            <p className="truncate text-xs text-zinc-600">
+            <p className="truncate text-sm text-zinc-400">
               {view === "inbox"
                 ? "Pick a ticket and approve it"
                 : view === "workspace"
@@ -244,7 +247,10 @@ export default function App() {
           </div>
 
           <div className="order-3 flex w-full items-center gap-2 sm:order-none sm:ml-auto sm:w-auto">
-            <div className="flex min-w-0 flex-1 overflow-x-auto rounded-md border border-zinc-800 bg-zinc-900 p-0.5 sm:flex-none">
+            <nav
+              aria-label="Primary"
+              className="flex min-w-0 flex-1 overflow-x-auto rounded-md border border-zinc-700 bg-surface p-0.5 sm:flex-none"
+            >
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -252,28 +258,27 @@ export default function App() {
                     key={item.id}
                     type="button"
                     onClick={() => setView(item.id)}
-                    aria-pressed={view === item.id}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                    aria-current={view === item.id ? "page" : undefined}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${
                       view === item.id
-                        ? "bg-teal-700 text-white"
-                        : "text-zinc-500 hover:text-zinc-200"
+                        ? "bg-teal-600 text-white"
+                        : "text-zinc-300 hover:bg-raised hover:text-zinc-100"
                     }`}
                   >
-                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    <Icon className="h-4 w-4" aria-hidden />
                     {item.label}
                   </button>
                 );
               })}
-            </div>
+            </nav>
             {view !== "workspace" && view !== "inbox" && (
               <button
                 type="button"
                 onClick={() => void refreshAll()}
-                className="rounded-md border border-zinc-800 bg-zinc-900 p-2 text-zinc-500 hover:border-zinc-700 hover:text-zinc-100"
-                title="Refresh"
+                className="rounded-md border border-zinc-600 bg-surface p-2 text-zinc-200 hover:bg-raised hover:text-zinc-100"
                 aria-label="Refresh"
               >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                <RefreshCw className="h-4 w-4" aria-hidden />
               </button>
             )}
           </div>
@@ -281,8 +286,12 @@ export default function App() {
       </header>
 
       <main
-        className={`mx-auto w-full max-w-[1680px] flex-1 px-3 sm:px-4 ${
-          view === "workspace" || view === "inbox" ? "py-3" : "space-y-4 py-5"
+        id="content"
+        tabIndex={-1}
+        className={`w-full flex-1 ${
+          view === "workspace" || view === "inbox"
+            ? "px-2 py-2 sm:px-3 sm:py-3 lg:px-4"
+            : "space-y-4 px-3 py-5 sm:px-4 lg:px-6"
         }`}
       >
         {view === "inbox" ? (

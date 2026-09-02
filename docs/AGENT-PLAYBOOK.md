@@ -15,7 +15,75 @@ state belongs in the gitignored `SESSION-HANDOFF-*.md`.
 
 ## Before any browser session
 
-1. **Confirm you are the only driver of `browser-profile/`.** Run
+**Standing rule:** Default browser is Harsh's **regular Chrome** via
+`./scripts/start-chrome-debug.sh` (default profile, LinkedIn already signed in).
+Port **9222** by default (override with `JOB_MACHINE_CDP_PORT`). Use job Chrome
+(`./scripts/start-job-chrome.sh`, `./browser-profile/`) **only when Harsh explicitly
+requests the isolated profile.** Verify with `./scripts/ensure-regular-chrome-cdp.sh`
+or `curl -fsS http://127.0.0.1:<port>/json/version` before trusting CDP.
+
+**Startup sequence (every session):**
+
+1. `./scripts/ensure-regular-chrome-cdp.sh` (or manual curl probe on port 9222).
+2. **If CDP responds:** attach immediately. `export BU_CDP_URL=http://127.0.0.1:9222`.
+   Do **not** quit, restart, or relaunch Chrome from automation.
+3. **If CDP is down:** stop and tell Harsh. He must `Cmd+Q` Chrome himself, then run
+   `./scripts/start-chrome-debug.sh`. Agents never run `Cmd+Q`, `osascript` quit
+   Chrome, `killall Chrome`, or any other command that closes his browser or tabs.
+4. `export BU_CDP_URL=http://127.0.0.1:9222` (re-export in each new terminal;
+   add to `~/.zshrc` if you want it persistent).
+5. Cursor: `browser-use --doctor` · Claude Code: `/mcp` → playwright connected.
+
+### Regular Chrome: do not disturb existing tabs
+
+Harsh works in **tab groups** with real tabs open. Automation attaches to his
+regular Chrome over CDP and must never disturb tabs or groups it did not open.
+
+**Attach, never quit.** Probe CDP first. If port 9222 responds, connect and work.
+Never quit Chrome, never bulk-close tabs, never switch the visible tab, and never
+reorganize tab groups from automation. If CDP is unavailable, report the blocker
+and wait for Harsh to enable remote debugging himself.
+
+**Background tabs only.** In browser-use, `new_tab(url)` opens a tab without
+changing which tab is visible in the window. CDP input (clicks, typing) works in
+background tabs. Do **not** call `activate_tab()` unless Harsh explicitly asks or
+CAPTCHA/MFA needs the window in front.
+
+**Close only what you opened.** Keep a session list of automation tab target ids
+(or the exact `linkedin.com/in/` URLs you opened). After each outreach send, close
+**only** that tab. Never close tabs by guessing index, never run "close all except",
+and never touch Harsh's pre-existing tabs, dashboard tabs he opened, or sheet
+confirm tabs unless he opened them for this automation run.
+
+**Automation tab budget:** max **5 automation tabs** open at once (not counting
+Harsh's existing tabs). For outreach, open one profile tab, send, close it, then
+open the next. Do not leave `/in/` profile tabs open after a send.
+
+**Never from automation:**
+
+- `Cmd+Q`, `osascript` quit Chrome, `killall "Google Chrome"`
+- Bulk tab close, "close other tabs", or closing tabs not on your session list
+- `activate_tab()` during normal outreach (background is the default)
+- Starting job Chrome (`start-job-chrome.sh`) when regular Chrome CDP is up
+- Any action that would steal focus from Harsh's current tab group
+
+## Which browser tool (routing)
+
+| Task | Agent | Tool | Preconditions |
+|---|---|---|---|
+| LinkedIn search, Easy Apply, outreach | Cursor | **browser-use** (`BU_CDP_URL`) | Regular Chrome up via `start-chrome-debug.sh` |
+| Same tasks in Claude Code | Claude Code | **Playwright MCP** (attach via `--cdp-endpoint`) | Chrome CDP on 9222 |
+| LinkedIn iframe / shadow DOM | Claude Code | Playwright MCP | Same CDP attach |
+| Sheet webhook confirm | Either | browser-use or Playwright | Google session in regular Chrome |
+| Public ATS JD fetch | Either | `curl` (no browser) | None |
+| ZipRecruiter apply | Claude Code | Playwright MCP | Regular Chrome preferred |
+| Isolated profile experiment | Either | `start-job-chrome.sh` first | **Only when Harsh asks** |
+
+Do **not** use claude-in-chrome or ecc chrome-devtools MCP for job-machine work
+unless Harsh explicitly switches stacks. Default lane: regular Chrome + browser-use
+(Cursor) or Playwright MCP attach (Claude Code).
+
+1. **Confirm you are the only driver when using `browser-profile/`.** Run
    `ps aux | grep [c]laude` and `ps aux | grep [p]laywright-mcp`. On 2026-08-27 a second
    `claude` process plus a `playwright-mcp` instance drove the same CDP browser and the
    same dossier store. It closed tabs mid-script, opened others, and contributed to five
@@ -27,6 +95,10 @@ state belongs in the gitignored `SESSION-HANDOFF-*.md`.
    `curl -fsS http://127.0.0.1:<port>/json/version` before trusting either.
 4. **Smoke-test the apply lane on one form before staging a queue.** See the next section
    for why.
+5. **Tab budget applies to automation tabs only** (see "Regular Chrome: do not disturb
+   existing tabs" above). Max 5 automation tabs open at once. After each LinkedIn outreach
+   send, close the `/in/` profile tab you opened for that send. Do not count or close
+   Harsh's pre-existing tabs.
 
 ## Known-broken lane: inert submit buttons (2026-08-28)
 
@@ -106,6 +178,24 @@ without per-send verification.
 
 Invite cap is 12 per session (`AGENTS.md` rule 3) and every message needs Harsh's approval
 before it goes out.
+
+### Outreach send workflow (regular Chrome, non-disruptive)
+
+After Harsh approves a batch (`prompts/outreach-run.md` step 4), send at human pace
+without touching his other tabs:
+
+1. Confirm CDP on regular Chrome (`ensure-regular-chrome-cdp.sh`), LinkedIn signed in.
+2. For each approved Person: `new_tab("<linkedin_profile_url>")` in the background.
+   Record the target id or URL in your session list.
+3. Browse the profile briefly, run the connect-with-note flow in **that tab only**
+   (selectors above). Do not navigate his visible tab or open LinkedIn feed in an
+   existing tab.
+4. Verify: profile shows **Pending**, sent-invitations list matches person and note.
+5. Close **only** the tab you opened (session list). Wait 30-60s before the next send.
+6. Update Person to `sent`, append dossier `outreach` activity, log the sheet row.
+
+If CDP is down mid-batch, stop and tell Harsh. Do not quit Chrome or close unrelated
+tabs to recover.
 
 ---
 
@@ -224,6 +314,28 @@ How to do it right:
   update a dossier rather than fork it.
 - Old session handoffs are also a dedupe source. Check the newest `SESSION-HANDOFF-*.md`
   for its "do not resend" list before applying to anything.
+
+Since 2026-08-28 the store enforces the URL half of this itself.
+`job_store.canonical_job_url()` folds the Greenhouse host aliases, drops a trailing
+`/application` or `/apply` segment, strips `www.` and per-visit tracking parameters
+(`refId`, `trackingId`, `trk`, `utm_*`, and friends), and `find_matching_job` compares that
+canonical form instead of the raw string. Identity-bearing query parameters survive on
+purpose: CookUnity's posting is `?gh_jid=7751648003`, so stripping the query would have
+merged unrelated roles. You still owe the company plus role cross-check, because a URL that
+points at a company listing index rather than one posting can canonicalize the same for two
+different jobs.
+
+### A logged submission is not an applied status
+
+The re-send gate reads `status`. Writing a `kind: applied` activity does **not** by itself
+make the dossier read as applied. Five listings from the 2026-08-28 overnight run sat at
+`applying` with a perfectly good "Application submitted now" event underneath, which is
+exactly the state a later session would treat as unapplied and submit again.
+
+`add_activity` now advances `discovered`, `researching`, `ready`, or `applying` to
+`applied` when an `applied` event lands, and never regresses a later status such as
+`interview`. Keep setting the status explicitly anyway: the auto-advance is a safety net,
+not the contract.
 
 ---
 

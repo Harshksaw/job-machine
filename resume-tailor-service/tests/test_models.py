@@ -83,4 +83,11 @@ def test_person_extends_input_with_server_fields():
 
 
 def test_person_statuses_constant():
-    assert PERSON_STATUSES == ("to-reach", "queued", "sent", "replied", "skip")
+    assert PERSON_STATUSES == (
+        "to-reach",
+        "queued",
+        "approved",
+        "sent",
+        "replied",
+        "skip",
+    )

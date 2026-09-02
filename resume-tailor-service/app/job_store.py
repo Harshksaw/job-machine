@@ -9,6 +9,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from app.models import (
     Application,
@@ -28,6 +29,9 @@ from app.slug import safe_slug
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STORE_PATH = BASE_DIR / "data" / "jobs.json"
+_PRE_SUBMISSION_STATUSES = frozenset(
+    {"discovered", "researching", "ready", "applying"}
+)
 _LOCK = threading.RLock()
 
 _SHEET_STATUS_MAP = {
@@ -51,7 +55,7 @@ _DECISION_PATCH = {
 
 _DECISION_ALLOWED_STATUSES = {
     "approve": {"discovered", "researching"},
-    "hold": {"discovered", "researching"},
+    "hold": {"discovered", "researching", "ready", "applying"},
     "applied": {"ready", "applying"},
 }
 
@@ -391,12 +395,16 @@ def add_activity(job_id: str, data: JobActivityInput) -> JobWorkspace | None:
                 return current
 
             now = _now()
-            updated = current.model_copy(
-                update={
-                    "activities": [*current.activities, _activity(data)],
-                    "updated_at": now,
-                }
-            )
+            patch: dict = {
+                "activities": [*current.activities, _activity(data)],
+                "updated_at": now,
+            }
+            # Rule 8's re-send gate reads status, not the activity log. Agents reliably
+            # log the submission and then forget to advance the dossier, which left
+            # applied listings sitting at "applying" and open to a duplicate submit.
+            if data.kind == "applied" and current.status in _PRE_SUBMISSION_STATUSES:
+                patch["status"] = "applied"
+            updated = current.model_copy(update=patch)
             items[index] = updated.model_dump(mode="json")
             _write_unlocked(items)
             return updated
@@ -597,6 +605,63 @@ def _job_key(company: str, role: str) -> str:
     return safe_slug(company, role)
 
 
+# The same posting reaches us under several URL spellings: Greenhouse serves both
+# boards.greenhouse.io and job-boards.greenhouse.io, Ashby adds /application on the
+# apply page, and LinkedIn appends per-visit tracking. Comparing raw strings let those
+# variants create a second dossier, which defeated the rule 8 re-send gate.
+_HOST_ALIASES = {
+    "job-boards.greenhouse.io": "boards.greenhouse.io",
+    "job-boards.eu.greenhouse.io": "boards.greenhouse.io",
+}
+
+_APPLY_SUFFIXES = {"application", "apply"}
+
+_TRACKING_PARAMS = {
+    "refid",
+    "trackingid",
+    "trk",
+    "trkinfo",
+    "lipi",
+    "licu",
+    "ebp",
+    "position",
+    "pagenum",
+    "originalsubdomain",
+    "midtoken",
+    "midsig",
+    "gclid",
+    "fbclid",
+}
+
+
+def canonical_job_url(job_url: str) -> str:
+    """Identity form of a posting URL, so host and tracking variants compare equal.
+
+    Query parameters are kept unless they are known tracking noise, because some
+    boards carry the posting id in the query (CookUnity uses ?gh_jid=...).
+    """
+    raw = (job_url or "").strip()
+    if not raw:
+        return ""
+    parsed = urlsplit(raw if "//" in raw else f"https://{raw}")
+    host = parsed.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    host = _HOST_ALIASES.get(host, host)
+    segments = [segment for segment in parsed.path.split("/") if segment]
+    while segments and segments[-1].lower() in _APPLY_SUFFIXES:
+        segments.pop()
+    kept = sorted(
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key.lower() not in _TRACKING_PARAMS and not key.lower().startswith("utm_")
+    )
+    canonical = host + "/" + "/".join(segments)
+    if kept:
+        canonical += "?" + urlencode(kept)
+    return canonical
+
+
 def find_matching_job(
     company: str,
     role: str,
@@ -605,7 +670,10 @@ def find_matching_job(
     jobs = load_jobs()
     clean_url = job_url.strip()
     if clean_url:
-        exact = next((job for job in jobs if job.job_url.strip() == clean_url), None)
+        canonical = canonical_job_url(clean_url)
+        exact = next(
+            (job for job in jobs if canonical_job_url(job.job_url) == canonical), None
+        )
         if exact is not None:
             return exact
     key = _job_key(company, role)

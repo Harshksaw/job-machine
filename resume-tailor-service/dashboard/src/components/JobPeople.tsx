@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Linkedin, Plus, UserRound } from "lucide-react";
+import { Check, ExternalLink, Linkedin, Plus, UserRound, X } from "lucide-react";
 import type { Person, PersonInput } from "../types";
 import { addJobPerson, listJobPeople, updatePerson } from "../api";
 import {
@@ -79,11 +79,11 @@ export default function JobPeople({ jobId, company, role, onChanged }: Props) {
   return (
     <section>
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          <UserRound className="h-3.5 w-3.5" />
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+          <UserRound className="h-4 w-4" aria-hidden />
           Reach out
         </h3>
-        <span className="text-[10px] tabular-nums text-zinc-600">
+        <span className="text-sm tabular-nums text-zinc-400">
           {people.length} on this job
         </span>
         <button
@@ -92,13 +92,13 @@ export default function JobPeople({ jobId, company, role, onChanged }: Props) {
             setEditing(null);
             setAdding(true);
           }}
-          className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 text-xs text-zinc-200 hover:bg-zinc-800"
+          className="jm-btn-secondary ml-auto h-9"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" aria-hidden />
           Add someone
         </button>
       </div>
-      <p className="mt-1 text-xs text-zinc-600">
+      <p className="mt-1 text-sm text-zinc-400">
         Contacts are saved on this listing. Outreach stays with the job after refresh.
       </p>
 
@@ -107,15 +107,15 @@ export default function JobPeople({ jobId, company, role, onChanged }: Props) {
       {loading ? (
         <p className="mt-3 text-sm text-zinc-600">Loading people…</p>
       ) : people.length === 0 ? (
-        <p className="mt-3 rounded-md border border-dashed border-zinc-800 px-3 py-4 text-sm text-zinc-500">
+        <p className="mt-3 rounded-md border border-dashed border-zinc-600 px-3 py-4 text-sm text-zinc-400">
           No one on this ticket yet. Add a recruiter or engineer so reach-out is part of the apply.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-zinc-800 border-y border-zinc-800">
+        <ul className="mt-3 divide-y divide-zinc-800 border-y border-zinc-700">
           {people.map((person) => {
             const linkedin = safeHref(person.linkedin_url);
             return (
-              <li key={person.id} className="py-3">
+              <li key={person.id} className="py-4">
                 <div className="flex flex-wrap items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <button
@@ -124,20 +124,44 @@ export default function JobPeople({ jobId, company, role, onChanged }: Props) {
                         setAdding(false);
                         setEditing(person);
                       }}
-                      className="text-left text-sm font-medium text-zinc-100 hover:text-teal-300"
+                      className="text-left text-base font-medium text-zinc-100 hover:text-teal-200"
                     >
                       {person.name}
                     </button>
                     {person.title && (
-                      <div className="text-xs text-zinc-500">{person.title}</div>
+                      <div className="text-sm text-zinc-300">{person.title}</div>
                     )}
                   </div>
+                  {person.status === "queued" && (
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busyId === person.id}
+                        onClick={() => void setStatus(person, "approved")}
+                        aria-label={`Approve to send outreach to ${person.name}`}
+                        className="jm-btn-primary h-9"
+                      >
+                        <Check className="h-4 w-4" aria-hidden />
+                        Approve to send
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === person.id}
+                        onClick={() => void setStatus(person, "skip")}
+                        aria-label={`Skip outreach to ${person.name}`}
+                        className="jm-btn-secondary h-9"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                        Skip
+                      </button>
+                    </div>
+                  )}
                   <select
                     value={person.status}
                     disabled={busyId === person.id}
                     onChange={(event) => void setStatus(person, event.target.value)}
-                    className={`rounded-md border px-1.5 py-0.5 text-xs ${
-                      STATUS_STYLE[person.status] ?? "border-zinc-700 text-zinc-400"
+                    className={`rounded-md border px-2 py-1.5 text-sm ${
+                      STATUS_STYLE[person.status] ?? "border-zinc-600 text-zinc-200"
                     } bg-transparent`}
                     aria-label={`Outreach status for ${person.name}`}
                   >
@@ -152,10 +176,10 @@ export default function JobPeople({ jobId, company, role, onChanged }: Props) {
                       href={linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-cyan-300"
+                      className="rounded-md p-2 text-zinc-300 hover:bg-raised hover:text-cyan-200"
                       aria-label={`Open ${person.name} on LinkedIn`}
                     >
-                      <Linkedin className="h-4 w-4" />
+                      <Linkedin className="h-4 w-4" aria-hidden />
                     </a>
                   )}
                   {person.links.map(
@@ -166,19 +190,19 @@ export default function JobPeople({ jobId, company, role, onChanged }: Props) {
                           href={safeHref(link.url)!}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-cyan-300"
+                          className="rounded-md p-2 text-zinc-300 hover:bg-raised hover:text-cyan-200"
                           aria-label={link.label || "Open link"}
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" aria-hidden />
                         </a>
                       )
                   )}
                 </div>
                 {person.hook && (
-                  <p className="mt-1 text-xs text-zinc-400">{person.hook}</p>
+                  <p className="mt-2 text-sm text-zinc-300">{person.hook}</p>
                 )}
                 {person.message && (
-                  <p className="mt-1 whitespace-pre-wrap text-xs text-zinc-500">
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">
                     {person.message}
                   </p>
                 )}

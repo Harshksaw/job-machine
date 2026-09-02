@@ -59,17 +59,17 @@ if [ -f resume.pdf ]; then ok "resume.pdf present"; else
   warn "resume.pdf MISSING — copy your resume PDF into $(pwd)/resume.pdf (upload fallback)."
 fi
 
-bold "3/6  Playwright MCP (persistent browser profile → log in to LinkedIn once)"
+bold "3/6  Playwright MCP (attach to regular Chrome CDP on 9222)"
 if claude mcp list 2>/dev/null | grep -q '^playwright'; then
   ok "playwright MCP already configured for this folder"
 else
-  claude mcp add playwright -- npx -y @playwright/mcp@latest --user-data-dir=./browser-profile \
-    && ok "playwright MCP added (profile: ./browser-profile — gitignored)" \
+  claude mcp add playwright -- npx -y @playwright/mcp@latest --cdp-endpoint=http://127.0.0.1:9222 \
+    && ok "playwright MCP added (attach mode — start Chrome with ./scripts/start-chrome-debug.sh first)" \
     || warn "Could not add playwright MCP automatically — see README.md step 2."
 fi
-bold "4/6  Chromium for Playwright"
+bold "4/6  Chromium for Playwright (optional; attach mode uses your Chrome)"
 npx -y playwright install chromium >/dev/null 2>&1 && ok "chromium installed" \
-  || warn "chromium install skipped/failed — run 'npx playwright install chromium' manually."
+  || warn "chromium install skipped/failed — attach mode does not need it if regular Chrome is up."
 
 # ---- resume-tailor-service (mode-specific) ---------------------------------
 bold "5/6  resume-tailor-service .env (no secrets needed)"
@@ -156,10 +156,10 @@ EOF
 fi
 cat <<'EOF'
 
-  First run only: in the claude window, /mcp should show playwright ✔ Connected,
-  then open linkedin.com once and log in — ./browser-profile keeps you signed in.
+  First run only: in the claude window, /mcp should show playwright ✔ Connected
+  after regular Chrome CDP is up (./scripts/start-chrome-debug.sh).
 
-  Cursor agents: ./scripts/start-job-chrome.sh  (see docs/BROWSER_PROFILE.md)
+  Cursor agents: ./scripts/ensure-regular-chrome-cdp.sh  (see docs/BROWSER_PROFILE.md)
 
   Where the last run left off:  docs/sessions/2026-07-24-linkedin-run.md
 EOF

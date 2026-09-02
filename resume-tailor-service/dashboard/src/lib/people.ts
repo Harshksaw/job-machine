@@ -1,17 +1,30 @@
 import type { Person, PersonInput } from "../types";
 
-export const PERSON_STATUSES = ["to-reach", "queued", "sent", "replied", "skip"] as const;
+export const PERSON_STATUSES = [
+  "to-reach",
+  "queued",
+  "approved",
+  "sent",
+  "replied",
+  "skip",
+] as const;
 
 export const STATUS_LABEL: Record<string, string> = {
-  "to-reach": "To reach", queued: "Queued", sent: "Sent", replied: "Replied", skip: "Skip",
+  "to-reach": "To reach",
+  queued: "Queued",
+  approved: "Approved",
+  sent: "Sent",
+  replied: "Replied",
+  skip: "Skip",
 };
 
 export const STATUS_STYLE: Record<string, string> = {
   "to-reach": "bg-amber-500/15 text-amber-300 border-amber-500/30",
   queued: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+  approved: "bg-teal-500/15 text-teal-300 border-teal-500/30",
   sent: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
   replied: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  skip: "bg-slate-600/20 text-slate-400 border-slate-600/40",
+  skip: "bg-zinc-700/40 text-zinc-300 border-zinc-500",
 };
 
 const ORDER = new Map<string, number>(PERSON_STATUSES.map((s, i) => [s, i]));
@@ -50,6 +63,11 @@ export function preserveJobAssociation(
   existing: Pick<Person, "job_id">,
 ): PersonInput {
   return { ...input, job_id: existing.job_id };
+}
+
+export function toPersonInput(person: Person): PersonInput {
+  const { id: _id, created_at: _created, updated_at: _updated, ...input } = person;
+  return input;
 }
 
 /** Only http(s) links are safe to render as hrefs. */

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { Send, X, Plus, Trash2 } from "lucide-react";
 import type { Person, PersonInput, Link } from "../types";
 import { PERSON_STATUSES, STATUS_LABEL } from "../lib/people";
 
@@ -27,6 +27,8 @@ export default function PersonForm({ initial, companies, defaultCompany, default
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
+  const isQueuedReview = initial?.status === "queued" || form.status === "queued";
+
   const set = <K extends keyof PersonInput>(k: K, v: PersonInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -35,7 +37,7 @@ export default function PersonForm({ initial, companies, defaultCompany, default
   const addLink = () => setForm((f) => ({ ...f, links: [...f.links, { label: "", url: "" }] }));
   const removeLink = (i: number) => setForm((f) => ({ ...f, links: f.links.filter((_, j) => j !== i) }));
 
-  const submit = async () => {
+  const persist = async (status?: string) => {
     setErr("");
     if (!form.name.trim() || !form.company.trim()) {
       setErr("Name and company are required.");
@@ -43,48 +45,63 @@ export default function PersonForm({ initial, companies, defaultCompany, default
     }
     setSaving(true);
     try {
-      await onSave({ ...form, role: form.role?.trim() ? form.role : null });
+      await onSave({
+        ...form,
+        role: form.role?.trim() ? form.role : null,
+        status: status ?? form.status,
+      });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to save.");
       setSaving(false);
     }
   };
 
-  const field = "w-full rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none";
+  const field = "jm-input";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onCancel}>
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl"
-        onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
-          <h2 className="text-sm font-semibold text-slate-100">{initial ? "Edit person" : "Add person"}</h2>
-          <button type="button" onClick={onCancel} className="rounded-md p-1 text-slate-400 hover:bg-slate-800" aria-label="Close">
+      <div className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-lg border border-zinc-700 bg-canvas shadow-2xl ${
+          isQueuedReview ? "max-w-2xl" : "max-w-lg"
+        }`}
+        onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="person-form-title">
+        <header className="flex items-center justify-between border-b border-zinc-700 px-4 py-3">
+          <div>
+            <h2 id="person-form-title" className="text-base font-semibold text-zinc-100">
+              {isQueuedReview ? "Review outreach" : initial ? "Edit person" : "Add person"}
+            </h2>
+            {isQueuedReview && (
+              <p className="mt-0.5 text-sm text-zinc-400">
+                Edit the message if needed, then approve for the agent to send on LinkedIn.
+              </p>
+            )}
+          </div>
+          <button type="button" onClick={onCancel} className="rounded-md p-1 text-zinc-300 hover:bg-raised" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </header>
         <div className="space-y-3 overflow-y-auto p-4">
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs text-slate-400">Name*
+            <label className="text-sm text-zinc-300">Name*
               <input className={field} value={form.name} onChange={(e) => set("name", e.target.value)} />
             </label>
-            <label className="text-xs text-slate-400">Title
+            <label className="text-sm text-zinc-300">Title
               <input className={field} value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Engineering Manager" />
             </label>
-            <label className="text-xs text-slate-400">Company*
+            <label className="text-sm text-zinc-300">Company*
               <input className={field} list="known-companies" value={form.company} onChange={(e) => set("company", e.target.value)} />
               <datalist id="known-companies">{companies.map((c) => <option key={c} value={c} />)}</datalist>
             </label>
-            <label className="text-xs text-slate-400">Role (optional tie)
+            <label className="text-sm text-zinc-300">Role (optional tie)
               <input className={field} value={form.role ?? ""} onChange={(e) => set("role", e.target.value)} placeholder="Backend Engineer" />
             </label>
           </div>
-          <label className="block text-xs text-slate-400">LinkedIn URL
+          <label className="block text-sm text-zinc-300">LinkedIn URL
             <input className={field} value={form.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} placeholder="https://linkedin.com/in/…" />
           </label>
           <div>
-            <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+            <div className="mb-1 flex items-center justify-between text-sm text-zinc-300">
               <span>Extra links</span>
-              <button type="button" onClick={addLink} className="inline-flex items-center gap-1 text-indigo-300 hover:text-indigo-200">
+              <button type="button" onClick={addLink} className="inline-flex items-center gap-1 text-teal-200 hover:text-teal-100">
                 <Plus className="h-3.5 w-3.5" /> Add link
               </button>
             </div>
@@ -100,30 +117,52 @@ export default function PersonForm({ initial, companies, defaultCompany, default
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs text-slate-400">Status
-              <select className={field} value={form.status} onChange={(e) => set("status", e.target.value)}>
-                {PERSON_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-              </select>
-            </label>
-            <label className="text-xs text-slate-400">Hook
-              <input className={field} value={form.hook} onChange={(e) => set("hook", e.target.value)} placeholder="angle for outreach" />
-            </label>
-          </div>
-          <label className="block text-xs text-slate-400">Message
-            <textarea className={field + " min-h-[64px]"} value={form.message} onChange={(e) => set("message", e.target.value)} placeholder="drafted / sent outreach text" />
+          {!isQueuedReview && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm text-zinc-300">Status
+                <select className={field} value={form.status} onChange={(e) => set("status", e.target.value)}>
+                  {PERSON_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                </select>
+              </label>
+              <label className="text-sm text-zinc-300">Hook
+                <input className={field} value={form.hook} onChange={(e) => set("hook", e.target.value)} placeholder="angle for outreach" />
+              </label>
+            </div>
+          )}
+          {isQueuedReview && form.hook && (
+            <p className="rounded-md border border-zinc-700 bg-raised px-3 py-2 text-sm text-zinc-300">
+              <span className="font-medium text-zinc-200">Hook: </span>
+              {form.hook}
+            </p>
+          )}
+          <label className="block text-sm text-zinc-300">Message
+            <textarea className={`${field} ${isQueuedReview ? "min-h-[9rem] text-base leading-relaxed" : "min-h-[64px]"}`} value={form.message} onChange={(e) => set("message", e.target.value)} placeholder="drafted / sent outreach text" />
           </label>
-          <label className="block text-xs text-slate-400">Notes
+          <label className="block text-sm text-zinc-300">Notes
             <textarea className={field + " min-h-[48px]"} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
           </label>
           {err && <p className="text-sm text-rose-400">{err}</p>}
         </div>
-        <footer className="flex justify-end gap-2 border-t border-slate-800 px-4 py-3">
-          <button type="button" onClick={onCancel} className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800">Cancel</button>
-          <button type="button" onClick={submit} disabled={saving}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50">
-            {saving ? "Saving…" : "Save"}
-          </button>
+        <footer className="flex flex-wrap justify-end gap-2 border-t border-zinc-700 px-4 py-3">
+          <button type="button" onClick={onCancel} className="jm-btn-secondary">Cancel</button>
+          {isQueuedReview ? (
+            <>
+              <button type="button" onClick={() => void persist("skip")} disabled={saving} className="jm-btn-secondary">
+                <X className="h-4 w-4" aria-hidden />
+                Skip
+              </button>
+              <button type="button" onClick={() => void persist("queued")} disabled={saving} className="jm-btn-secondary">
+                {saving ? "Saving…" : "Save draft"}
+              </button>
+              <button type="button" onClick={() => void persist("approved")} disabled={saving} className="jm-btn-primary">
+                {saving ? "Saving…" : (<><Send className="h-4 w-4" aria-hidden />Approve & Send</>)}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => void persist()} disabled={saving} className="jm-btn-primary">
+              {saving ? "Saving…" : "Save"}
+            </button>
+          )}
         </footer>
       </div>
     </div>

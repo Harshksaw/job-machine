@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --jm-canvas: #0c0c0e;
+  --jm-surface: #161618;
+  --jm-raised: #1e1e22;
+  --jm-line: #3f3f46;
+  --jm-ink: #fafafa;
+  --jm-muted: #d4d4d8;
+  --jm-dim: #a1a1aa;
+  --jm-accent: #14b8a6;
+  --jm-focus: #5eead4;
+  --jm-warn: #fbbf24;
+}
+
 html,
 body,
 #root {
@@ -9,19 +22,91 @@ body,
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 antialiased;
+  @apply antialiased;
+  background: var(--jm-canvas);
+  color: var(--jm-ink);
+  font-size: 16px;
+  line-height: 1.55;
 }
 
-/* Thin, unobtrusive scrollbars for the command-center panes. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(63 63 70) transparent;
+  scrollbar-color: #71717a transparent;
 }
+
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
+
 *::-webkit-scrollbar-thumb {
-  background-color: rgb(63 63 70);
+  background-color: #71717a;
   border-radius: 9999px;
+}
+
+@media (prefers-contrast: more) {
+  * {
+    scrollbar-color: #e4e4e7 #27272a;
+  }
+}
+
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 80;
+  transform: translateY(-160%);
+  border-radius: 0.375rem;
+  background: #fafafa;
+  color: #18181b;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--jm-focus);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .jm-input {
+    @apply w-full rounded-md border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500;
+  }
+
+  .jm-btn {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .jm-btn-primary {
+    @apply jm-btn bg-teal-600 text-white hover:bg-teal-500;
+  }
+
+  .jm-btn-secondary {
+    @apply jm-btn border border-zinc-600 bg-zinc-900 text-zinc-100 hover:bg-zinc-800;
+  }
+
+  .jm-badge {
+    @apply inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium;
+  }
+
+  .jm-section-title {
+    @apply text-xs font-semibold uppercase tracking-wide text-zinc-400;
+  }
 }

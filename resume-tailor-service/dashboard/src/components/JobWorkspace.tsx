@@ -175,21 +175,23 @@ export default function JobWorkspace({
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 bg-zinc-900/70 px-3 py-2.5">
+    <div className="flex min-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-lg border border-zinc-700 bg-canvas">
+      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-700 bg-surface px-3 py-3">
         <div className="relative min-w-[190px] flex-1 sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+          <label htmlFor="dossier-search" className="visually-hidden">Search dossiers</label>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
           <input
+            id="dossier-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search dossiers"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-950 py-1.5 pl-8 pr-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-teal-500 focus:outline-none"
+            className="jm-input pl-9"
           />
         </div>
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
-          className="rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-sm text-zinc-300"
+          className="jm-input w-auto"
         >
           <option value="active">Active</option>
           <option value="all">All statuses</option>
@@ -199,14 +201,14 @@ export default function JobWorkspace({
             </option>
           ))}
         </select>
-        <span className="text-xs text-zinc-600">
+        <span className="text-sm text-zinc-400">
           {shown.length} of {jobs.length}
         </span>
         <button
           type="button"
           onClick={() => void imported()}
           disabled={importing}
-          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 disabled:opacity-40"
+          className="jm-btn-secondary h-10"
           title="Import Google Sheet"
         >
           {importing ? (
@@ -228,7 +230,7 @@ export default function JobWorkspace({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500"
+          className="jm-btn-primary"
         >
           <Plus className="h-3.5 w-3.5" />
           New job
@@ -278,8 +280,8 @@ export default function JobWorkspace({
           </div>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-rows-[minmax(180px,32vh)_minmax(0,1fr)] lg:grid-cols-[310px_minmax(0,1fr)] lg:grid-rows-1">
-          <aside className="min-h-0 overflow-y-auto border-b border-zinc-800 bg-zinc-900/30 lg:border-b-0 lg:border-r">
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(12rem,38vh)_minmax(0,1fr)] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:grid-rows-1">
+          <aside className="min-h-0 overflow-y-auto border-b border-zinc-700 bg-surface lg:border-b-0 lg:border-r">
             {shown.length === 0 ? (
               <div className="p-6 text-center text-sm text-zinc-600">
                 No matching dossiers.
@@ -296,54 +298,56 @@ export default function JobWorkspace({
                       key={job.id}
                       type="button"
                       onClick={() => choose(job.id)}
-                      className={`w-full px-3 py-3 text-left transition ${
+                      aria-current={selectedId === job.id ? "true" : undefined}
+                      className={`w-full px-4 py-3.5 text-left transition ${
                         selectedId === job.id
-                          ? "bg-teal-950/30 shadow-[inset_3px_0_0_rgb(45,212,191)]"
-                          : "hover:bg-zinc-800/60"
+                          ? "bg-teal-950/40 shadow-[inset_3px_0_0_#2dd4bf]"
+                          : "hover:bg-raised"
                       }`}
                     >
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate text-sm font-semibold text-zinc-200">
+                            <span className="truncate text-base font-semibold text-zinc-100">
                               {job.company}
                             </span>
                             {priority && (
                               <Star
-                                className="h-3.5 w-3.5 shrink-0 text-amber-400"
+                                className="h-4 w-4 shrink-0 text-amber-300"
                                 fill="currentColor"
+                                aria-label="High priority"
                               />
                             )}
                           </div>
-                          <div className="mt-0.5 truncate text-xs text-zinc-500">
+                          <div className="mt-0.5 truncate text-sm text-zinc-300">
                             {job.role}
                           </div>
                         </div>
                         <span
-                          className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${fitTone(
+                          className={`jm-badge shrink-0 ${fitTone(
                             job.fit_score
                           )}`}
                         >
-                          {job.fit_score ?? "—"}
+                          Fit {job.fit_score ?? "—"}
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         <span
-                          className={`rounded-md border px-1.5 py-0.5 text-[10px] ${statusClass}`}
+                          className={`jm-badge ${statusClass}`}
                         >
                           {JOB_STATUS_LABEL[job.status] ?? job.status}
                         </span>
                         {job.tailored_resume_id && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-teal-500">
-                            <FileText className="h-3 w-3" /> PDF
+                          <span className="jm-badge border-teal-700 text-teal-100">
+                            <FileText className="h-3 w-3" aria-hidden /> PDF
                           </span>
                         )}
-                        <time className="ml-auto text-[10px] text-zinc-700">
+                        <time className="ml-auto text-xs text-zinc-400">
                           {formatJobDate(job.updated_at)}
                         </time>
                       </div>
                       {job.next_action && (
-                        <div className="mt-2 truncate text-xs text-zinc-500">
+                        <div className="mt-2 line-clamp-2 text-sm text-zinc-200">
                           {job.next_action}
                         </div>
                       )}

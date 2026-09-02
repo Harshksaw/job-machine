@@ -25,22 +25,23 @@ claude          # first run → log in with your Claude subscription account
 ```
 Docs: https://docs.claude.com/en/docs/claude-code/overview
 
-## 2. Add Playwright MCP with a PERSISTENT browser profile
+## 2. Add Playwright MCP (attach to regular Chrome)
 Run this **inside this folder** (config is per-directory):
 ```bash
 cd job-machine
-claude mcp add playwright -- npx -y @playwright/mcp@latest --user-data-dir=./browser-profile
-npx playwright install chromium
+claude mcp add playwright -- npx -y @playwright/mcp@latest --cdp-endpoint=http://127.0.0.1:9222
 ```
-Why `--user-data-dir`: the browser keeps its own profile folder, so you
-log in to LinkedIn + Wellfound ONCE and stay logged in for every future run.
-
-**Cursor / browser-use:** start an isolated job Chrome that does not touch your
-daily browser — see [`docs/BROWSER_PROFILE.md`](docs/BROWSER_PROFILE.md) and
-`./scripts/start-job-chrome.sh`.
+Attach mode reuses your **regular Chrome** (LinkedIn already signed in). Start
+CDP first:
+```bash
+./scripts/start-chrome-debug.sh   # Cmd+Q Chrome first if CDP is down
+export BU_CDP_URL=http://127.0.0.1:9222
+```
+**Cursor / browser-use:** same CDP URL. See [`docs/BROWSER_PROFILE.md`](docs/BROWSER_PROFILE.md).
+Isolated job profile (`./scripts/start-job-chrome.sh`) is **only when you ask**.
 
 Verify: run `claude`, then type `/mcp` — playwright should show ✔ Connected.
-(First check may fail while npx downloads; wait a few seconds, retry.)
+(First check may fail while npx downloads or if Chrome CDP is down; wait, retry.)
 
 ## 3. Set up resume-tailor-service (one-time)
 Tailors `resume.pdf` per job description before every upload in the run
@@ -63,12 +64,9 @@ header. If the service isn't running or errors, the run prompts fall back to
 `./resume.pdf` automatically.
 
 ## 4. One-time login run
-Inside `claude`:
-```
-Use playwright mcp to open a browser to linkedin.com — I'll log in manually,
-tell me when you see my feed. Then open wellfound.com, same thing.
-```
-Log in by hand in the window that opens. Done — sessions persist in ./browser-profile.
+If LinkedIn/Wellfound are not signed in on regular Chrome, log in once manually
+after `./scripts/start-chrome-debug.sh`. Sessions persist in your default Chrome
+profile. Isolated `./browser-profile/` is only for explicit job-profile runs.
 
 ## 5. Test the webhook
 Open the sheet webhook from `AGENTS.md` in the browser (Google session required),

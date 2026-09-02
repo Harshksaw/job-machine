@@ -175,8 +175,8 @@ export default function JobDetail({
     JOB_STATUS_STYLE[draft.status] ?? "border-zinc-700 bg-zinc-900 text-zinc-400";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-zinc-950">
-      <header className="border-b border-zinc-800 px-4 py-3 lg:px-5">
+    <div className="flex min-h-0 flex-1 flex-col bg-canvas">
+      <header className="border-b border-zinc-700 px-4 py-4 lg:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="min-w-0 flex-1">
             <input
@@ -298,10 +298,10 @@ export default function JobDetail({
               type="button"
               onClick={() => void switchTab(item.id)}
               disabled={busy === "tab"}
-              className={`flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-3 text-xs font-medium ${
+              className={`flex h-11 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm font-medium ${
                 tab === item.id
-                  ? "border-teal-400 text-teal-300"
-                  : "border-transparent text-zinc-500 hover:text-zinc-300"
+                  ? "border-teal-400 text-teal-200"
+                  : "border-transparent text-zinc-400 hover:text-zinc-100"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />

@@ -38,8 +38,8 @@ export const JOB_STATUS_STYLE: Record<string, string> = {
   interview: "border-emerald-700/70 bg-emerald-950/50 text-emerald-300",
   offer: "border-lime-700/70 bg-lime-950/50 text-lime-300",
   rejected: "border-rose-800/70 bg-rose-950/40 text-rose-300",
-  skipped: "border-zinc-700 bg-zinc-900 text-zinc-500",
-  archived: "border-zinc-700 bg-zinc-900 text-zinc-500",
+  skipped: "border-zinc-600 bg-zinc-800 text-zinc-300",
+  archived: "border-zinc-600 bg-zinc-800 text-zinc-300",
 };
 
 export const JOB_PRIORITIES = ["low", "normal", "high", "dream"] as const;
@@ -107,10 +107,31 @@ export function formatJobDate(value: string): string {
 }
 
 export function fitTone(score: number | null): string {
-  if (score == null) return "border-zinc-700 bg-zinc-900 text-zinc-500";
-  if (score >= 8) return "border-emerald-700/70 bg-emerald-950/50 text-emerald-300";
-  if (score >= 6) return "border-amber-700/70 bg-amber-950/50 text-amber-300";
-  return "border-rose-800/70 bg-rose-950/40 text-rose-300";
+  if (score == null) return "border-zinc-600 bg-zinc-800 text-zinc-300";
+  if (score >= 8) return "border-emerald-600 bg-emerald-950/50 text-emerald-200";
+  if (score >= 6) return "border-amber-600 bg-amber-950/50 text-amber-200";
+  return "border-rose-700 bg-rose-950/40 text-rose-200";
+}
+
+export function inboxBlocker(job: {
+  needs_user_input?: boolean;
+  queued_person_count?: number;
+  next_action?: string;
+  notes?: string;
+}): string {
+  if (job.needs_user_input) {
+    const action = (job.next_action ?? "").trim();
+    return action || "Needs your input";
+  }
+  const queued = job.queued_person_count ?? 0;
+  if (queued > 0) {
+    return queued === 1
+      ? "1 outreach waiting approval"
+      : `${queued} outreach waiting approval`;
+  }
+  const action = (job.next_action ?? "").trim();
+  if (action) return action;
+  return ((job.notes ?? "").trim().split("\n")[0] ?? "").trim();
 }
 
 export const INBOX_QUEUES = [
@@ -140,11 +161,17 @@ export function inInboxQueue(
   job: {
     status: string;
     needs_user_input?: boolean;
+    queued_person_count?: number;
   },
   queue: InboxQueue
 ): boolean {
   if (queue === "all") return !CLOSED.has(job.status);
-  if (queue === "needs-you") return Boolean(job.needs_user_input) && !CLOSED.has(job.status);
+  if (queue === "needs-you") {
+    return (
+      !CLOSED.has(job.status) &&
+      (Boolean(job.needs_user_input) || (job.queued_person_count ?? 0) > 0)
+    );
+  }
   if (queue === "decide") return DECIDE.has(job.status);
   if (queue === "ready") return READY.has(job.status);
   return APPLIED.has(job.status);

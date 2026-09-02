@@ -30,10 +30,10 @@ export default function JobLetter({
     <div className="divide-y divide-zinc-800">
       {draft.fit_analysis?.role_thesis && (
         <section className="px-4 py-4 lg:px-6">
-          <div className="text-xs font-semibold uppercase text-zinc-500">
+          <div className="jm-section-title">
             Positioning thesis
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+          <p className="mt-1 text-base leading-7 text-zinc-200">
             {draft.fit_analysis.role_thesis}
           </p>
         </section>
@@ -73,7 +73,7 @@ export default function JobLetter({
         </div>
         <textarea
           id="cover-letter"
-          className="min-h-[34rem] w-full resize-y rounded-md border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm leading-7 text-zinc-200 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500/30"
+          className="jm-input min-h-[34rem] w-full resize-y px-4 py-4 text-base leading-7"
           value={draft.cover_letter}
           onChange={(event) => onChange(event.target.value)}
           placeholder="No cover letter generated."

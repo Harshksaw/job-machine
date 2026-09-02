@@ -73,7 +73,7 @@ class Application(BaseModel):
     tailored_resume_id: str | None = None
 
 
-PERSON_STATUSES = ("to-reach", "queued", "sent", "replied", "skip")
+PERSON_STATUSES = ("to-reach", "queued", "approved", "sent", "replied", "skip")
 
 
 class Link(BaseModel):
@@ -392,6 +392,7 @@ class JobSummary(BaseModel):
     has_cover_letter: bool = False
     needs_user_input: bool = False
     person_count: int = 0
+    queued_person_count: int = 0
     answer_count: int
     activity_count: int
     revision_count: int
