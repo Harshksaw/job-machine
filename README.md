@@ -25,20 +25,22 @@ claude          # first run → log in with your Claude subscription account
 ```
 Docs: https://docs.claude.com/en/docs/claude-code/overview
 
-## 2. Add Playwright MCP (attach to regular Chrome)
+## 2. Add Playwright MCP (attach to job Chrome)
 Run this **inside this folder** (config is per-directory):
 ```bash
 cd job-machine
 claude mcp add playwright -- npx -y @playwright/mcp@latest --cdp-endpoint=http://127.0.0.1:9222
 ```
-Attach mode reuses your **regular Chrome** (LinkedIn already signed in). Start
-CDP first:
+Regular Chrome's default profile cannot serve working CDP on Chrome 136+ (it 404s
+every DevTools endpoint), so attach mode uses an isolated **job Chrome** profile
+instead. Start it first:
 ```bash
-./scripts/start-chrome-debug.sh   # Cmd+Q Chrome first if CDP is down
+./scripts/start-job-chrome.sh
 export BU_CDP_URL=http://127.0.0.1:9222
 ```
-**Cursor / browser-use:** same CDP URL. See [`docs/BROWSER_PROFILE.md`](docs/BROWSER_PROFILE.md).
-Isolated job profile (`./scripts/start-job-chrome.sh`) is **only when you ask**.
+Sign in to LinkedIn/Wellfound once in that window; it persists in `./browser-profile/`
+(gitignored) for every future run. **Cursor / browser-use:** same CDP URL. See
+[`docs/BROWSER_PROFILE.md`](docs/BROWSER_PROFILE.md).
 
 Verify: run `claude`, then type `/mcp` — playwright should show ✔ Connected.
 (First check may fail while npx downloads or if Chrome CDP is down; wait, retry.)
@@ -64,9 +66,10 @@ header. If the service isn't running or errors, the run prompts fall back to
 `./resume.pdf` automatically.
 
 ## 4. One-time login run
-If LinkedIn/Wellfound are not signed in on regular Chrome, log in once manually
-after `./scripts/start-chrome-debug.sh`. Sessions persist in your default Chrome
-profile. Isolated `./browser-profile/` is only for explicit job-profile runs.
+If LinkedIn/Wellfound are not signed in yet, log in once manually in the job Chrome
+window opened by `./scripts/start-job-chrome.sh`. Sessions persist in
+`./browser-profile/` (gitignored) for every future run — your regular, everyday
+Chrome is never touched.
 
 ## 5. Test the webhook
 Open the sheet webhook from `AGENTS.md` in the browser (Google session required),

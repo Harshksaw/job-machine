@@ -15,72 +15,82 @@ state belongs in the gitignored `SESSION-HANDOFF-*.md`.
 
 ## Before any browser session
 
-**Standing rule:** Default browser is Harsh's **regular Chrome** via
-`./scripts/start-chrome-debug.sh` (default profile, LinkedIn already signed in).
-Port **9222** by default (override with `JOB_MACHINE_CDP_PORT`). Use job Chrome
-(`./scripts/start-job-chrome.sh`, `./browser-profile/`) **only when Harsh explicitly
-requests the isolated profile.** Verify with `./scripts/ensure-regular-chrome-cdp.sh`
-or `curl -fsS http://127.0.0.1:<port>/json/version` before trusting CDP.
+**Standing rule (corrected 2026-09-02):** `./scripts/start-chrome-debug.sh` (regular
+Chrome, default profile) **cannot work** on Chrome 136+. Confirmed again on Chrome 152:
+Chrome refuses DevTools Protocol on the default user-data directory for security, it
+binds the port and then serves `404` on every `/json/*` endpoint. This was already
+found once (see commit `2b31b66`, "regular Chrome cannot work"); a later doc edit
+reverted the standing rule back to regular Chrome without re-testing, which broke CDP
+again on 2026-09-02. **Default is `./scripts/start-job-chrome.sh`** (isolated profile,
+`./browser-profile/`, gitignored). Regular-Chrome attach is not an option until Chrome
+changes this policy, not a preference.
+
+**Port collision gotcha:** a stale regular-Chrome process from a previous
+`start-chrome-debug.sh` attempt can sit for days still bound to `127.0.0.1:9222`
+(IPv4) while serving 404 on everything. If `start-job-chrome.sh` reports CDP not
+responding, check `lsof -nP -iTCP:9222 -sTCP:LISTEN` before assuming the new Chrome
+failed to start, since your job Chrome may have only won the IPv6 side of that port
+(`curl http://[::1]:9222/json/version` to check) and is otherwise fine. Fix by running
+job Chrome on a different port rather than touching the stale process:
+`JOB_MACHINE_CDP_PORT=9223 ./scripts/start-job-chrome.sh`. Do not kill the process
+squatting on 9222 without checking it is not Harsh's actual daily Chrome window first,
+`ps -p <pid> -o lstart=` tells you how long it has been running.
 
 **Startup sequence (every session):**
 
-1. `./scripts/ensure-regular-chrome-cdp.sh` (or manual curl probe on port 9222).
-2. **If CDP responds:** attach immediately. `export BU_CDP_URL=http://127.0.0.1:9222`.
-   Do **not** quit, restart, or relaunch Chrome from automation.
-3. **If CDP is down:** stop and tell Harsh. He must `Cmd+Q` Chrome himself, then run
-   `./scripts/start-chrome-debug.sh`. Agents never run `Cmd+Q`, `osascript` quit
-   Chrome, `killall Chrome`, or any other command that closes his browser or tabs.
-4. `export BU_CDP_URL=http://127.0.0.1:9222` (re-export in each new terminal;
-   add to `~/.zshrc` if you want it persistent).
+1. `curl -fsS http://127.0.0.1:9222/json/version` (or your last-used port).
+2. **If it 200s with real CDP fields (`webSocketDebuggerUrl`, etc.):** attach.
+   `export BU_CDP_URL=http://127.0.0.1:9222`.
+3. **If it 404s, refuses, or is silent:** run `./scripts/start-job-chrome.sh`. First
+   run: sign in to LinkedIn/Wellfound once in that window, it persists in
+   `./browser-profile/`. If it reports "CDP not responding," check the port-collision
+   gotcha above before retrying blindly.
+4. Never run `Cmd+Q`, `osascript` quit, or `killall` against Harsh's actual regular
+   Chrome (the one with his tab groups). Job Chrome is a separate process/profile, you
+   may start, stop, and restart it freely, it holds no work of his.
 5. Cursor: `browser-use --doctor` · Claude Code: `/mcp` → playwright connected.
 
-### Regular Chrome: do not disturb existing tabs
+### Job Chrome: still don't make a mess
 
-Harsh works in **tab groups** with real tabs open. Automation attaches to his
-regular Chrome over CDP and must never disturb tabs or groups it did not open.
+It is an isolated profile, but it is not disposable mid-run, other automation may be
+sharing it in the same session.
 
-**Attach, never quit.** Probe CDP first. If port 9222 responds, connect and work.
-Never quit Chrome, never bulk-close tabs, never switch the visible tab, and never
-reorganize tab groups from automation. If CDP is unavailable, report the blocker
-and wait for Harsh to enable remote debugging himself.
-
-**Background tabs only.** In browser-use, `new_tab(url)` opens a tab without
-changing which tab is visible in the window. CDP input (clicks, typing) works in
-background tabs. Do **not** call `activate_tab()` unless Harsh explicitly asks or
-CAPTCHA/MFA needs the window in front.
+**Silent browser work (standing preference).** Never drag Harsh to the job
+Chrome window or tab. Do not call `activate_tab()`, do not bring CDP 9223 to
+the foreground, and do not steal focus from whatever he is doing. Keep tabs in
+the background: CDP input and screenshots work without activating, and the
+launcher starts job Chrome hidden with background throttling off (see
+`docs/BROWSER_PROFILE.md`). If a hidden tab still will not respond, stop and
+report it rather than activating. CAPTCHA/MFA is the only case for showing it.
 
 **Close only what you opened.** Keep a session list of automation tab target ids
 (or the exact `linkedin.com/in/` URLs you opened). After each outreach send, close
-**only** that tab. Never close tabs by guessing index, never run "close all except",
-and never touch Harsh's pre-existing tabs, dashboard tabs he opened, or sheet
-confirm tabs unless he opened them for this automation run.
+**only** that tab. Never close tabs by guessing index or run "close all except."
 
-**Automation tab budget:** max **5 automation tabs** open at once (not counting
-Harsh's existing tabs). For outreach, open one profile tab, send, close it, then
-open the next. Do not leave `/in/` profile tabs open after a send.
+**Automation tab budget:** max **5 automation tabs** open at once. For outreach, open
+one profile tab, send, close it, then open the next. Do not leave `/in/` profile tabs
+open after a send.
 
 **Never from automation:**
 
-- `Cmd+Q`, `osascript` quit Chrome, `killall "Google Chrome"`
+- `Cmd+Q`, `osascript` quit Chrome, `killall "Google Chrome"` against Harsh's regular
+  Chrome (the long-running one with his tab groups, not job Chrome)
 - Bulk tab close, "close other tabs", or closing tabs not on your session list
 - `activate_tab()` during normal outreach (background is the default)
-- Starting job Chrome (`start-job-chrome.sh`) when regular Chrome CDP is up
-- Any action that would steal focus from Harsh's current tab group
 
 ## Which browser tool (routing)
 
 | Task | Agent | Tool | Preconditions |
 |---|---|---|---|
-| LinkedIn search, Easy Apply, outreach | Cursor | **browser-use** (`BU_CDP_URL`) | Regular Chrome up via `start-chrome-debug.sh` |
-| Same tasks in Claude Code | Claude Code | **Playwright MCP** (attach via `--cdp-endpoint`) | Chrome CDP on 9222 |
+| LinkedIn search, Easy Apply, outreach | Cursor | **browser-use** (`BU_CDP_URL`) | Job Chrome up via `start-job-chrome.sh` |
+| Same tasks in Claude Code | Claude Code | **Playwright MCP** (attach via `--cdp-endpoint`) | Job Chrome CDP up |
 | LinkedIn iframe / shadow DOM | Claude Code | Playwright MCP | Same CDP attach |
-| Sheet webhook confirm | Either | browser-use or Playwright | Google session in regular Chrome |
+| Sheet webhook confirm | Either | browser-use or Playwright | Google session signed in inside job Chrome |
 | Public ATS JD fetch | Either | `curl` (no browser) | None |
-| ZipRecruiter apply | Claude Code | Playwright MCP | Regular Chrome preferred |
-| Isolated profile experiment | Either | `start-job-chrome.sh` first | **Only when Harsh asks** |
+| ZipRecruiter apply | Claude Code | Playwright MCP | Job Chrome |
 
 Do **not** use claude-in-chrome or ecc chrome-devtools MCP for job-machine work
-unless Harsh explicitly switches stacks. Default lane: regular Chrome + browser-use
+unless Harsh explicitly switches stacks. Default lane: job Chrome + browser-use
 (Cursor) or Playwright MCP attach (Claude Code).
 
 1. **Confirm you are the only driver when using `browser-profile/`.** Run
@@ -179,12 +189,12 @@ without per-send verification.
 Invite cap is 12 per session (`AGENTS.md` rule 3) and every message needs Harsh's approval
 before it goes out.
 
-### Outreach send workflow (regular Chrome, non-disruptive)
+### Outreach send workflow (job Chrome, non-disruptive)
 
 After Harsh approves a batch (`prompts/outreach-run.md` step 4), send at human pace
 without touching his other tabs:
 
-1. Confirm CDP on regular Chrome (`ensure-regular-chrome-cdp.sh`), LinkedIn signed in.
+1. Confirm CDP on job Chrome (`start-job-chrome.sh`), LinkedIn signed in.
 2. For each approved Person: `new_tab("<linkedin_profile_url>")` in the background.
    Record the target id or URL in your session list.
 3. Browse the profile briefly, run the connect-with-note flow in **that tab only**

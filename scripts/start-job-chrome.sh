@@ -9,6 +9,8 @@
 # Overrides:
 #   JOB_MACHINE_CHROME_PROFILE  default: <repo>/browser-profile
 #   JOB_MACHINE_CDP_PORT        default: 9222
+#   JOB_MACHINE_CHROME_VISIBLE  default: 0 (launch hidden, never take focus).
+#                               Set to 1 for first-time sign-in, CAPTCHA, or MFA.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -38,12 +40,23 @@ if curl -fsS "${CDP_URL}/json/version" >/dev/null 2>&1; then
   exit 0
 fi
 
-# -na = new application instance — separate from your regular Chrome window/profile.
-open -na "Google Chrome" --args \
+# -na = new application instance, separate from your regular Chrome window/profile.
+# -g = do not bring it to the foreground, -j = launch hidden.
+OPEN_FLAGS=(-na)
+if [[ "${JOB_MACHINE_CHROME_VISIBLE:-0}" != "1" ]]; then
+  OPEN_FLAGS=(-g -j -na)
+fi
+
+# Hidden and occluded windows otherwise throttle timers and stop rendering, which
+# breaks CDP clicks and screenshots on background tabs.
+open "${OPEN_FLAGS[@]}" "Google Chrome" --args \
   "--user-data-dir=${PROFILE_DIR}" \
   "--remote-debugging-port=${CDP_PORT}" \
   "--no-first-run" \
-  "--no-default-browser-check"
+  "--no-default-browser-check" \
+  "--disable-background-timer-throttling" \
+  "--disable-backgrounding-occluded-windows" \
+  "--disable-renderer-backgrounding"
 
 for _ in $(seq 1 30); do
   if curl -fsS "${CDP_URL}/json/version" >/dev/null 2>&1; then
@@ -52,6 +65,9 @@ for _ in $(seq 1 30); do
     echo "  CDP:     ${CDP_URL}"
     echo "  Agent:   export BU_CDP_URL=${CDP_URL}"
     echo ""
+    if [[ "${JOB_MACHINE_CHROME_VISIBLE:-0}" != "1" ]]; then
+      echo "  Window:  hidden (show it from the Dock, or relaunch with JOB_MACHINE_CHROME_VISIBLE=1)"
+    fi
     echo "Sign in once in THIS window: linkedin.com and wellfound.com."
     echo "Quit this Chrome when done — your daily Chrome profile is untouched."
     exit 0

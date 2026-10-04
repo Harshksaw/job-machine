@@ -86,6 +86,21 @@ street address, DOB, salary figure, or ATS confirmation code into a committed fi
 8. Never re-send an application. Before every submit, check the dossier store for the same
    company+role already at `applied` and stop if one exists. This is a hard gate, not a
    printed warning. See the dedupe section of `docs/AGENT-PLAYBOOK.md` for how to match.
+9. **YC / Work at a Startup: hybrid apply + founder outreach.** Two separate steps, both
+   required, neither skipped for the other:
+   - **Apply:** if the listing has YC's own apply form, submit through it like Wellfound
+     (rule 4): custom per-company note, product/mission hook, one relevant real project,
+     genuine close, no em-dashes. If there is no direct apply form, skip straight to
+     outreach.
+   - **Outreach:** separately, find the founder(s) (YC profile or LinkedIn) and treat them
+     exactly like rule 3: human-pace only, every message shown to Harsh for approval
+     before sending, no tech-stack detail, no student/new-grad/job-hunting framing, no
+     em-dashes. If the outreach channel is LinkedIn, it counts against the same
+     12-connection-request/session cap as any other LinkedIn outreach; if it's YC's own
+     messaging, apply the same approval gate and message-content rules but track it as
+     its own count.
+   Log the apply and the outreach as separate dossier events (`kind: applied` and
+   `kind: outreach`), same as any other source.
 
 **How rule 5 interacts with not blocking:** "pause and ask" means queue it visibly and
 keep working on everything else, not halt the session. Put the exact question or draft in
@@ -96,8 +111,12 @@ rule 3: an outreach message does not go out before Harsh says yes.
 
 ## Discovery sources
 
-Search and apply via **LinkedIn, Wellfound, and company ATS boards only**. ZipRecruiter is
-also standing, but live-browser only (see the playbook).
+Search and apply via **LinkedIn, Wellfound, YC / Work at a Startup, and company ATS boards
+only**. ZipRecruiter is also standing, but live-browser only (see the playbook). YC's site
+mechanics (URL shape, apply-button selectors, dedupe key) are unverified until an agent
+actually runs a live session against workatastartup.com; capture what's learned in
+`docs/AGENT-PLAYBOOK.md` the same way Wellfound and ZipRecruiter are documented there. Do
+not invent selectors or flows for it ahead of that.
 
 There is **no** RDS `job_registry`, **no** `jobs-pipeline/` directory, and **no** local
 Postgres jobs mirror. Do not start Docker for a jobs DB, do not look for `RDS_DSN`, and do

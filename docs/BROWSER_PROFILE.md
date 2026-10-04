@@ -15,31 +15,42 @@ Profile data for the isolated lane lives in
 
 ---
 
-## Quick start (default: regular Chrome)
+## Quick start (default: job Chrome, isolated profile)
 
 ### 1. Probe or start CDP
 
 From the repo root:
 
 ```bash
-./scripts/ensure-regular-chrome-cdp.sh
+./scripts/ensure-regular-chrome-cdp.sh   # probes only; tells you to run start-job-chrome.sh if down
 ```
 
-If CDP is down:
-
-1. **Fully quit Chrome**, `Cmd+Q` (not just close windows).
-2. Start with remote debugging:
+If CDP is down, start the isolated profile directly:
 
 ```bash
-./scripts/start-chrome-debug.sh
+./scripts/start-job-chrome.sh
 export BU_CDP_URL=http://127.0.0.1:9222
 ```
 
+First run: sign in once in **that** window (linkedin.com, wellfound.com). It persists
+in `browser-profile/` for every future run. Your regular, everyday Chrome is never
+touched, launched, or quit by this.
+
 | Setting | Value |
 |---|---|
-| Profile | Default macOS Chrome (no `--user-data-dir`) |
+| Profile dir | `<repo>/browser-profile` (absolute path, gitignored) |
 | CDP port | `9222` (override with `JOB_MACHINE_CDP_PORT`) |
 | Agent env | `BU_CDP_URL=http://127.0.0.1:9222` |
+| Coexistence | Runs alongside daily Chrome (`open -na`), separate process |
+
+> **Only one process may use `browser-profile/` at a time.** Quit job Chrome
+> before another writer touches that folder.
+
+> **Port collision:** if a stale regular-Chrome CDP attempt from an earlier session
+> is still bound to `127.0.0.1:9222` (it happens, see the warning above), job Chrome
+> may only win the IPv6 side of that port. If `start-job-chrome.sh` reports "CDP not
+> responding," check `curl http://[::1]:9222/json/version` before assuming it failed,
+> then retry on a clean port: `JOB_MACHINE_CDP_PORT=9223 ./scripts/start-job-chrome.sh`.
 
 ### 2. Attach automation
 
@@ -52,9 +63,9 @@ browser-use --doctor
 
 **Claude Code (Playwright MCP):**
 
-Playwright MCP attaches via `--cdp-endpoint=http://127.0.0.1:9223`, defined in the
-committed `.mcp.json` at the repo root. It does **not** launch its own Chromium. Start
-regular Chrome first, then verify with `/mcp` → playwright connected.
+Playwright MCP attaches via `--cdp-endpoint`, defined in the committed `.mcp.json` at
+the repo root. It does **not** launch its own Chromium. Start job Chrome first, then
+verify with `/mcp` → playwright connected.
 
 **The config is committed, not per-machine.** `.mcp.json` (Claude Code) and
 `.cursor/mcp.json` (Cursor) carry the identical definition, so every agent attaches to the
@@ -63,59 +74,44 @@ launcher owns the profile, the port is the only contract. Do not re-add a profil
 here, and do not register a second copy of this server in `~/.claude.json`, or sessions
 start diverging again.
 
-**`claude-in-chrome` is the exception.** It reaches Chrome through the extension, not CDP,
-so it always lands in the regular Chrome no matter which browser owns 9222. That agrees
-with the default lane. It does **not** follow you into the isolated job profile, so when
-`start-job-chrome.sh` is the active browser, use Playwright MCP only.
+**`claude-in-chrome` is the exception and does not apply here.** It reaches Chrome
+through the extension in your regular, everyday Chrome, not CDP, and does not follow
+you into the isolated job profile. Do not use it for job-machine work; use Playwright
+MCP or browser-use against job Chrome instead.
 
 ### 3. Background tab safety
 
-Harsh works in tab groups with real tabs open. Automation must not disturb tabs
-it did not open:
+Even in the isolated profile, other automation may be sharing it in the same session:
 
+- `start-job-chrome.sh` launches job Chrome hidden and without focus, with renderer
+  and timer throttling disabled so hidden tabs still click, scroll, and screenshot.
+  Use `JOB_MACHINE_CHROME_VISIBLE=1` only for first sign-in, CAPTCHA, or MFA.
 - Prefer `new_tab(url)`, it works in background without stealing focus.
-- Avoid `activate_tab()` unless CAPTCHA/MFA needs the window in front.
-- Close **only** tabs automation opened. Never bulk-close or touch existing tabs.
+- Never call `activate_tab()` or Playwright `bringToFront()`. It unhides the window
+  over Harsh's work. If a hidden tab truly will not respond, stop and report it.
+- Close **only** tabs automation opened. Never bulk-close.
 
-Full rules: `docs/AGENT-PLAYBOOK.md` ("Regular Chrome: do not disturb existing tabs").
+Full rules: `docs/AGENT-PLAYBOOK.md` ("Job Chrome: still don't make a mess").
 
 ---
 
-## Optional: isolated job Chrome
+## Deprecated: regular Chrome over CDP (does not work)
 
-Use **only when Harsh explicitly requests** the isolated profile (experiments,
-Chrome-for-Testing debugging, or when regular Chrome submit handlers misbehave).
+This was the original design (share your daily Chrome, already signed into
+LinkedIn) and is kept here only so nobody re-discovers it the hard way.
+`./scripts/start-chrome-debug.sh` still exists for pre-136 Chrome but is dead on
+anything current:
 
 ```bash
-./scripts/start-job-chrome.sh
-export BU_CDP_URL=http://127.0.0.1:9222
+./scripts/start-chrome-debug.sh   # quits nothing itself; refuses if Chrome is
+                                   # already running, since macOS cannot attach
+                                   # --remote-debugging-port to a live process
 ```
 
-| Setting | Value |
-|---|---|
-| Profile dir | `/Users/harshsaw/job-machine/browser-profile` (absolute) |
-| CDP port | `9222` |
-| Coexistence | Runs alongside daily Chrome (`open -na`) |
-
-Sign in once in **this** window: linkedin.com and wellfound.com. Do not copy your
-default Chrome profile into `browser-profile/`.
-
-> **Only one process may use `browser-profile/` at a time.** Quit job Chrome
-> before another writer touches that folder.
-
-Playwright MCP still attaches via the same CDP port; whichever Chrome owns port
-9222 is the profile in use.
-
----
-
-## Tradeoffs
-
-| | Regular Chrome (default) | Job Chrome (on request) |
-|---|---|---|
-| Profile | Default macOS Chrome | `browser-profile/` (isolated) |
-| Sign-in | Already signed in | One-time in job window |
-| Risk | Shares work tabs/cookies | None to daily browsing |
-| Coexistence | Must quit/relaunch for CDP | Runs alongside daily Chrome |
+Even a clean launch with this flag on the default profile binds the port and then
+404s every `/json/*` endpoint, per the restriction at the top of this doc. Quitting
+and relaunching regular Chrome will not help. Do not ask Harsh to `Cmd+Q` his browser
+to chase this further, use job Chrome instead.
 
 ---
 
@@ -127,10 +123,10 @@ Playwright MCP still attaches via the same CDP port; whichever Chrome owns port
 | `JOB_MACHINE_CDP_PORT` | `9222` | Remote debugging port |
 | `BU_CDP_URL` | (unset) | Point browser-use at Chrome CDP |
 
-Example, alternate port:
+Example, alternate port (also the fix for the port-9222-collision case above):
 
 ```bash
-JOB_MACHINE_CDP_PORT=9223 ./scripts/start-chrome-debug.sh
+JOB_MACHINE_CDP_PORT=9223 ./scripts/start-job-chrome.sh
 export BU_CDP_URL=http://127.0.0.1:9223
 ```
 
@@ -143,14 +139,13 @@ Persist `BU_CDP_URL` across terminals by adding the export line to `~/.zshrc`.
 | Symptom | Fix |
 |---|---|
 | "Allow remote debugging?" popup | Click **Allow**, or run `browser-use mac-approve` |
-| `/json/version` returns **404** | Default-profile restriction on Chrome 136+. Use `JOB_MACHINE_CDP_PORT=9223 ./scripts/start-job-chrome.sh`. Quitting and relaunching regular Chrome will not help |
-| `/json/version` refused | Nothing is running. Start the job profile |
-| "Chrome is running but CDP is not available" | Quit Chrome fully (`Cmd+Q`), then `./scripts/start-chrome-debug.sh` |
+| `/json/version` returns **404** | Default-profile restriction on Chrome 136+. Use `./scripts/start-job-chrome.sh`. Quitting and relaunching regular Chrome will not help |
+| `/json/version` refused on `127.0.0.1` but `[::1]` works | Port collision with a stale listener. Retry on another port: `JOB_MACHINE_CDP_PORT=9223 ./scripts/start-job-chrome.sh` |
+| `/json/version` refused entirely | Nothing is running. Start the job profile |
 | Playwright launches its own browser | Its args lost `--cdp-endpoint`. Restore `.mcp.json` at the repo root, then restart the session. A relative `--user-data-dir` is the usual culprit: it resolves against the server's working directory, so it silently makes an empty profile |
 | Agents landing in different browsers | Check for a duplicate `playwright` entry in `~/.claude.json`. A stale one registered under an old repo path is inert, but a live one overrides the committed config |
-| Want isolated profile | `./scripts/start-job-chrome.sh` (only when needed) |
-| LinkedIn logged out (job profile) | Sign in again in job Chrome |
-| Profile corruption (job profile) | Quit all browsers using the profile, remove `browser-profile/`, start fresh |
+| LinkedIn logged out | Sign in again in job Chrome |
+| Profile corruption | Quit all browsers using the profile, remove `browser-profile/`, start fresh |
 
 ---
 

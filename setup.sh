@@ -59,17 +59,17 @@ if [ -f resume.pdf ]; then ok "resume.pdf present"; else
   warn "resume.pdf MISSING — copy your resume PDF into $(pwd)/resume.pdf (upload fallback)."
 fi
 
-bold "3/6  Playwright MCP (attach to regular Chrome CDP on 9222)"
+bold "3/6  Playwright MCP (attach to job Chrome CDP on 9222)"
 if claude mcp list 2>/dev/null | grep -q '^playwright'; then
   ok "playwright MCP already configured for this folder"
 else
   claude mcp add playwright -- npx -y @playwright/mcp@latest --cdp-endpoint=http://127.0.0.1:9222 \
-    && ok "playwright MCP added (attach mode — start Chrome with ./scripts/start-chrome-debug.sh first)" \
+    && ok "playwright MCP added (attach mode — start Chrome with ./scripts/start-job-chrome.sh first)" \
     || warn "Could not add playwright MCP automatically — see README.md step 2."
 fi
-bold "4/6  Chromium for Playwright (optional; attach mode uses your Chrome)"
+bold "4/6  Chromium for Playwright (optional; attach mode uses job Chrome)"
 npx -y playwright install chromium >/dev/null 2>&1 && ok "chromium installed" \
-  || warn "chromium install skipped/failed — attach mode does not need it if regular Chrome is up."
+  || warn "chromium install skipped/failed — attach mode does not need it if job Chrome is up."
 
 # ---- resume-tailor-service (mode-specific) ---------------------------------
 bold "5/6  resume-tailor-service .env (no secrets needed)"
@@ -157,7 +157,7 @@ fi
 cat <<'EOF'
 
   First run only: in the claude window, /mcp should show playwright ✔ Connected
-  after regular Chrome CDP is up (./scripts/start-chrome-debug.sh).
+  after job Chrome CDP is up (./scripts/start-job-chrome.sh).
 
   Cursor agents: ./scripts/ensure-regular-chrome-cdp.sh  (see docs/BROWSER_PROFILE.md)
 
