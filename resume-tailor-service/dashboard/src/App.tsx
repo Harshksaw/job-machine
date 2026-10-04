@@ -1,387 +1,223 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
   BriefcaseBusiness,
   Columns3,
   Inbox as InboxIcon,
-  Loader2,
   RefreshCw,
-  Table2,
   Users,
+  type LucideIcon,
 } from "lucide-react";
-import type { Application, Person } from "./types";
-import {
-  createJobFromApplication,
-  fetchApplications,
-  listPeople,
-  resetBankCache,
-} from "./api";
-import { normalizeStatus } from "./lib/status";
+import type { JobSummary, Person } from "./types";
+import { listJobs, listPeople } from "./api";
+import { inInboxQueue } from "./lib/jobs";
 import Board from "./components/Board";
-import AppTable from "./components/AppTable";
-import Inspector from "./components/Inspector";
-import StatsHeader from "./components/StatsHeader";
-import FilterBar from "./components/FilterBar";
 import People from "./components/People";
 import JobWorkspace from "./components/JobWorkspace";
 import Inbox from "./components/Inbox";
 
-type View = "inbox" | "workspace" | "board" | "table" | "people";
-type LoadPhase = "loading" | "ready" | "error";
+type View = "inbox" | "workspace" | "board" | "people";
 
-const NAV_ITEMS = [
-  { id: "inbox" as const, label: "Inbox", icon: InboxIcon },
-  { id: "workspace" as const, label: "Dossiers", icon: BriefcaseBusiness },
-  { id: "table" as const, label: "Pipeline", icon: Table2 },
-  { id: "board" as const, label: "Board", icon: Columns3 },
-  { id: "people" as const, label: "People", icon: Users },
-];
+const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
+  inbox: { title: "Inbox", subtitle: "Decisions and approvals waiting on you" },
+  workspace: { title: "Dossiers", subtitle: "Every job record, kit, and activity log" },
+  board: { title: "Board", subtitle: "Pipeline by stage" },
+  people: { title: "People", subtitle: "Outreach contacts and drafts" },
+};
+
+const CLOSED = new Set(["rejected", "skipped", "archived"]);
+
+function viewFromHash(): View {
+  const head = window.location.hash.replace(/^#/, "").split("/")[0];
+  return head === "workspace" || head === "board" || head === "people" ? head : "inbox";
+}
 
 export default function App() {
-  const [apps, setApps] = useState<Application[]>([]);
-  const [phase, setPhase] = useState<LoadPhase>("loading");
-  const [errorMsg, setErrorMsg] = useState("");
-
+  const [view, setView] = useState<View>(viewFromHash);
+  const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
-
-  const [view, setView] = useState<View>("inbox");
-  const [selected, setSelected] = useState<Application | null>(null);
   const [workspaceFocusId, setWorkspaceFocusId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Filter States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [minFitFilter, setMinFitFilter] = useState<number | null>(null);
-  const [sourceFilter, setSourceFilter] = useState("all");
-  const [pdfOnlyFilter, setPdfOnlyFilter] = useState(false);
-
-  const load = useCallback(async () => {
-    setPhase("loading");
-    resetBankCache();
+  const loadJobs = useCallback(async () => {
     try {
-      const data = await fetchApplications();
-      setApps(data);
-      setPhase("ready");
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to load.");
-      setPhase("error");
+      setJobs(await listJobs());
+    } catch {
+      /* the views surface their own load errors */
     }
   }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const loadPeople = useCallback(async () => {
     try {
       setPeople(await listPeople());
     } catch {
-      /* non-fatal for the board */
+      /* the People view shows an empty state */
     }
   }, []);
 
-  useEffect(() => {
-    void loadPeople();
-  }, [loadPeople]);
+  const refreshAll = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadJobs(), loadPeople()]);
+    setRefreshing(false);
+  }, [loadJobs, loadPeople]);
 
-  const openWorkspaceForApplication = useCallback(
-    async (application: Application) => {
-      const job = await createJobFromApplication(application, "Pipeline");
-      setWorkspaceFocusId(job.id);
-      setSelected(null);
-      setView("workspace");
+  useEffect(() => {
+    const onHash = () => setView(viewFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  useEffect(() => {
+    void refreshAll();
+    const timer = window.setInterval(() => void loadJobs(), 20000);
+    return () => window.clearInterval(timer);
+  }, [refreshAll, loadJobs]);
+
+  const go = useCallback((next: View) => {
+    setView(next);
+    if (viewFromHash() !== next || !window.location.hash) {
+      window.history.pushState(null, "", `#${next}`);
+    }
+  }, []);
+
+  const openDossier = useCallback(
+    (jobId: string) => {
+      setWorkspaceFocusId(jobId);
+      go("workspace");
     },
-    []
+    [go]
   );
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([load(), loadPeople()]);
-  }, [load, loadPeople]);
-
-  const consumeWorkspaceFocus = useCallback(() => {
-    setWorkspaceFocusId(null);
-  }, []);
+  const consumeWorkspaceFocus = useCallback(() => setWorkspaceFocusId(null), []);
 
   const companies = useMemo(
-    () => Array.from(new Set(apps.map((a) => a.company).filter(Boolean))).sort(),
-    [apps]
+    () => Array.from(new Set(jobs.map((job) => job.company).filter(Boolean))).sort(),
+    [jobs]
   );
 
-  const handleClearFilters = useCallback(() => {
-    setSearchQuery("");
-    setStatusFilter("all");
-    setMinFitFilter(null);
-    setSourceFilter("all");
-    setPdfOnlyFilter(false);
-  }, []);
+  const counts = useMemo(
+    () => ({
+      inbox: jobs.filter((job) => inInboxQueue(job, "needs-you")).length,
+      workspace: jobs.filter((job) => !CLOSED.has(job.status)).length,
+      board: jobs.filter((job) => job.status === "applied").length,
+      people: people.filter((person) => person.status === "queued").length,
+    }),
+    [jobs, people]
+  );
 
-  const filteredApps = useMemo(() => {
-    return apps.filter((app) => {
-      // Search query
-      if (searchQuery.trim().length > 0) {
-        const q = searchQuery.trim().toLowerCase();
-        const matchCompany = (app.company || "").toLowerCase().includes(q);
-        const matchRole = (app.role || "").toLowerCase().includes(q);
-        const matchSource = (app.source || "").toLowerCase().includes(q);
-        const matchNotes = (app.notes || "").toLowerCase().includes(q);
-        const matchHooks = (app.hooks || "").toLowerCase().includes(q);
-        const matchPeople = (app.people || "").toLowerCase().includes(q);
-        if (
-          !matchCompany &&
-          !matchRole &&
-          !matchSource &&
-          !matchNotes &&
-          !matchHooks &&
-          !matchPeople
-        ) {
-          return false;
-        }
-      }
+  const nav: { id: View; label: string; icon: LucideIcon; count: number; hint: string }[] = [
+    { id: "inbox", label: "Inbox", icon: InboxIcon, count: counts.inbox, hint: "need you" },
+    { id: "workspace", label: "Dossiers", icon: BriefcaseBusiness, count: counts.workspace, hint: "active" },
+    { id: "board", label: "Board", icon: Columns3, count: counts.board, hint: "applied" },
+    { id: "people", label: "People", icon: Users, count: counts.people, hint: "to approve" },
+  ];
 
-      // Status filter
-      if (statusFilter !== "all") {
-        const norm = normalizeStatus(app.status);
-        if (norm !== statusFilter) return false;
-      }
-
-      // Min Fit filter
-      if (minFitFilter !== null) {
-        const fitNum = Number.parseFloat(app.fit);
-        if (Number.isNaN(fitNum) || fitNum < minFitFilter) return false;
-      }
-
-      // Source filter
-      if (sourceFilter !== "all") {
-        if ((app.source || "").trim() !== sourceFilter) return false;
-      }
-
-      // Tailored PDF filter
-      if (pdfOnlyFilter) {
-        if (!app.tailored_resume_id) return false;
-      }
-
-      return true;
-    });
-  }, [apps, searchQuery, statusFilter, minFitFilter, sourceFilter, pdfOnlyFilter]);
-
-  const handleExportCSV = useCallback(() => {
-    const headers = [
-      "Company",
-      "Role",
-      "Status",
-      "Fit",
-      "Source",
-      "Job URL",
-      "Timestamp",
-      "Has Tailored PDF",
-      "Notes",
-    ];
-    const rows = filteredApps.map((a) => [
-      `"${(a.company || "").replace(/"/g, '""')}"`,
-      `"${(a.role || "").replace(/"/g, '""')}"`,
-      `"${(a.status || "").replace(/"/g, '""')}"`,
-      `"${(a.fit || "").replace(/"/g, '""')}"`,
-      `"${(a.source || "").replace(/"/g, '""')}"`,
-      `"${(a.job_url || "").replace(/"/g, '""')}"`,
-      `"${(a.timestamp || "").replace(/"/g, '""')}"`,
-      `"${a.tailored_resume_id ? "Yes" : "No"}"`,
-      `"${(a.notes || "").replace(/"/g, '""')}"`,
-    ]);
-    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `applications_${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [filteredApps]);
-
-  const handleExportJSON = useCallback(() => {
-    const blob = new Blob([JSON.stringify(filteredApps, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `applications_${new Date().toISOString().slice(0, 10)}.json`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [filteredApps]);
+  const copy = VIEW_COPY[view];
 
   return (
-    <div className="flex min-h-full flex-col bg-canvas text-ink">
+    <div className="flex h-full flex-col bg-canvas text-ink lg:flex-row">
       <a href="#content" className="skip-link">
         Skip to content
       </a>
-      <header className="sticky top-0 z-20 border-b border-zinc-700 bg-canvas/95 backdrop-blur">
-        <div className="flex w-full flex-wrap items-center gap-3 px-3 py-3 sm:px-4 lg:px-6">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-teal-700 bg-teal-950/40 text-teal-200">
+
+      <aside className="flex shrink-0 flex-col border-b border-zinc-800 bg-surface lg:h-full lg:w-60 lg:border-b-0 lg:border-r">
+        <div className="flex items-center gap-2.5 px-4 py-3 lg:px-5 lg:py-5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-white">
             <BriefcaseBusiness className="h-4 w-4" aria-hidden />
           </span>
-          <div className="min-w-0">
-            <h1 className="text-base font-semibold leading-tight text-zinc-100">
-              Job Machine
-            </h1>
-            <p className="truncate text-sm text-zinc-400">
-              {view === "inbox"
-                ? "Pick a ticket and approve it"
-                : view === "workspace"
-                ? "Private application workspace"
-                : view === "people"
-                  ? `${people.length} outreach contact${people.length === 1 ? "" : "s"}`
-                  : phase === "ready"
-                    ? `${filteredApps.length} of ${apps.length} application${
-                        apps.length === 1 ? "" : "s"
-                      }`
-                    : "Application pipeline"}
-            </p>
-          </div>
+          <span className="text-[15px] font-semibold tracking-tight text-zinc-50">
+            Job Machine
+          </span>
+          <button
+            type="button"
+            onClick={() => void refreshAll()}
+            className="jm-icon-btn ml-auto lg:hidden"
+            aria-label="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+          </button>
+        </div>
 
-          <div className="order-3 flex w-full items-center gap-2 sm:order-none sm:ml-auto sm:w-auto">
-            <nav
-              aria-label="Primary"
-              className="flex min-w-0 flex-1 overflow-x-auto rounded-md border border-zinc-700 bg-surface p-0.5 sm:flex-none"
-            >
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setView(item.id)}
-                    aria-current={view === item.id ? "page" : undefined}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${
-                      view === item.id
-                        ? "bg-teal-600 text-white"
-                        : "text-zinc-300 hover:bg-raised hover:text-zinc-100"
+        <nav
+          aria-label="Primary"
+          className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0"
+        >
+          {nav.map((item) => {
+            const Icon = item.icon;
+            const active = view === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => go(item.id)}
+                aria-current={active ? "page" : undefined}
+                title={`${item.count} ${item.hint}`}
+                className={`group flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-zinc-800 text-zinc-50"
+                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
+                }`}
+              >
+                <Icon
+                  className={`h-4 w-4 ${active ? "text-teal-300" : "text-zinc-500 group-hover:text-zinc-300"}`}
+                  aria-hidden
+                />
+                {item.label}
+                {item.count > 0 && (
+                  <span
+                    className={`ml-auto rounded-full px-1.5 text-xs tabular-nums ${
+                      item.id === "inbox" || item.id === "people"
+                        ? "bg-teal-600/20 text-teal-200"
+                        : "text-zinc-500"
                     }`}
                   >
-                    <Icon className="h-4 w-4" aria-hidden />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
-            {view !== "workspace" && view !== "inbox" && (
-              <button
-                type="button"
-                onClick={() => void refreshAll()}
-                className="rounded-md border border-zinc-600 bg-surface p-2 text-zinc-200 hover:bg-raised hover:text-zinc-100"
-                aria-label="Refresh"
-              >
-                <RefreshCw className="h-4 w-4" aria-hidden />
+                    {item.count}
+                  </span>
+                )}
               </button>
-            )}
-          </div>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto hidden px-5 py-4 lg:block">
+          <button
+            type="button"
+            onClick={() => void refreshAll()}
+            className="jm-btn-ghost h-8 w-full justify-start px-2 text-xs text-zinc-500"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+            {jobs.length} dossiers · refresh
+          </button>
         </div>
-      </header>
+      </aside>
 
-      <main
-        id="content"
-        tabIndex={-1}
-        className={`w-full flex-1 ${
-          view === "workspace" || view === "inbox"
-            ? "px-2 py-2 sm:px-3 sm:py-3 lg:px-4"
-            : "space-y-4 px-3 py-5 sm:px-4 lg:px-6"
-        }`}
-      >
-        {view === "inbox" ? (
-          <Inbox
-            onOpenDossier={(jobId) => {
-              setWorkspaceFocusId(jobId);
-              setView("workspace");
-            }}
-            onPeopleChanged={loadPeople}
-          />
-        ) : view === "workspace" ? (
-          <JobWorkspace
-            focusJobId={workspaceFocusId}
-            onFocusConsumed={consumeWorkspaceFocus}
-            onPeopleChanged={loadPeople}
-          />
-        ) : view === "people" ? (
-          <People people={people} companies={companies} onChanged={loadPeople} />
-        ) : phase === "loading" ? (
-          <div className="flex items-center justify-center gap-2 py-24 text-zinc-500">
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-            <span className="text-sm">Loading applications...</span>
-          </div>
-        ) : phase === "error" ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-            <AlertTriangle className="h-8 w-8 text-rose-400" aria-hidden />
-            <p className="text-sm text-zinc-300">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 hover:border-zinc-600"
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden />
-              Retry
-            </button>
-          </div>
-        ) : (
-          <>
-            <StatsHeader
-              apps={apps}
-              activeStatusFilter={statusFilter}
-              activeMinFit={minFitFilter}
-              onSelectStatusFilter={setStatusFilter}
-              onSelectMinFit={setMinFitFilter}
-            />
-            <FilterBar
-              apps={apps}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              statusFilter={statusFilter}
-              onStatusChange={setStatusFilter}
-              minFitFilter={minFitFilter}
-              onMinFitChange={setMinFitFilter}
-              sourceFilter={sourceFilter}
-              onSourceChange={setSourceFilter}
-              pdfOnlyFilter={pdfOnlyFilter}
-              onPdfOnlyChange={setPdfOnlyFilter}
-              onExportCSV={handleExportCSV}
-              onExportJSON={handleExportJSON}
-              onClearFilters={handleClearFilters}
-            />
-            {view === "table" ? (
-              <AppTable
-                apps={filteredApps}
-                onOpen={setSelected}
-                onResetFilters={handleClearFilters}
-              />
-            ) : (
-              <Board apps={filteredApps} people={people} onOpen={setSelected} />
-            )}
-          </>
-        )}
-      </main>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex items-baseline gap-3 border-b border-zinc-800 px-4 py-3 lg:px-6 lg:py-4">
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-50">{copy.title}</h1>
+          <p className="truncate text-sm text-zinc-500">{copy.subtitle}</p>
+        </header>
 
-      {selected && (
-        <Inspector
-          app={selected}
-          people={people}
-          onClose={() => setSelected(null)}
-          onOpenWorkspace={() => openWorkspaceForApplication(selected)}
-          onAddPerson={(company, role) => {
-            setSelected(null);
-            setView("people");
-            // People view exposes its own Add button; the company/role are visible
-            // on the row the user just came from. (A prefilled deep-link is a later nicety.)
-            void role;
-            void company;
-          }}
-        />
-      )}
+        <main id="content" tabIndex={-1} className="min-h-0 flex-1 overflow-hidden p-3 lg:p-4">
+          {view === "inbox" ? (
+            <Inbox
+              onOpenDossier={openDossier}
+              onPeopleChanged={() => void refreshAll()}
+              onJobsChanged={() => void loadJobs()}
+            />
+          ) : view === "workspace" ? (
+            <JobWorkspace
+              focusJobId={workspaceFocusId}
+              onFocusConsumed={consumeWorkspaceFocus}
+              onPeopleChanged={() => void refreshAll()}
+            />
+          ) : view === "board" ? (
+            <Board jobs={jobs} onOpen={openDossier} />
+          ) : (
+            <div className="h-full overflow-y-auto">
+              <People people={people} companies={companies} onChanged={() => void refreshAll()} />
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

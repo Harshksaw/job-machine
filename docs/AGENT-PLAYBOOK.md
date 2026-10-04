@@ -254,6 +254,21 @@ because `get_page_text` grabs the company "About" sidebar rather than the JD.
 - Postings can close mid-apply: a reload returns "the job you were trying to access has
   closed" and redirects to `/jobseeker/home?closed_job_redirect=1`. Not a bug on our side.
 
+## Background-tab forms (job Chrome stays hidden)
+
+- **Custom dropdowns close instantly** in a hidden tab because the page never has focus
+  (seen on BambooHR "Fabric" selects, 2026-10-03). Send
+  `Emulation.setFocusEmulationEnabled {enabled: true}` on the tab, then click the toggle
+  and the option with real `Input.dispatchMouseEvent` press/release at their rects. JS
+  `.click()` does not open them.
+- **Type, do not set.** React forms (Ashby, BambooHR, Manatal) can ignore native value
+  setters, so Ashby rejected an email set that way. Focus plus `select()`, then
+  `Input.insertText`, registers reliably.
+- **`scrollIntoView({behavior:'smooth'})` and full-page screenshots can hang** a hidden
+  tab. Click without scrolling and capture the viewport only.
+- **BambooHR submits can end on a reCAPTCHA** ("Almost there! Please confirm you're not a
+  robot"). That needs Harsh. Leave the filled tab open and do not mark it applied.
+
 ## Ashby boards
 
 The board SPA resists ref-clicks. Get a role UUID with `javascript_tool`

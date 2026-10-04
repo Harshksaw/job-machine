@@ -1,21 +1,6 @@
 // Shapes mirror the resume-tailor-service FastAPI contract exactly.
 // Do not add keys the backend does not send.
 
-export interface Application {
-  company: string;
-  role: string;
-  source: string;
-  job_url: string;
-  status: string;
-  fit: string;
-  people: string;
-  hooks: string;
-  outreach: string;
-  notes: string;
-  timestamp: string;
-  tailored_resume_id: string | null;
-}
-
 export interface JobSelection {
   job_id: string;
   bullet_ids: string[];
@@ -224,10 +209,3 @@ export interface JobSummary {
 }
 
 export type JobDecision = "approve" | "hold" | "applied";
-
-export interface SheetImportResult {
-  imported_rows: number;
-  created_jobs: number;
-  updated_jobs: number;
-  job_ids: string[];
-}

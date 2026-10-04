@@ -27,7 +27,9 @@ export const STATUS_STYLE: Record<string, string> = {
   skip: "bg-zinc-700/40 text-zinc-300 border-zinc-500",
 };
 
-const ORDER = new Map<string, number>(PERSON_STATUSES.map((s, i) => [s, i]));
+// Drafts waiting on Harsh's approval sort first, then the rest in pipeline order.
+const SORT_ORDER = ["queued", "to-reach", "approved", "sent", "replied", "skip"];
+const ORDER = new Map<string, number>(SORT_ORDER.map((s, i) => [s, i]));
 export function statusRank(s: string): number {
   return ORDER.get(s) ?? PERSON_STATUSES.length;
 }

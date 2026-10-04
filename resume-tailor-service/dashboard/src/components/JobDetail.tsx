@@ -176,11 +176,11 @@ export default function JobDetail({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-canvas">
-      <header className="border-b border-zinc-700 px-4 py-4 lg:px-5">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+      <header className="border-b border-zinc-800 px-4 py-4 lg:px-6">
+        <div className="flex flex-col gap-3">
           <div className="min-w-0 flex-1">
             <input
-              className="w-full border-0 bg-transparent p-0 text-base font-semibold text-zinc-100 outline-none placeholder:text-zinc-700"
+              className="w-full border-0 bg-transparent p-0 text-lg font-semibold tracking-tight text-zinc-50 outline-none placeholder:text-zinc-600"
               value={draft.company}
               onChange={(event) => change("company", event.target.value)}
               aria-label="Company"
@@ -243,7 +243,7 @@ export default function JobDetail({
               type="button"
               onClick={() => void generate("overview")}
               disabled={busy !== null || draft.jd_text.trim().length < 80}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-teal-600 px-3 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-40"
+              className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg bg-teal-600 px-3 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-40"
             >
               {busy === "kit" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

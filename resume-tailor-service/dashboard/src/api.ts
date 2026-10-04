@@ -2,7 +2,6 @@
 // requests are plain fetch with no Authorization header.
 
 import type {
-  Application,
   ApplicationAnswerInput,
   JobActivityInput,
   JobDecision,
@@ -12,7 +11,6 @@ import type {
   Person,
   PersonInput,
   ResumeBank,
-  SheetImportResult,
   TailoredResumeMeta,
   TailorResponse,
 } from "./types";
@@ -51,18 +49,6 @@ async function jsonRequest<T>(
   return (await res.json()) as T;
 }
 
-export async function fetchApplications(): Promise<Application[]> {
-  const res = await apiFetch("/api/applications");
-  if (!res.ok) {
-    const msg =
-      res.status === 502
-        ? "Failed to load applications from the sheet."
-        : `Failed to load applications (HTTP ${res.status}).`;
-    throw new ApiError(msg, res.status);
-  }
-  return (await res.json()) as Application[];
-}
-
 export async function fetchTailored(id: string): Promise<TailoredResumeMeta> {
   const res = await apiFetch(`/api/tailored/${encodeURIComponent(id)}`);
   if (!res.ok) {
@@ -95,10 +81,6 @@ export function loadResumeBank(): Promise<ResumeBank> {
     });
   }
   return bankPromise;
-}
-
-export function resetBankCache(): void {
-  bankPromise = null;
 }
 
 export async function listPeople(company?: string, jobId?: string): Promise<Person[]> {
@@ -210,29 +192,6 @@ export async function deleteJob(id: string): Promise<void> {
       res.status
     );
   }
-}
-
-export function createJobFromApplication(
-  application: Application,
-  session = "Pipeline"
-): Promise<JobWorkspace> {
-  return jsonRequest<JobWorkspace>(
-    `/api/jobs/from-application?session=${encodeURIComponent(session)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(application),
-    },
-    "Failed to create a dossier from this application."
-  );
-}
-
-export function importJobsFromSheet(session = "Sheet import"): Promise<SheetImportResult> {
-  return jsonRequest<SheetImportResult>(
-    `/api/jobs/import-sheet?session=${encodeURIComponent(session)}`,
-    { method: "POST" },
-    "Failed to import the application sheet."
-  );
 }
 
 export function addJobActivity(

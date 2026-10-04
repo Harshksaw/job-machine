@@ -29,7 +29,6 @@ import {
 } from "../api";
 import JobPeople from "./JobPeople";
 import {
-  countByStatus,
   fitTone,
   formatJobDate,
   inboxBlocker,
@@ -43,22 +42,13 @@ import {
 } from "../lib/jobs";
 import { safeHref } from "../lib/people";
 
-const PROGRESS_STATUSES = [
-  "discovered",
-  "researching",
-  "ready",
-  "applying",
-  "applied",
-  "outreach",
-  "interview",
-] as const;
-
 interface Props {
   onOpenDossier: (jobId: string) => void;
   onPeopleChanged?: () => void;
+  onJobsChanged?: () => void;
 }
 
-export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
+export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }: Props) {
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
@@ -134,7 +124,6 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
     };
   }, [selectedId]);
 
-  const counts = useMemo(() => countByStatus(jobs), [jobs]);
   const queueCounts = useMemo(() => {
     const next: Record<InboxQueue, number> = {
       decide: 0,
@@ -180,12 +169,13 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
       setTicket(updated);
       setNotice(
         decision === "approve"
-          ? `Approved ${updated.company} — queued to apply.`
+          ? `Approved ${updated.company}, queued to apply.`
           : decision === "hold"
             ? `Held ${updated.company} for later review.`
             : `Marked ${updated.company} applied.`
       );
       await loadList(true);
+      onJobsChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save decision.");
     } finally {
@@ -199,91 +189,50 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-lg border border-zinc-700 bg-canvas">
-      <div
-        className="grid grid-cols-2 gap-px border-b border-zinc-700 bg-zinc-800 sm:grid-cols-4 lg:grid-cols-7"
-        role="group"
-        aria-label="Pipeline counts"
-      >
-        {PROGRESS_STATUSES.map((status) => (
-          <button
-            key={status}
-            type="button"
-            onClick={() =>
-              setQueue(
-                status === "discovered" || status === "researching"
-                  ? "decide"
-                  : status === "ready" || status === "applying"
-                    ? "ready"
-                    : "applied"
-              )
-            }
-            aria-label={`${JOB_STATUS_LABEL[status]}: ${counts[status] ?? 0}`}
-            className="bg-canvas px-3 py-3 text-left hover:bg-raised"
-          >
-            <div className="text-xs font-medium text-zinc-400">
-              {JOB_STATUS_LABEL[status]}
-            </div>
-            <div className="mt-0.5 text-xl font-semibold tabular-nums text-zinc-100">
-              {counts[status] ?? 0}
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-700 bg-surface px-3 py-3 sm:px-4">
-        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-          <label htmlFor="inbox-search" className="visually-hidden">
-            Search tickets
-          </label>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
-          <input
-            id="inbox-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search company or role"
-            className="jm-input pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Inbox queues">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-surface">
+      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
+        <div className="flex flex-wrap gap-0.5" role="group" aria-label="Inbox queues">
           {INBOX_QUEUES.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setQueue(key)}
               aria-pressed={queue === key}
-              className={`rounded-md px-3 py-2 text-sm font-medium ${
-                queue === key
-                  ? "bg-teal-600 text-white"
-                  : "border border-zinc-600 text-zinc-200 hover:bg-raised"
-              }`}
+              className="jm-tab"
             >
               {INBOX_QUEUE_LABEL[key]}
-              <span className="ml-1.5 tabular-nums opacity-80">
+              <span className="tabular-nums text-xs text-zinc-500">
                 {queueCounts[key]}
               </span>
             </button>
           ))}
         </div>
+        <span className="mx-1 hidden h-5 w-px bg-zinc-800 sm:block" aria-hidden />
         <button
           type="button"
           onClick={() => setMinFit(minFit === 8 ? null : 8)}
           aria-pressed={minFit === 8}
-          className={`rounded-md px-3 py-2 text-sm font-medium ${
-            minFit === 8
-              ? "bg-emerald-700 text-white"
-              : "border border-zinc-600 text-zinc-200 hover:bg-raised"
-          }`}
+          className="jm-tab"
         >
           Fit 8+
         </button>
-        <span className="ml-auto text-sm text-zinc-400">
-          {shown.length} tickets
-        </span>
+        <div className="relative min-w-0 flex-1 sm:ml-auto sm:w-64 sm:flex-none">
+          <label htmlFor="inbox-search" className="visually-hidden">
+            Search tickets
+          </label>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
+          <input
+            id="inbox-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search"
+            className="jm-input h-9 py-1.5 pl-9"
+          />
+        </div>
         <button
           type="button"
           onClick={() => void loadList()}
-          className="rounded-md p-2 text-zinc-300 hover:bg-raised hover:text-zinc-100"
+          className="jm-icon-btn"
           aria-label="Refresh inbox"
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
@@ -293,10 +242,10 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
       {(error || notice) && (
         <div
           role="status"
-          className={`flex items-center gap-2 border-b px-4 py-2.5 text-sm ${
+          className={`flex items-center gap-2 border-b px-4 py-2 text-sm ${
             error
-              ? "border-rose-800 bg-rose-950/30 text-rose-200"
-              : "border-teal-800 bg-teal-950/30 text-teal-100"
+              ? "border-rose-900/60 bg-rose-950/30 text-rose-200"
+              : "border-teal-900/60 bg-teal-950/40 text-teal-100"
           }`}
         >
           {error && <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />}
@@ -322,9 +271,12 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
           </button>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-rows-[minmax(12rem,38vh)_minmax(0,1fr)] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:grid-rows-1">
-          <aside className="min-h-0 overflow-y-auto border-b border-zinc-700 bg-surface lg:border-b-0 lg:border-r">
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(12rem,38vh)_minmax(0,1fr)] lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] lg:grid-rows-1">
+          <aside className="min-h-0 overflow-y-auto border-b border-zinc-800 p-2 lg:border-b-0 lg:border-r">
             <h2 className="visually-hidden">Tickets</h2>
+            <p className="px-3 pb-1 pt-1 text-xs text-zinc-500">
+              {shown.length} {shown.length === 1 ? "ticket" : "tickets"}
+            </p>
             {(queue === "needs-you" || queue === "all") && (
               <PersonalAnswersRow
                 selected={selectedId === "personal-answers"}
@@ -332,12 +284,12 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
               />
             )}
             {shown.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-6 py-16 text-center text-sm text-zinc-400">
-                <InboxIcon className="h-8 w-8" aria-hidden />
-                No tickets in this queue.
+              <div className="flex flex-col items-center gap-2 px-6 py-16 text-center text-sm text-zinc-500">
+                <InboxIcon className="h-7 w-7" aria-hidden />
+                Nothing in this queue.
               </div>
             ) : (
-              <ul className="divide-y divide-zinc-800">
+              <ul className="space-y-0.5">
                 {shown.map((job) => (
                   <li key={job.id}>
                     <TicketRow
@@ -351,7 +303,7 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
             )}
           </aside>
 
-          <section className="min-h-0 overflow-y-auto bg-canvas" aria-live="polite">
+          <section className="min-h-0 overflow-y-auto bg-canvas/40" aria-live="polite">
             {selectedId === "personal-answers" ? (
               <PersonalAnswersDetail />
             ) : ticketLoading ? (
@@ -367,6 +319,7 @@ export default function Inbox({ onOpenDossier, onPeopleChanged }: Props) {
                 onUpdated={(job) => {
                   setTicket(job);
                   void loadList(true);
+                  onJobsChanged?.();
                 }}
                 onOpenDossier={() => onOpenDossier(ticket.id)}
                 onPeopleChanged={peopleChanged}
@@ -394,7 +347,7 @@ function TicketRow({
   onSelect: () => void;
 }) {
   const statusClass =
-    JOB_STATUS_STYLE[job.status] ?? "border-zinc-600 bg-zinc-800 text-zinc-300";
+    JOB_STATUS_STYLE[job.status] ?? "border-zinc-700 bg-zinc-900 text-zinc-300";
   const blocker = inboxBlocker(job);
   return (
     <button
@@ -402,66 +355,49 @@ function TicketRow({
       onClick={onSelect}
       aria-current={selected ? "true" : undefined}
       aria-label={`${job.company}, ${job.role}${job.needs_user_input ? ", needs you" : ""}`}
-      className={`w-full px-4 py-3.5 text-left transition ${
-        selected
-          ? "bg-teal-950/40 shadow-[inset_3px_0_0_#2dd4bf]"
-          : "hover:bg-raised"
-      }`}
+      className="jm-row"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold text-zinc-100">
-            {job.company}
+          <div className="flex items-center gap-2">
+            {job.needs_user_input && (
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
+            )}
+            <span className="truncate text-sm font-semibold text-zinc-100">{job.company}</span>
           </div>
-          <div className="mt-0.5 truncate text-sm text-zinc-300">{job.role}</div>
+          <div className="mt-0.5 truncate text-sm text-zinc-400">{job.role}</div>
         </div>
-        <span
-          className={`jm-badge shrink-0 ${fitTone(job.fit_score)}`}
-        >
-          Fit {job.fit_score ?? "—"}
+        <span className={`jm-badge shrink-0 tabular-nums ${fitTone(job.fit_score)}`}>
+          {job.fit_score ?? "–"}
         </span>
       </div>
       {blocker && (
-        <p className="mt-2 line-clamp-2 text-sm leading-snug text-zinc-200">
+        <p className="mt-1.5 line-clamp-2 text-[13px] leading-snug text-zinc-300">
           {blocker}
         </p>
       )}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-zinc-500">
         <span className={`jm-badge ${statusClass}`}>
           {JOB_STATUS_LABEL[job.status] ?? job.status}
         </span>
-        {job.needs_user_input && (
-          <span className="jm-badge border-amber-500 bg-amber-950/50 text-amber-100">
-            Needs you
-          </span>
-        )}
         {job.queued_person_count > 0 ? (
-          <span className="jm-badge border-sky-600 bg-sky-950/40 text-sky-100">
+          <span className="inline-flex items-center gap-1 text-sky-300">
             <Send className="h-3 w-3" aria-hidden />
             {job.queued_person_count} to approve
           </span>
         ) : job.person_count > 0 ? (
-          <span className="jm-badge border-zinc-600 text-zinc-200">
+          <span className="inline-flex items-center gap-1">
             <Users className="h-3 w-3" aria-hidden />
-            {job.person_count} {job.person_count === 1 ? "person" : "people"}
-          </span>
-        ) : (job.fit_score ?? 0) >= 8 ? (
-          <span className="jm-badge border-amber-600 text-amber-100">
-            Add people
+            {job.person_count}
           </span>
         ) : null}
         {job.has_cover_letter && (
-          <span className="jm-badge border-teal-700 text-teal-100">
+          <span className="inline-flex items-center gap-1 text-teal-300">
             <FileText className="h-3 w-3" aria-hidden />
-            Kit ready
+            Kit
           </span>
         )}
-        {job.source && (
-          <span className="truncate text-xs text-zinc-400">{job.source}</span>
-        )}
-        <time className="ml-auto text-xs text-zinc-400">
-          {formatJobDate(job.updated_at)}
-        </time>
+        <time className="ml-auto">{formatJobDate(job.updated_at)}</time>
       </div>
     </button>
   );
@@ -510,15 +446,15 @@ function PersonalAnswersRow({
       type="button"
       onClick={onSelect}
       aria-current={selected ? "true" : undefined}
-      className={`w-full border-b border-amber-800 px-4 py-3.5 text-left transition ${
+      className={`mb-1 w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
         selected
-          ? "bg-amber-950/40 shadow-[inset_3px_0_0_#fbbf24]"
-          : "bg-amber-950/15 hover:bg-amber-950/30"
+          ? "border-amber-700 bg-amber-950/40"
+          : "border-amber-900/50 bg-amber-950/15 hover:bg-amber-950/30"
       }`}
     >
-      <div className="text-base font-semibold text-amber-100">Fill personal answers</div>
-      <div className="mt-1 text-sm text-amber-100/80">
-        7 blanks in docs/PERSONAL-ANSWERS.md. Values stay local.
+      <div className="text-sm font-semibold text-amber-100">Fill personal answers</div>
+      <div className="mt-0.5 text-xs text-amber-100/70">
+        Blanks in docs/PERSONAL-ANSWERS.md. Values stay local.
       </div>
     </button>
   );
@@ -713,12 +649,12 @@ function TicketDetail({
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-b border-zinc-700 px-5 py-5 sm:px-8">
+      <header className="sticky top-0 z-10 border-b border-zinc-800 bg-surface/95 px-5 py-4 backdrop-blur sm:px-8">
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-semibold leading-tight text-zinc-100">{job.company}</h2>
-            <p className="mt-1 text-lg text-zinc-200">{job.role}</p>
-            <p className="mt-2 text-sm text-zinc-400">
+            <h2 className="text-xl font-semibold leading-tight tracking-tight text-zinc-50">{job.company}</h2>
+            <p className="mt-0.5 text-[15px] text-zinc-300">{job.role}</p>
+            <p className="mt-1.5 text-sm text-zinc-500">
               {[job.location, job.work_mode, job.source, job.compensation]
                 .filter(Boolean)
                 .join(" · ")}
@@ -729,7 +665,7 @@ function TicketDetail({
           </span>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {canApprove && (
             <button
               type="button"

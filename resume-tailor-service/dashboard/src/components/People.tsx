@@ -17,6 +17,7 @@ export default function People({ people, companies, onChanged }: Props) {
   const [editing, setEditing] = useState<Person | null>(null);
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   const queuedCount = useMemo(() => people.filter((p) => p.status === "queued").length, [people]);
 
@@ -42,24 +43,41 @@ export default function People({ people, companies, onChanged }: Props) {
   };
 
   const remove = async (p: Person) => {
-    await deletePerson(p.id);
-    onChanged();
-  };
-
-  const setPersonStatus = async (person: Person, nextStatus: string) => {
-    setBusyId(person.id);
+    if (!window.confirm(`Delete ${p.name} from ${p.company || "your contacts"}?`)) return;
+    setBusyId(p.id);
+    setError("");
     try {
-      await updatePerson(person.id, { ...toPersonInput(person), status: nextStatus });
+      await deletePerson(p.id);
       onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete person.");
     } finally {
       setBusyId(null);
     }
   };
 
-  const chip = "inline-flex items-center gap-1 rounded-md border border-zinc-600 bg-surface px-1.5 py-0.5 text-xs text-zinc-200 hover:border-teal-500/40 hover:text-teal-200";
+  const setPersonStatus = async (person: Person, nextStatus: string) => {
+    setBusyId(person.id);
+    setError("");
+    try {
+      await updatePerson(person.id, { ...toPersonInput(person), status: nextStatus });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update person.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const chip = "inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300 hover:border-teal-700 hover:text-teal-200";
 
   return (
     <div className="space-y-3">
+      {error && (
+        <p role="alert" className="rounded-lg border border-rose-900/60 bg-rose-950/30 px-3 py-2 text-sm text-rose-200">
+          {error}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
           <label htmlFor="people-search" className="visually-hidden">Search people</label>
@@ -91,13 +109,13 @@ export default function People({ people, companies, onChanged }: Props) {
       </div>
 
       {shown.length === 0 ? (
-        <div className="rounded-lg border border-zinc-700 bg-surface p-10 text-center text-sm text-zinc-400">
-          No people yet. Click “Add person” to start your outreach list.
+        <div className="jm-panel p-10 text-center text-sm text-zinc-500">
+          No people match. Click “Add person” to start your outreach list.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-zinc-700">
+        <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-surface text-left text-xs uppercase tracking-wide text-zinc-400">
+            <thead className="border-b border-zinc-800 text-left text-xs font-medium uppercase tracking-wider text-zinc-500">
               <tr>
                 <th className="px-3 py-2">Name</th><th className="px-3 py-2">Company</th>
                 <th className="px-3 py-2">Status</th><th className="px-3 py-2">Links</th>
@@ -106,7 +124,7 @@ export default function People({ people, companies, onChanged }: Props) {
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {shown.map((p) => (
-                <tr key={p.id} className="hover:bg-raised">
+                <tr key={p.id} className="align-top hover:bg-zinc-900/60">
                   <td className="px-3 py-3">
                     <div className="font-medium text-zinc-100">{p.name}</div>
                     <div className="text-sm text-zinc-400">{p.title}</div>
@@ -182,7 +200,7 @@ export default function People({ people, companies, onChanged }: Props) {
                         </>
                       )}
                       <button type="button" onClick={() => setEditing(p)} className="rounded-md p-1.5 text-zinc-300 hover:bg-raised hover:text-zinc-100" aria-label={`Edit ${p.name}`}><Pencil className="h-4 w-4" aria-hidden /></button>
-                      <button type="button" onClick={() => remove(p)} className="rounded-md p-1.5 text-zinc-300 hover:bg-raised hover:text-rose-300" aria-label={`Delete ${p.name}`}><Trash2 className="h-4 w-4" aria-hidden /></button>
+                      <button type="button" disabled={busyId === p.id} onClick={() => void remove(p)} className="rounded-md p-1.5 text-zinc-300 hover:bg-raised hover:text-rose-300" aria-label={`Delete ${p.name}`}><Trash2 className="h-4 w-4" aria-hidden /></button>
                     </div>
                   </td>
                 </tr>

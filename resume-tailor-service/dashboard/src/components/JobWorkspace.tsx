@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   BriefcaseBusiness,
   FileText,
-  Import,
   Loader2,
   Plus,
   RefreshCw,
@@ -15,12 +14,7 @@ import type {
   JobWorkspace as JobWorkspaceType,
   JobWorkspaceInput,
 } from "../types";
-import {
-  createJob,
-  getJob,
-  importJobsFromSheet,
-  listJobs,
-} from "../api";
+import { createJob, getJob, listJobs } from "../api";
 import {
   fitTone,
   formatJobDate,
@@ -51,8 +45,6 @@ export default function JobWorkspace({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("active");
   const [adding, setAdding] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [notice, setNotice] = useState("");
   const [detailDirty, setDetailDirty] = useState(false);
 
   const loadList = useCallback(async () => {
@@ -140,24 +132,6 @@ export default function JobWorkspace({
     await loadList();
   };
 
-  const imported = async () => {
-    setImporting(true);
-    setNotice("");
-    setError("");
-    try {
-      const result = await importJobsFromSheet();
-      setNotice(
-        `${result.imported_rows} rows imported · ${result.created_jobs} new · ${result.updated_jobs} updated`
-      );
-      await loadList();
-      if (!selectedId && result.job_ids[0]) setSelectedId(result.job_ids[0]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Sheet import failed.");
-    } finally {
-      setImporting(false);
-    }
-  };
-
   const updated = (job: JobWorkspaceType) => {
     setSelected(job);
     setDetailDirty(false);
@@ -175,23 +149,24 @@ export default function JobWorkspace({
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-6rem)] flex-col overflow-hidden rounded-lg border border-zinc-700 bg-canvas">
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-700 bg-surface px-3 py-3">
-        <div className="relative min-w-[190px] flex-1 sm:max-w-xs">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-800 bg-surface">
+      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 px-3 py-2.5">
+        <div className="relative w-full sm:w-64">
           <label htmlFor="dossier-search" className="visually-hidden">Search dossiers</label>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
           <input
             id="dossier-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search dossiers"
-            className="jm-input pl-9"
+            className="jm-input h-9 py-1.5 pl-9"
           />
         </div>
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
-          className="jm-input w-auto"
+          className="jm-input h-9 w-auto py-1.5"
+          aria-label="Filter by status"
         >
           <option value="active">Active</option>
           <option value="all">All statuses</option>
@@ -201,27 +176,13 @@ export default function JobWorkspace({
             </option>
           ))}
         </select>
-        <span className="text-sm text-zinc-400">
+        <span className="text-xs tabular-nums text-zinc-500">
           {shown.length} of {jobs.length}
         </span>
         <button
           type="button"
-          onClick={() => void imported()}
-          disabled={importing}
-          className="jm-btn-secondary h-10"
-          title="Import Google Sheet"
-        >
-          {importing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Import className="h-3.5 w-3.5" />
-          )}
-          Import
-        </button>
-        <button
-          type="button"
           onClick={() => void loadList()}
-          className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-100"
+          className="jm-icon-btn ml-auto"
           aria-label="Refresh dossiers"
           title="Refresh"
         >
@@ -232,21 +193,15 @@ export default function JobWorkspace({
           onClick={() => setAdding(true)}
           className="jm-btn-primary"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" />
           New job
         </button>
       </div>
 
-      {(error || notice) && (
-        <div
-          className={`flex items-center gap-2 border-b px-3 py-2 text-xs ${
-            error
-              ? "border-rose-900/60 bg-rose-950/20 text-rose-300"
-              : "border-teal-900/60 bg-teal-950/20 text-teal-300"
-          }`}
-        >
-          {error && <AlertTriangle className="h-3.5 w-3.5" />}
-          {error || notice}
+      {error && (
+        <div className="flex items-center gap-2 border-b border-rose-900/60 bg-rose-950/30 px-4 py-2 text-sm text-rose-200">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
       )}
 
@@ -257,37 +212,22 @@ export default function JobWorkspace({
         </div>
       ) : jobs.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-24 text-center">
-          <BriefcaseBusiness className="h-9 w-9 text-zinc-700" />
+          <BriefcaseBusiness className="h-9 w-9 text-zinc-600" />
           <h2 className="text-sm font-semibold text-zinc-300">No job dossiers</h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => void imported()}
-              disabled={importing}
-              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
-            >
-              <Import className="h-4 w-4" />
-              Import sheet
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-500"
-            >
-              <Plus className="h-4 w-4" />
-              New job
-            </button>
-          </div>
+          <button type="button" onClick={() => setAdding(true)} className="jm-btn-primary">
+            <Plus className="h-4 w-4" />
+            New job
+          </button>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-rows-[minmax(12rem,38vh)_minmax(0,1fr)] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:grid-rows-1">
-          <aside className="min-h-0 overflow-y-auto border-b border-zinc-700 bg-surface lg:border-b-0 lg:border-r">
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(12rem,38vh)_minmax(0,1fr)] lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] lg:grid-rows-1">
+          <aside className="min-h-0 overflow-y-auto border-b border-zinc-800 p-2 lg:border-b-0 lg:border-r">
             {shown.length === 0 ? (
-              <div className="p-6 text-center text-sm text-zinc-600">
+              <div className="p-6 text-center text-sm text-zinc-500">
                 No matching dossiers.
               </div>
             ) : (
-              <div className="divide-y divide-zinc-800">
+              <div className="space-y-0.5">
                 {shown.map((job) => {
                   const statusClass =
                     JOB_STATUS_STYLE[job.status] ??
@@ -299,16 +239,12 @@ export default function JobWorkspace({
                       type="button"
                       onClick={() => choose(job.id)}
                       aria-current={selectedId === job.id ? "true" : undefined}
-                      className={`w-full px-4 py-3.5 text-left transition ${
-                        selectedId === job.id
-                          ? "bg-teal-950/40 shadow-[inset_3px_0_0_#2dd4bf]"
-                          : "hover:bg-raised"
-                      }`}
+                      className="jm-row"
                     >
                       <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate text-base font-semibold text-zinc-100">
+                            <span className="truncate text-sm font-semibold text-zinc-100">
                               {job.company}
                             </span>
                             {priority && (
@@ -319,16 +255,16 @@ export default function JobWorkspace({
                               />
                             )}
                           </div>
-                          <div className="mt-0.5 truncate text-sm text-zinc-300">
+                          <div className="mt-0.5 truncate text-sm text-zinc-400">
                             {job.role}
                           </div>
                         </div>
                         <span
-                          className={`jm-badge shrink-0 ${fitTone(
+                          className={`jm-badge shrink-0 tabular-nums ${fitTone(
                             job.fit_score
                           )}`}
                         >
-                          Fit {job.fit_score ?? "—"}
+                          {job.fit_score ?? "–"}
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -342,12 +278,12 @@ export default function JobWorkspace({
                             <FileText className="h-3 w-3" aria-hidden /> PDF
                           </span>
                         )}
-                        <time className="ml-auto text-xs text-zinc-400">
+                        <time className="ml-auto text-xs text-zinc-500">
                           {formatJobDate(job.updated_at)}
                         </time>
                       </div>
                       {job.next_action && (
-                        <div className="mt-2 line-clamp-2 text-sm text-zinc-200">
+                        <div className="mt-1.5 line-clamp-2 text-[13px] text-zinc-400">
                           {job.next_action}
                         </div>
                       )}
@@ -358,7 +294,7 @@ export default function JobWorkspace({
             )}
           </aside>
 
-          <section className="min-h-0 overflow-hidden">
+          <section className="flex min-h-0 flex-col overflow-hidden">
             {detailLoading ? (
               <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
