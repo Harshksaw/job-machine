@@ -4,18 +4,18 @@
   "artifacts": {
     "harshsaw.tex": {
       "role": "canonical editable source",
-      "sha256": "b8a27b97fcc3da281ebaec41c461621625818103351c40f68f42ed2b875f5d45",
-      "bytes": 8938
+      "sha256": "e98fb484ce22cfd40b0056ddd30fcaca85edb8d58534fcb83302778124fb6a34",
+      "bytes": 8726
     },
     "resume.cls": {
       "role": "canonical class, exact user-supplied bytes",
-      "sha256": "addfa2d77cf079ef06515f9266c7847bfbaddcbf61723c654caf80c2dd543049",
-      "bytes": 3711
+      "sha256": "db80c4be9d0737d77592f9987377bcfa165544e668c8112a5b3f5c1b4d7a73ea",
+      "bytes": 3262
     },
     "resume.pdf": {
       "role": "published base and fallback PDF",
-      "sha256": "d6008fc48efe293e278b264f61e7cd7f40d7aa5441aa0da2393a4a977a50a3d4",
-      "bytes": 113244,
+      "sha256": "24af6b7ed4c9220e3db02aba6f1a1716f1cad08c011bb308632908277b2beb33",
+      "bytes": 113754,
       "note": "Byte hash is provenance only, never a rebuild invariant: valid PDF build metadata and compression legitimately differ between compiles."
     }
   },
@@ -26,26 +26,24 @@
       792.0
     ],
     "fonts": [
-      "/CNTLSC+CMBX8",
-      "/HJCYII+CMR8",
+      "/FSDANU+CMTI8",
       "/IDCQOZ+CMSY8",
       "/LRJHTD+CMSY9",
-      "/NAESLA+CMTI8",
+      "/OPSSHD+CMBX8",
       "/OWRIOL+CMR9",
-      "/WJXPNN+CMBX10"
+      "/WJXPNN+CMBX10",
+      "/ZGZSYJ+CMR8"
     ],
-    "normalized_text_sha256": "55333113eda8feef862f2b5922f278774a6cf50d25bced71d61cc722add151e5",
-    "normalized_text_tokens": 771,
+    "normalized_text_sha256": "bfd494c60d9417d4556b8ec2b4e25468472355bb1d611d4437faf4606906df0d",
+    "normalized_text_tokens": 746,
     "tokenizer": "pypdf extract_text per page, joined with newlines, whitespace collapsed to single spaces, split on whitespace",
-    "note": "Regenerated 2026-08-15 for the updated base resume (adds the Okanagan College IT Services role and the AI/ML skills line). The load-bearing invariant is that a rebuild matches THIS base PDF, which holds exactly; token count is environment-qualified provenance."
+    "note": "Regenerated 2026-10-11 for the October 2026 base resume (new class with \\project, Remote Orchestrator project, updated titles and skills, em dashes removed). The load-bearing invariant is that a rebuild matches THIS base PDF; token count is environment-qualified provenance."
   },
-  "allowed_warnings": [
-    "Overfull \\hbox (30.0pt too wide) in paragraph at lines 15--15"
-  ],
+  "allowed_warnings": [],
   "provenance": {
-    "harshsaw_tex_source": "user-supplied 2026-08-15, replacing ca35f93320d7",
-    "resume_cls_recovered_from": "codex session rollout-2026-08-01T08-30-57, user-supplied 2026-08-03, patch_apply_end record for /tmp/resume-canonical-check/resume.cls",
-    "verified_on": "2026-08-15",
+    "harshsaw_tex_source": "user-supplied 2026-10-10 (Oct10.tex), em dashes replaced with colons, commas, or parentheses",
+    "resume_cls_recovered_from": "user-supplied resume_2.cls 2026-10-11, a superset of the 2026-08-03 class (adds \\project, glyphtounicode, optional company link)",
+    "verified_on": "2026-10-11",
     "verified_with": "pdfTeX 3.141592653-2.6-1.40.29 (TeX Live 2026), pypdf 6.14.2",
     "note": "Any intentional future change to the base resume requires regenerating this file and reviewing the diff, not editing a hash in place."
   }

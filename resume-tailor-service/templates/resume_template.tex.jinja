@@ -6,7 +6,6 @@
 \usepackage[left=0.2in,top=0.15in,right=0.2in,bottom=0.15in]{geometry}
 \usepackage{setspace}
 \setstretch{0.55}
-\renewcommand{\labelitemi}{$\bullet$}
 
 \name{\normalsize (((contact.name)))}
 \address{\footnotesize (((contact.phone))) \\ (((contact.location)))}
@@ -22,10 +21,6 @@
 \begin{rSection}{Summary}
 {\scriptsize (((summary)))}
 \end{rSection}\vspace{-0.6em}
-
-\begin{rSection}{Education}
-{\scriptsize \textbf{(((education.degree)))}, (((education.school))) \hfill (((education.date)))}
-\end{rSection}\vspace{-0.2em}
 
 \begin{rSection}{Experience}
 \scriptsize
@@ -44,20 +39,15 @@
 \end{rSection}\vspace{-0.7em}
 
 \begin{rSection}{Projects}
+\scriptsize
 ((# Same empty-list hazard as the jobs loop above. #))
 ((* for project in projects if project.bullets *))
-\scriptsize \textbf{(((project.name)))}
-{\scriptsize \textit{(((project.tech)))}}
-((* if project.demo_url or project.repo_url *))
-\hfill
-((* if project.demo_url *))\href{(((project.demo_url)))}{Live Demo}((* endif *))((* if project.demo_url and project.repo_url *)) | ((* endif *))((* if project.repo_url *))\href{(((project.repo_url)))}{GitHub}((* endif *))
-((* endif *))
-
-\begin{itemize}\itemsep -4pt
+\project{(((project.name)))}{(((project.tech)))}{((* if project.demo_url *))\href{(((project.demo_url)))}{Live Demo}((* endif *))((* if project.demo_url and project.repo_url *)) \textbar{} ((* endif *))((* if project.repo_url *))\href{(((project.repo_url)))}{GitHub}((* endif *))}
+\begin{jobitems}
 ((* for bullet in project.bullets *))
     \item (((bullet)))
 ((* endfor *))
-\end{itemize}
+\end{jobitems}
 ((* endfor *))
 \end{rSection}\vspace{-0.7em}
 
@@ -72,11 +62,15 @@
 
 \begin{rSection}{Achievements}
 \scriptsize
-\begin{itemize}\itemsep -7pt
+\begin{jobitems}
 ((* for bullet in achievements *))
     \item (((bullet)))
 ((* endfor *))
-\end{itemize}
+\end{jobitems}
+\end{rSection}\vspace{-0.5em}
+
+\begin{rSection}{Education}
+{\scriptsize \textbf{(((education.degree)))}, (((education.school))) \hfill (((education.date)))}
 \end{rSection}
 
 \end{document}

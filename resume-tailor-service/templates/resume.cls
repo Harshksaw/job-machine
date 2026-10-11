@@ -1,3 +1,4 @@
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Medium Length Professional CV - RESUME CLASS FILE
 % http://www.LaTeXTemplates.com
@@ -9,6 +10,10 @@
 
 \LoadClass[11pt,letterpaper]{article}
 
+% ATS: map every glyph to a real Unicode code point so parsers extract clean text
+\input{glyphtounicode}
+\pdfgentounicode=1
+
 \usepackage[parfill]{parskip}
 \usepackage{array}
 \usepackage{ifthen}
@@ -19,9 +24,10 @@
 \renewcommand{\labelitemi}{$\bullet$}
 
 % One-line job header: Title | Company, Location .......... Dates
+% (company is linked only when a URL is given)
 \newcommand{\job}[5]{%
   \vspace{3pt}%
-  \noindent\textbf{#1} \textbar{} \textbf{\href{#3}{#2}}, #4 \hfill #5\par
+  \noindent\textbf{#1} \textbar{} \textbf{\ifthenelse{\equal{#3}{}}{#2}{\href{#3}{#2}}}, #4 \hfill #5\par
   \vspace{-8pt}%
 }
 
@@ -29,6 +35,13 @@
 \newenvironment{jobitems}
   {\begin{itemize}[leftmargin=1.1em,itemsep=0pt,topsep=3pt,parsep=0pt,partopsep=0pt,after=\vspace{2pt}]}
   {\end{itemize}}
+
+% One-line project header: Name  Stack (italic) .......... Links
+\newcommand{\project}[3]{%
+  \vspace{2pt}%
+  \noindent\textbf{#1} \textit{#2} \hfill #3\par
+  \vspace{-8pt}%
+}
 
 % One-line education header: Degree | School, Location .......... Dates
 \newcommand{\edu}[4]{%
@@ -50,10 +63,6 @@
 }
 
 \pagestyle{empty}
-
-%----------------------------------------------------------------------------------------
-% HEADINGS COMMANDS
-%----------------------------------------------------------------------------------------
 
 \def \name#1{\def\@name{#1}}
 \def \@name {}
@@ -86,14 +95,10 @@
 
 \def \printname {
   \begingroup
-    \hfil{\MakeUppercase{\namesize\bf \@name}}\hfil
-    \nameskip\break
+    \centerline{\MakeUppercase{\namesize\bfseries \@name}}
+    \par\nameskip
   \endgroup
 }
-
-%----------------------------------------------------------------------------------------
-% PRINT THE HEADING LINES
-%----------------------------------------------------------------------------------------
 
 \let\ori@document=\document
 \renewcommand{\document}{
@@ -107,13 +112,9 @@
     \printaddress{\@addressthree}}
 }
 
-%----------------------------------------------------------------------------------------
-% SECTION FORMATTING
-%----------------------------------------------------------------------------------------
-
 \newenvironment{rSection}[1]{
   \sectionskip
-  \MakeUppercase{{\bf #1}}
+  \MakeUppercase{\textbf{#1}}
   \sectionlineskip
   \hrule
   \begin{list}{}{
@@ -123,10 +124,6 @@
 }{
   \end{list}
 }
-
-%----------------------------------------------------------------------------------------
-% WORK EXPERIENCE FORMATTING (legacy - unused)
-%----------------------------------------------------------------------------------------
 
 \newenvironment{rSubsection}[4]{
  {\bf #1} \hfill {#2}

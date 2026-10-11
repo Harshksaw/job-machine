@@ -140,7 +140,7 @@ def test_render_tex_omits_a_job_whose_bullets_were_all_trimmed():
     manifest.job_selections = [JobSelection(job_id="acme", bullet_ids=[])]
     tex = render_tex(manifest, bank, TEMPLATE_DIR)
     assert "\\begin{jobitems}\n\\end{jobitems}" not in tex
-    assert "jobitems" not in tex
+    assert "\\job{" not in tex
     assert "Acme Corp" not in tex
 
 
@@ -152,7 +152,8 @@ def test_render_tex_omits_a_project_whose_bullets_were_all_trimmed():
         ProjectSelection(project_id="widgetizer", bullet_ids=[])
     ]
     tex = render_tex(manifest, bank, TEMPLATE_DIR)
-    assert "\\begin{itemize}\\itemsep -4pt\n\\end{itemize}" not in tex
+    assert "\\begin{jobitems}\n\\end{jobitems}" not in tex
+    assert "\\project{" not in tex
     assert "Widgetizer" not in tex
 
 

@@ -15,7 +15,9 @@ education:
 
 profile_facts:
   - id: profile.experience
-    text: "2+ years of software engineering internship experience."
+    text: "2+ years of software engineering experience shipping production AI and distributed systems."
+  - id: profile.education_start
+    text: "Started the Bachelor of Computer Information Systems at Okanagan College in 2022."
   - id: profile.target_roles
     text: "Targeting Software Engineer, Full-Stack, Backend, AI/ML, and React Native Mobile roles at the new-grad or early-career level."
   - id: profile.relocation
@@ -27,37 +29,43 @@ profile_facts:
 
 jobs:
   - id: okanagan
-    company: "Okanagan College — IT Services"
+    company: "Okanagan College, IT Services"
     location: "Kelowna, BC"
     title: "Software Engineer, AI & Automation"
     dates: "Apr 2026 -- Present"
     url: "https://www.okanagan.bc.ca/"
     bullets:
       - id: okanagan.bullet.1
-        text: "Building OC Connect, a college-wide unified-services platform -- an agentic AI assistant on Azure AI Foundry that goes beyond retrieval to take action for staff and students, surfacing recommendations and initiating cross-system requests."
+        text: "Building **OC Connect**, an all-in-one **agentic AI** platform on **Azure AI Foundry** rolling out staff-wide: one place to manage, request, and update leave, finance, payroll, and item requests instead of separate systems."
       - id: okanagan.bullet.2
-        text: "Architected a custom **RAG** layer over heterogeneous institutional data, with a microservice fabric integrating Banner SIS and multiple platform APIs behind a unified retrieval and action interface."
+        text: "Developed its **custom RAG** layer over heterogeneous institutional data, with **microservices** integrating **Banner** SIS and multiple platform APIs behind one retrieval and action interface."
       - id: okanagan.bullet.3
-        text: "Shipped an org-wide workflow and issue-tracking system adopted across departments -- Jira-style process tracking with real-time collaboration, replacing manual coordination between staff, instructors, and students."
+        text: "Shipped the **workflow and issue-tracking system** now used college-wide: Jira-style process tracking with real-time collaboration that replaced manual coordination between staff, instructors, and students."
+      - id: okanagan.bullet.4
+        text: "Building **ELMS v2**, the next version of an org-wide platform, in parallel with OC Connect."
   - id: ommuse
     company: "OmMuse"
     location: "Seattle, US"
-    title: "Software Engineer Intern"
+    title: "Software Engineer"
     dates: "Nov 2025 -- Present"
     url: "https://ommuse.com/"
     bullets:
       - id: ommuse.bullet.1
-        text: "Architecting **AI-powered semantic search** and natural language chat for enterprise studio workflows using a **RAG** pipeline (**MongoDB Vector Store, AWS Bedrock**), enabling producers to query projects, tracks, and collaborators conversationally."
+        text: "Building **AI semantic search** and natural-language chat for a **12K+ user** music platform (18K+ tracks, 120 GB of audio) on a **RAG** pipeline (**MongoDB Vector Store, AWS Bedrock**), letting producers query projects, tracks, and collaborators conversationally."
       - id: ommuse.bullet.2
-        text: "Built **HubSpot CRM** sync for a 12K+ user music platform in **Go** -- async batch worker using **sync.Map** deduplication (30s flush, 100-user chunks) syncing live metrics across 8 API trigger points; platform manages 18K+ tracks and 67 GB of user audio."
+        text: "Built the **HubSpot CRM** sync in **Go** (async batch worker using **sync.Map** deduplication, 30s flush, 100-user chunks, live metrics across 8 API trigger points), then helped replace HubSpot with **in-house product analytics**."
       - id: ommuse.bullet.3
         text: "Engineered a cross-platform desktop uploader (**Electron**) with persistent folder-sync engine (**chokidar + SQLite WAL**), parallelized **S3 multipart uploads**, **OAuth 2.0 PKCE** auth flow, and a typed IPC bridge exposing 70+ **gRPC** service methods to the renderer."
       - id: ommuse.bullet.4
-        text: "Shipped features across a polyglot monorepo (**Go gRPC/protobuf**, TypeScript/React, Python) unified by **Bazel**, owning full deployment infrastructure -- **AWS** (S3, SQS, ECR), **Docker**, **Pulumi** IaC, Envoy proxy, and **GitHub Actions** CI/CD."
+        text: "Shipped features across a polyglot monorepo (**Go gRPC/protobuf**, TypeScript/React, Python) unified by **Bazel**, owning full deployment infrastructure: **AWS** (S3, SQS, ECR), **Docker**, **Pulumi** IaC, Envoy proxy, and **GitHub Actions** CI/CD."
+      - id: ommuse.bullet.5
+        text: "Own engineering support for **enterprise customers**, monitoring account usage and in-product activity to catch needs early and act on them."
+      - id: ommuse.bullet.6
+        text: "Developing a **voice and audio AI analysis agent** that analyzes uploaded tracks and maps the results to structured, queryable track data, extending conversational search from project metadata to the audio itself."
   - id: bwisher
     company: "Bwisher Ltd"
     location: "Remote"
-    title: "Software Engineer Intern"
+    title: "Software Engineer"
     dates: "Dec 2024 -- Jun 2025"
     url: "https://bwishernepal.com/"
     bullets:
@@ -70,16 +78,28 @@ jobs:
   - id: jythu
     company: "Jythu Ltd"
     location: "Remote"
-    title: "Full-Stack Developer Intern"
+    title: "Full-Stack Developer"
     dates: "Jan 2024 -- Dec 2024"
     url: "https://jythu.com/"
     bullets:
       - id: jythu.bullet.1
         text: "Shipped two production **React Native** apps (LMS + admin panel) with **Node.js** backends serving **2K+ learners**; provisioned full **AWS** infrastructure with **Terraform** and **GitHub Actions** CI/CD, with multi-layer anti-piracy controls including device-bound auth."
       - id: jythu.bullet.2
-        text: "Built an end-to-end video streaming pipeline using **FFmpeg** HLS transcoding delivered via **S3/CloudFront**, orchestrated through **SQS, Lambda, and SNS** -- reducing seek time from **30s to 1.5s** and cutting bandwidth by approximately **70%**."
+        text: "Built an end-to-end video streaming pipeline using **FFmpeg** HLS transcoding delivered via **S3/CloudFront**, orchestrated through **SQS, Lambda, and SNS**, reducing seek time from **30s to 1.5s** and cutting bandwidth by approximately **70%**."
 
 projects:
+  - id: orchestrator
+    name: "Remote Orchestrator: Self-Hosted AI Agent Control Plane"
+    tech: "Go, TypeScript, Next.js, PostgreSQL, WebSockets, Protobuf, tmux"
+    demo_url: ""
+    repo_url: "https://github.com/Harshksaw/agent-control-pane"
+    bullets:
+      - id: project.orchestrator.bullet.1
+        text: "Designed a distributed control plane in **Go** that runs Claude Code, Codex, and other CLI agents across self-hosted machines through worker daemons and a versioned **Protocol Buffers** protocol over **WebSockets**."
+      - id: project.orchestrator.bullet.2
+        text: "Built persistent remote terminal sessions on **PTYs** and **tmux** with live streaming, interactive execution, and reattach after network or control-plane drops."
+      - id: project.orchestrator.bullet.3
+        text: "Added a fault-tolerant execution lifecycle (heartbeat monitoring, backoff reconnects, leases, cancellation, and resource budgets) with human-in-the-loop approvals and auditable run histories in a **Next.js** dashboard backed by **PostgreSQL**."
   - id: docintel
     name: "Document Intelligence Platform (RAG)"
     tech: "FastAPI, LangChain, Qdrant, Groq, Google Gemini, AWS ECS Fargate, Docker"
@@ -93,13 +113,13 @@ projects:
       - id: project.docintel.bullet.3
         text: "Deployed to **AWS ECS Fargate** with **GitHub Actions** CI/CD and multi-worker Uvicorn scaling; designed idempotent ingestion using **SHA-256** fingerprinting to deduplicate embeddings and reduce redundant indexing."
   - id: codexpo
-    name: "CodeExpo -- Browser-Based IDE & Sandbox Environment"
+    name: "CodeExpo: Browser-Based IDE & Sandbox Environment"
     tech: "React, Node.js, WebSocket, Docker, Nginx, Zustand, xterm.js"
     demo_url: "https://code.harshsaw.ca"
     repo_url: "https://github.com/Harshksaw/Project-IDX-Codesandbox"
     bullets:
       - id: project.codexpo.bullet.1
-        text: "Engineered a full-stack browser-based IDE replicating a local dev environment -- live terminal via **xterm.js** and **WebSocket**, real-time code execution with browser preview pane, and **Socket.IO** file synchronization across the workspace."
+        text: "Engineered a full-stack browser-based IDE replicating a local dev environment: live terminal via **xterm.js** and **WebSocket**, real-time code execution with browser preview pane, and **Socket.IO** file synchronization across the workspace."
       - id: project.codexpo.bullet.2
         text: "Architected containerized sandbox environments using **Docker** with multi-stage builds and **Nginx** reverse proxy, managing isolated execution contexts and environment lifecycle per session."
       - id: project.codexpo.bullet.3
@@ -107,9 +127,9 @@ projects:
 
 achievements:
   - id: achievement.lms
-    text: "Sole developer of an internal LMS migration platform at **Okanagan College**, built and deployed end-to-end and relied on daily by **1,500+ staff and instructors** for the institution-wide Moodle-to-Brightspace transition -- featuring guided step-by-step migration workflows with progress tracking and complete records, real-time notifications and chat, and AI-powered templating."
+    text: "Sole developer of an internal LMS migration platform at **Okanagan College**, built and deployed end-to-end and relied on daily by **1,500+ staff and instructors** for the institution-wide Moodle-to-Brightspace transition, featuring guided step-by-step migration workflows with progress tracking and complete records, real-time notifications and chat, and AI-powered templating."
   - id: achievement.stock
-    text: "Built an end-to-end stock prediction pipeline covering **500 S&P 500 constituents** over 5 years of 15-minute bar data -- **XGBoost** models trained across 26 intraday horizons on **4x NVIDIA H100 GPUs** (DRAC), with automated warm-start retraining every 15 minutes during market hours, served via a **FastAPI** backend backed by a **PostgreSQL** data warehouse and a multi-rolling feature pipeline."
+    text: "Built an end-to-end stock prediction pipeline covering **500 S&P 500 constituents** over 5 years of 15-minute bar data, with **XGBoost** models trained across 26 intraday horizons on **4x NVIDIA H100 GPUs** (DRAC), automated warm-start retraining every 15 minutes during market hours, and a **FastAPI** backend backed by a **PostgreSQL** data warehouse and a multi-rolling feature pipeline."
   - id: achievement.freelancer
     text: "Ranked in the **top 2% of verified freelancers** on Freelancer.com with a 5-star rating, delivering 25+ production-grade projects."
   - id: achievement.hackathon
@@ -123,14 +143,14 @@ skills:
     category: "Frontend & Mobile"
     items: "React, Next.js, React Native, Qwik.js, Electron"
   - id: skill.backend_messaging
-    category: "Backend & Messaging"
-    items: "NestJS, FastAPI, Express, Fastify, GraphQL, gRPC/Protobuf, Apache Kafka, BullMQ, RabbitMQ"
+    category: "Backend & Distributed Systems"
+    items: "NestJS, FastAPI, Express, Fastify, GraphQL, gRPC/Protobuf, WebSockets, Apache Kafka, BullMQ, RabbitMQ, microservices"
   - id: skill.databases
     category: "Databases"
     items: "PostgreSQL, MongoDB, DynamoDB, Redis, MySQL, SurrealDB, SQLite"
   - id: skill.cloud_devops
     category: "Cloud & DevOps"
-    items: "AWS, Azure, Docker, Kubernetes, Terraform, Pulumi, Bazel, Jenkins, GitHub Actions"
+    items: "AWS (ECS Fargate, Lambda, SQS, S3), Azure, Docker, Kubernetes, Terraform, Pulumi, Bazel, Jenkins, GitHub Actions, Prometheus, Grafana"
   - id: skill.ai_genai
     category: "AI & ML"
-    items: "PyTorch, Hugging Face Transformers, PEFT/LoRA/QLoRA, Unsloth, vLLM, embeddings, cross-encoder reranking, LangChain, LangSmith, AutoGen, RAG, Qdrant, FAISS, Pinecone, AstraDB, AWS Bedrock"
+    items: "LangGraph, LangChain, RAG, agentic workflows, tool calling, LLM evaluation (RAGAS), LangSmith, AutoGen, embeddings, cross-encoder reranking, Qdrant, pgvector, FAISS, Pinecone, AstraDB, AWS Bedrock, Azure AI Foundry, PyTorch, Hugging Face Transformers, PEFT/LoRA/QLoRA, Unsloth, vLLM"

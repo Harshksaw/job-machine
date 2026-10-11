@@ -286,6 +286,26 @@ The board SPA resists ref-clicks. Get a role UUID with `javascript_tool`
 `/<org>/<uuid>/application`. Fields then fill with `form_input` plus `file_upload`.
 Comboboxes need click, type, then click the option.
 
+Verified over CDP on 2026-10-07:
+
+- **Upload the resume first** on a fresh page (`DOM.setFileInputFiles` on
+  `#_systemfield_resume`) and wait for `ApiSetFormValueToFile`. Uploading after typing
+  sometimes leaves a "resume.pdf failed to upload" toast and the submit is rejected.
+- **Radios can show checked without being saved.** Ashby only records a radio on a
+  change event, so a restored or pre-checked option reads `checked` but fails as
+  "Missing entry". Click a different option, then the target. Click the `<input>` itself,
+  not its label.
+- **Boolean questions** are two buttons with `data-option="yes|no"`, and `aria-pressed`
+  confirms the choice.
+- **Education History** has a school combobox, plus degree and major inputs and native
+  month/year selects. Setting the selects with the native value setter plus `change`
+  works. Start date can be left blank.
+- **Forms add required questions** that the GraphQL form snapshot did not show, for
+  example Superhuman's "willing to relocate". Always read the error list after submit.
+- **A cookie banner covers the Submit button.** Click "Necessary Only" first.
+- **No confirmation text and no errors is ambiguous.** Do not resubmit. Log it and have
+  Harsh check his email.
+
 ---
 
 ## Fetching full JD text without a browser
@@ -389,6 +409,24 @@ formatting" is no longer the reason to decline, but the confirm-first rule still
 Also fixed: a job or project whose bullets were all trimmed emitted an empty LaTeX list and
 killed the render with "perhaps a missing \item". The template now skips bulletless
 entries.
+
+**Updating the base resume.** The canonical trio is `harshsaw.tex`, `resume.cls`, and
+`resume.pdf` at the repo root. `resume-tailor-service/templates/resume.cls` must be a
+byte-identical copy of the root class (a test enforces it), and
+`templates/resume_template.tex.jinja` must mirror `harshsaw.tex` section by section. When
+Harsh supplies a new resume:
+
+1. Put his source in `harshsaw.tex` with `\documentclass{resume}`, even if he named his
+   class differently (the 2026-10 `resume_2.cls` declares itself as `resume`). Remove any
+   em dashes (`---`) before compiling.
+2. Copy his class over both `resume.cls` copies.
+3. Update `resume_bank.yaml` so every bullet, title, and skill on the new resume is in the
+   bank. Keep existing IDs, since tests pin them.
+4. Mirror any layout change into the Jinja template.
+5. From `resume-tailor-service/`, run `uv run python scripts/repin_canonical.py`. It
+   rebuilds `resume.pdf` and regenerates `content/canonical_baseline.json`. `--check`
+   reports drift without writing. Then run `uv run pytest -q`.
+6. Archive the previous PDF under `session-artifacts/resume-archive/`, which is gitignored.
 
 ## Headless Claude subprocesses
 
