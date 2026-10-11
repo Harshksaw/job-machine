@@ -64,6 +64,7 @@ export default function People({ people, companies, onChanged }: Props) {
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update person.");
+      onChanged();
     } finally {
       setBusyId(null);
     }

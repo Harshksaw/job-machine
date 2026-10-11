@@ -49,6 +49,23 @@ def test_update(client):
     assert resp.status_code == 200 and resp.json()["status"] == "sent"
 
 
+def test_update_refuses_to_unsend(client):
+    pid = _mk(client, status="sent").json()["id"]
+    resp = client.put(f"/api/people/{pid}", json={"name": "Jane Doe", "company": "Vectra AI", "status": "approved"})
+    assert resp.status_code == 409
+    assert client.get("/api/people").json()[0]["status"] == "sent"
+    ok = client.put(f"/api/people/{pid}", json={"name": "Jane Doe", "company": "Vectra AI", "status": "replied"})
+    assert ok.status_code == 200
+
+
+def test_dashes_rejected_in_message(client):
+    assert _mk(client, message="Hi Jane \u2014 quick question").status_code == 422
+    assert _mk(client, message="Hi Jane \u2013 quick question").status_code == 422
+    pid = _mk(client, message="Hi Jane, quick question").json()["id"]
+    resp = client.put(f"/api/people/{pid}", json={"name": "Jane Doe", "company": "Vectra AI", "message": "Hi \u2014 Jane"})
+    assert resp.status_code == 422
+
+
 def test_update_unknown_404(client):
     resp = client.put("/api/people/deadbeef", json={"name": "X", "company": "Y"})
     assert resp.status_code == 404
