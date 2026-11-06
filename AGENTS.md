@@ -263,6 +263,9 @@ the playbook.
 
 - **No em-dashes anywhere**, in messages, outreach notes, or drafts. Use commas, periods,
   or colons. Prefer plain "to" or "->" over arrows.
+- **No hyphenated compound words** in anything Harsh sends (notes, outreach, answers,
+  cover letters): "full stack", not "full-stack"; "a person in the loop", not
+  "human-in-the-loop". Reword rather than hyphenate.
 - **Never flag or hold back on spend.** Harsh's standing directive: optimize for outcomes
   and coverage, not token cost. Do not suggest a fresh session to reset cost.
 - Be lean for speed, not for budget: batch independent tool calls, prefer text extraction

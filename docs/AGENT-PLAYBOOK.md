@@ -178,6 +178,11 @@ Verified connect-with-note flow (2026-08-27):
 - On the sent page, "Withdraw" is a bare `<span>` with no button role, and its confirm
   lives in `dialog[open]`.
 - The note cap is **300 characters**. Check length before filling.
+- The invite dialog renders late. Poll up to 10 s for "Add a note", then again for the
+  textarea, before treating it as a failure. A one-shot check failed 2 of 3 sends on
+  2026-10-12; polling sent 3 of 3 on 2026-10-13.
+- Profiles often show a short first name ("Mike" for a stored "Michael"). An identity check
+  on the exact first name will stop a correct send; match on surname plus company.
 
 **Never use `main button:has-text("Connect")`.** It also matches "People you may know"
 sidebar buttons. On 2026-08-27 that selector sent five unintended note-less invitations
@@ -185,6 +190,22 @@ before it was caught, and they had to be withdrawn. Scope any Connect selector s
 the profile top card, and after every send verify the target profile shows "Pending" and
 that the sent-invitations list shows the right person with the right note. Never batch-send
 without per-send verification.
+
+**Layout changes seen 2026-10-24** (7 of 7 sent over raw CDP on the job Chrome):
+
+- The profile has no `h1`. The first line of `main.innerText` is the displayed name, and
+  the menu now renders in the light DOM, not `#interop-outlet`.
+- 2nd degree: Connect is an `<a>` (not a `button`) on the top card, with
+  `aria-label="Invite <Name> to connect"`. The People Also Viewed sidebar uses the same
+  label pattern, so match the label **exactly** against the top-card name, never by
+  prefix or by `button` text.
+- 3rd degree: Connect is a `[role=menuitem]` under the top-card More menu, next to
+  "Save to PDF". Poll for the menu to render (up to 8 s); a fixed 2 s wait missed it once.
+- LinkedIn may shorten a surname ("Yilun C."). Confirm identity with first name plus the
+  company on the top card instead.
+- Do not verify by looking for "Pending" on the profile. It no longer shows reliably on
+  the top card. Verify on `/mynetwork/invitation-manager/sent/`: the person is at the top
+  with the exact note text, and the "People (N)" count rose by one.
 
 Invite cap is 12 per session (`AGENTS.md` rule 3) and every message needs Harsh's approval
 before it goes out.
@@ -231,6 +252,60 @@ which accepts applications without a Wellfound login and avoids the inert-submit
 above.
 
 Custom note field rules are in `AGENTS.md` rule 4.
+
+Company and people pages (`/company/<slug>`, `/company/<slug>/people`) return a Cloudflare
+403 to curl (2026-10-13). Take founders from the JD, YC pages, or web search instead.
+
+---
+
+## YC / Work at a Startup
+
+Discovery is fully public, verified 2026-10-13 with about 500 requests at a 1 to 3 s pace
+and no blocks:
+
+- **Company list:** the `/companies` page HTML exposes a public Algolia app id and search
+  key, index `YCCompany_production`. Filters such as `isHiring:true AND batch:"Summer 2026"`
+  work without login. Batch names are spelled out ("Spring 2026"); short forms are P26, X25.
+- **Jobs per company:** `ycombinator.com/companies/<slug>/jobs` embeds every posting as JSON
+  in a `data-page` attribute, including visa, experience floor, role type, salary, equity.
+- **Job page:** `/companies/<slug>/jobs/<shortId>-<slug>` adds the full JD as markdown and
+  any custom application questions.
+- **Visa field** has only three values: "US citizen/visa only" (skip for US roles), "Will
+  sponsor", "US citizenship/visa not required". It is US-only, so read the JD for Canada.
+- **Founders:** the company page has clean founder data plus Launch YC posts. The jobs page
+  embeds founders as a Python-style string, sometimes a list, not JSON.
+
+Applying needs a YC account. Apply buttons go to `account.ycombinator.com/authenticate`,
+then `workatastartup.com/application?signup_job_id=<numeric id>`. Agents do not create
+accounts, so a live, signed-in session from Harsh is required. Some listings apply outside
+YC (email with video, Google Form, a coding challenge); the dossier `next_action` says so.
+
+Signed-in flow, verified 2026-10-13 on 15 roles in the job profile:
+
+- Open `workatastartup.com/jobs/<signup_job_id>` directly. The page has one `Apply` or
+  `Applied` button; read it first, and never send when it says `Applied`.
+- `Apply` opens a `[role=dialog]` titled "Reach out to <founder> at <company>" with one
+  textarea (50 character minimum) and a `Send` button. Custom questions add more textareas
+  in the same dialog. No resume upload: the YC profile is the application.
+- Hidden tab: enable focus emulation, click `Apply` at its rect, focus and select the
+  textarea, then `Input.insertText` the note and compare the value before sending.
+- Success: the dialog closes and the button flips to `Applied`. A note that "your
+  qualifications might not match" is advisory and does not block.
+- Failure seen once: an alert "Could not apply to this company. Please contact support if
+  this persists." with the button still `Apply`. Treat as ambiguous and do not retry.
+
+Raw CDP run 2026-10-24 (6 of 6 applied, job Chrome): the dialog title reads as an empty
+zero-width string, so do not key on it. One textarea means no custom questions. The flip to
+`Applied` survived a fresh reload on all six.
+
+**Check the button before trusting the dossier.** aSim already showed `Applied` while its
+dossier was still at `discovered` with no applied event, because the earlier submission was
+never logged. The button state is the real dedupe gate.
+
+**Dedupe key:** the ycombinator.com job URL. Older dossiers use
+`workatastartup.com/jobs/<numeric id>`, the same number as `signup_job_id`, so match both,
+and cross-check company plus role because the same role arrives from LinkedIn or Ashby
+under a different title.
 
 ---
 
@@ -457,6 +532,16 @@ machine, adding roughly 70 startup events and minutes of latency per call.
 
 Covered by `resume-tailor-service/tests/test_claude_cli.py`.
 
+**Second trap: a sandboxed agent restarted the service.** On 2026-10-24 every
+`generate-kit` call 502'd with `API Error: Couldn't connect through your proxy
+(ERR_PROXY_TUNNEL)`. Cursor's agent had restarted uvicorn from its sandbox shell, so the
+service and every `claude -p` child inherited `HTTPS_PROXY=http://127.0.0.1:<port>` owned
+by `cursorsandbox`, which refuses api.anthropic.com. Check with
+`ps eww -p $(lsof -ti tcp:8420 -sTCP:LISTEN) | tr ' ' '\n' | grep -i proxy`. Fix: restart
+uvicorn with the `*_proxy` variables unset. Never start the service from inside an agent
+sandbox. The launchd plist described below was also missing that day, so nothing was
+supervising it.
+
 ---
 
 ## Service operations
@@ -494,3 +579,7 @@ not permitted`. Do not move it back.
 
 The Apps Script `/exec` URL needs the **browser's Google session**. `curl` hits a sign-in
 wall. Open the URL in a tab and read the `<pre>` for `{"ok":true}`. URL is in `AGENTS.md`.
+
+Chrome's built-in JSON viewer can wrap the response so the `<pre>` is not found. Read
+`document.body.innerText` instead. Never reload the URL to re-check: the webhook appends a
+row on every load, so a reload creates a duplicate.
