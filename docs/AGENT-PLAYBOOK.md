@@ -542,6 +542,12 @@ uvicorn with the `*_proxy` variables unset. Never start the service from inside 
 sandbox. The launchd plist described below was also missing that day, so nothing was
 supervising it.
 
+It recurred on 2026-11-05: uvicorn was again a cursorsandbox child with the proxy set and
+no plist. Fix that worked: kill the listener on 8420, then run
+`resume-tailor-service/scripts/install-launchd.sh` with the `*_proxy` variables unset, and
+confirm the new pid's environment has no proxy entries. Run `install-launchd.sh --check` at
+session start.
+
 ---
 
 ## Service operations
