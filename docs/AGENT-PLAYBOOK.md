@@ -380,6 +380,12 @@ Verified over CDP on 2026-10-07:
 - **A cookie banner covers the Submit button.** Click "Necessary Only" first.
 - **No confirmation text and no errors is ambiguous.** Do not resubmit. Log it and have
   Harsh check his email.
+- **reCAPTCHA Enterprise can hold a background submit silently** (Socure, 2026-11-05). A
+  trusted CDP click landed on "Submit Application" (checked with `elementFromPoint`), the
+  form stayed put with zero errors, and no confirmation email came. The page carried a
+  `recaptcha/enterprise/anchor` iframe. Check for that iframe before submitting: if it is
+  there, fill the form and hand the submit to Harsh rather than clicking it and leaving an
+  ambiguous state.
 
 ---
 
