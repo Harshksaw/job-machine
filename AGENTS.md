@@ -138,8 +138,9 @@ Numbers and personal specifics live in `docs/PERSONAL-ANSWERS.md`. The policy is
 - **Canada:** authorized to work, no sponsorship needed. "Legally authorized to work" =
   Yes. "Require sponsorship now or in future" = No.
 - **US roles:** apply if they sponsor **or are silent** on sponsorship. Answer honestly:
-  authorized in the US without sponsorship = No, require sponsorship = Yes. He is
-  Canadian and TN-eligible for engineering roles, so note TN in any free text. **Skip**
+  authorized in the US without sponsorship = No, require sponsorship = Yes. He is **not**
+  TN eligible (exact status is in `docs/PERSONAL-ANSWERS.md`): never offer TN, and pick
+  H-1B where a form lists visa types. **Skip**
   only when the listing explicitly says no sponsorship, US citizens or green card only, or
   must already be authorized.
 - **Relocation:** US and Canada only. On-site elsewhere (Europe, UK, Central Asia) = skip.
