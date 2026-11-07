@@ -60,3 +60,4 @@ logs/
 logs/ai-usage.json
 logs/ai-usage.tmp
 tools/ai-meter/__pycache__/
+logs/agents/

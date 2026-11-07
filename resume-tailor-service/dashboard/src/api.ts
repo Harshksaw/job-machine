@@ -341,3 +341,67 @@ export function decideJob(
     "Failed to save the inbox decision."
   );
 }
+
+// Search tab. POSTs carry X-Job-Machine so a cross site page cannot trigger them.
+export interface SearchOptions {
+  presets: { id: string; label: string }[];
+  tasks: { id: string; label: string }[];
+  tools: string[];
+}
+
+export interface SearchUsage {
+  jobs_used: number;
+  requests_used: number;
+  jobs_left: number;
+  requests_left: number;
+  configured: boolean;
+  runs: { at: string; preset: string; fetched: number; new: number }[];
+}
+
+export interface SearchResult {
+  fetched: number;
+  new: { id: string; company: string; role: string }[];
+  duplicates: string[];
+  usage: SearchUsage;
+}
+
+export interface AgentRun {
+  log: string;
+  started: string;
+  tool: string;
+  task: string;
+  tail: string;
+}
+
+const DASHBOARD_POST = {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-Job-Machine": "dashboard" },
+};
+
+export function getSearchOptions(): Promise<SearchOptions> {
+  return jsonRequest("/api/search/presets", {}, "Failed to load search presets.");
+}
+
+export function getSearchUsage(): Promise<SearchUsage> {
+  return jsonRequest("/api/search/usage", {}, "Failed to load search usage.");
+}
+
+export function runSearch(preset: string, limit: number, timeFrame: string): Promise<SearchResult> {
+  return jsonRequest(
+    "/api/search/run",
+    { ...DASHBOARD_POST, body: JSON.stringify({ preset, limit, time_frame: timeFrame }) },
+    "Search failed."
+  );
+}
+
+export function startAgent(tool: string, task: string): Promise<{ pid: number; log: string }> {
+  return jsonRequest(
+    "/api/agents/run",
+    { ...DASHBOARD_POST, body: JSON.stringify({ tool, task }) },
+    "Failed to start the agent."
+  );
+}
+
+export function listAgentRuns(): Promise<AgentRun[]> {
+  return jsonRequest("/api/agents/runs", {}, "Failed to load agent runs.");
+}
