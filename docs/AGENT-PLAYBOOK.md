@@ -637,11 +637,12 @@ Dossiers, people and session events live in Neon project `odd-voice-74887748`
 (`job-machine-oregon`, aws-us-west-2, branch `main`), one row per document in a
 `documents` table (`app/doc_store.py`). `resume-tailor-service/.env` holds
 `DATABASE_URL` and `DATABASE_URL_UNPOOLED` (written by `neon deploy`, gitignored); the
-service prefers the unpooled URL. Without either variable it falls back to the JSON
-files in `data/`, which are frozen at the 2026-11-06 migration and are only a backup now.
+service prefers the unpooled URL. Without either variable it falls back to JSON files in
+`data/`, which would start empty: the pre-migration JSON store was archived and removed on
+2026-11-07 (`session-artifacts/cleanup-2026-11-07/`). If the dashboard ever shows zero
+dossiers, check that `.env` still has the database URLs before anything else.
 
-- **Always go through the API.** Never edit `data/*.json` expecting the dashboard to see
-  it, and never write to the database directly.
+- **Always go through the API.** Never write to the database directly.
 - **Region matters.** The first project was created in Sydney (341 ms round trip from
   Kelowna): the Inbox took 2.5 s and each save about 1 s. Oregon is 0.5 s and 0.2 s.
   Neon cannot move a project, so a wrong region means a new project plus
