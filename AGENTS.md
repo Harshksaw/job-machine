@@ -275,8 +275,13 @@ the playbook.
 - **No hyphenated compound words** in anything Harsh sends (notes, outreach, answers,
   cover letters): "full stack", not "full-stack"; "a person in the loop", not
   "human-in-the-loop". Reword rather than hyphenate.
-- **Never flag or hold back on spend.** Harsh's standing directive: optimize for outcomes
-  and coverage, not token cost. Do not suggest a fresh session to reset cost.
+- **Route work by the usage meter (since 2026-11-07).** Before handing off a long task,
+  run `python3 tools/ai-meter/meter.py route <direction|heavy|bulk>` and use the tool and
+  command it prints. Direction and judgment stay with Claude (Codex once Claude nears its
+  budget); token heavy work goes to the Cursor CLI; bulk text goes to a free OpenCode
+  model. Budgets and routes are in `tools/ai-meter/policy.json`; spend comes from
+  CodeBurn and refreshes every 5 minutes into `logs/ai-usage.json`. Do not hold back on
+  outcomes, but do send bulk work to the cheaper tool the meter names.
 - Be lean for speed, not for budget: batch independent tool calls, prefer text extraction
   over screenshot loops, do not re-verify what a tool already confirmed.
 - Session scratch (screenshots, UI snapshots) goes in `session-artifacts/<session>/`,

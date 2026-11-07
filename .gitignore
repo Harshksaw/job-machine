@@ -55,3 +55,8 @@ logs/
 
 # Local Playwright venv (job-apply automation)
 .venv-playwright/
+
+# AI usage meter state (tools/ai-meter), regenerated every 5 minutes
+logs/ai-usage.json
+logs/ai-usage.tmp
+tools/ai-meter/__pycache__/

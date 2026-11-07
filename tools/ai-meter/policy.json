@@ -1,0 +1,31 @@
+{
+  "currency": "CAD",
+  "throttle_at": 0.8,
+  "budgets": {
+    "claude": { "day": 20, "week": 100 },
+    "codex": { "day": 10, "week": 50 }
+  },
+  "routes": {
+    "direction": ["claude", "codex"],
+    "heavy": ["cursor", "opencode", "codex"],
+    "bulk": ["opencode", "cursor"]
+  },
+  "tools": {
+    "claude": {
+      "command": "stay in the current Claude Code session",
+      "note": "Direction, judgment calls, reviews, anything gated by AGENTS.md rule 3 or 5."
+    },
+    "codex": {
+      "command": "codex exec \"<brief>\"",
+      "note": "Direction fallback when Claude is near budget."
+    },
+    "cursor": {
+      "command": "cursor-agent -p --force \"<brief>\"",
+      "note": "Long, token heavy work: apply batches, harvests, refactors. Reads AGENTS.md."
+    },
+    "opencode": {
+      "command": "opencode run -m opencode/deepseek-v4.1-flash-free \"<brief>\"",
+      "note": "Free model. Bulk text: summaries, extraction, first drafts. Verify its output."
+    }
+  }
+}
