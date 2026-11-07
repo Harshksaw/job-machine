@@ -336,6 +336,14 @@ Per board, verified 2026-11-06:
 - **Noise to expect:** staffing shops posting dozens of generic "developer" roles
   worldwide, per-task AI training gigs, and LATAM-only contractors. The years and flags
   pass (US residency, French, LATAM, contract) is what makes the list scoreable.
+- **Himalayas is a discovery source, not an apply route** (2026-11-07). Its "Apply now"
+  goes to a Himalayas talent signup, and the API's `applicationLink` points back at
+  Himalayas. Find the role on the employer's own board instead: query
+  `boards-api.greenhouse.io/v1/boards/<slug>/jobs`, `api.lever.co/v0/postings/<slug>` and
+  `api.ashbyhq.com/posting-api/job-board/<slug>` for the company slug, then a web search.
+  Of 14 fit 7+ Himalayas roles, 4 resolved this way (Mercury x2, Valtech, Xsolla). The rest
+  were stale aggregator copies, recruiter reposts, a senior iCIMS role, or not findable.
+  Point the dossier's `job_url` at the employer posting once found.
 
 ---
 
