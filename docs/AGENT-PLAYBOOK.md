@@ -450,6 +450,20 @@ Verified over CDP on 2026-10-07:
 
 ---
 
+## Stale postings sweep
+
+`resume-tailor-service/scripts/check_liveness.py <[{id,url}].json> <out.json>` checks
+postings on their own site with no browser and no LLM: LinkedIn jobs-guest ("No longer
+accepting applications" or 404), Greenhouse and Lever posting APIs (404), the Ashby org
+board (id missing), YC job pages (404 or redirect). Wellfound, Indeed and company sites
+come back `unknown`. Delete only on `closed`, never on `unknown`, and never delete an
+applied dossier: the rule 8 resend gate reads them.
+
+First sweep, 2026-11-07, on 401 unapplied dossiers older than 30 days: 121 closed and
+deleted, 81 live, 199 unknown (mostly Wellfound). The LinkedIn guest endpoint answered a
+429 at first and then served 1.5 s spaced requests fine. A full backup was taken first in
+`session-artifacts/cleanup-2026-11-07/`.
+
 ## Fetching full JD text without a browser
 
 Verified 2026-08-16 across roughly 40 postings. A plain fetch of the public job URL usually
