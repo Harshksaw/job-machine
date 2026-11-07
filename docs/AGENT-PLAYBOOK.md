@@ -35,6 +35,14 @@ Why it replaced job Chrome, from the first day on both:
   first submit, fill those, and submit again on the same page.
 - `page.fill()` refuses a textarea outside the viewport. Click it first (clicks scroll the
   target into view), then `keyboard.insertText()`.
+- Harsh's Ego Lite profile has the **Jobright extension**, which docks a sidebar on job
+  pages. With it open, `page.fill()` on Greenhouse fails at random with "element is not
+  visible in the viewport" even after `scrollIntoView`. Click the field, then
+  `keyboard.insertText()`, which works every time. Leave the extension alone.
+- **Greenhouse react-select dropdowns:** the "Country" field next to Phone is the phone
+  country code (options read "Canada +1"). Focus the input, `ArrowDown`, type, then
+  `Enter`; clicking options fails because the list closes between script rounds. Check
+  the result in `[class*=single-value]`. Success lands on `.../jobs/<id>/confirmation`.
 
 ## Before any browser session
 
