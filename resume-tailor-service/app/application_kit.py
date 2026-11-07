@@ -12,6 +12,7 @@ from app import traceability
 from app.bank import ResumeBank
 from app.claude_cli import schema_completer
 from app.errors import JobGenerationError
+from app.house_style import strip_dashes, unhyphenate
 from app.models import (
     GeneratedAnswer,
     GeneratedApplicationKit,
@@ -453,8 +454,12 @@ def generate_kit(
             previous_errors = [f"response did not match the required JSON schema: {exc}"]
             continue
         _drop_unquoted_keywords(kit, job)
+        # Dashes are punctuation only, so fixing them here spares a ~90s retry for
+        # the em dash rule without touching any token the fact check reads.
+        kit.cover_letter = strip_dashes(kit.cover_letter)
         errors = validate_kit(kit, job, sources)
         if not errors:
+            kit.cover_letter = unhyphenate(kit.cover_letter)
             return kit
         previous_errors = errors
     raise JobGenerationError(
@@ -590,8 +595,10 @@ def generate_answer(
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:
             previous_errors = [f"response did not match the required JSON schema: {exc}"]
             continue
+        answer.answer = strip_dashes(answer.answer)
         errors = validate_answer(answer, job, sources)
         if not errors:
+            answer.answer = unhyphenate(answer.answer)
             return answer
         previous_errors = errors
     raise JobGenerationError(

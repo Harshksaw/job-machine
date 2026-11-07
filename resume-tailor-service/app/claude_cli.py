@@ -1,4 +1,6 @@
 import json
+import os
+import re
 import subprocess
 from collections.abc import Callable
 
@@ -29,6 +31,22 @@ _ISOLATION_FLAGS = [
     "--disable-slash-commands",       # ...and their skills
     "--allowedTools", "",             # no tools: this is a completion, not an agent
 ]
+
+
+# An agent sandbox (Cursor's, on 2026-10-24 and 2026-11-05) that restarts uvicorn
+# leaves its loopback proxy in the environment, and that proxy refuses
+# api.anthropic.com, so every call failed with ERR_PROXY_TUNNEL. Drop proxy
+# variables that point at this machine; a proxy on a real host is deliberate.
+_LOOPBACK_PROXY = re.compile(r"^\w+://(127\.\d+\.\d+\.\d+|localhost|\[::1\])(:\d+)?/?$", re.I)
+
+
+def _subprocess_env() -> dict[str, str]:
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if not (key.lower().endswith("_proxy") and key.lower() != "no_proxy"
+                and _LOOPBACK_PROXY.match(value.strip()))
+    }
 
 
 def run_claude(
@@ -67,6 +85,7 @@ def run_claude(
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=_subprocess_env(),
         )
     except FileNotFoundError as exc:
         raise ClaudeCliError(

@@ -110,3 +110,37 @@ def test_schema_completer_accepts_a_model_class(monkeypatch):
     command = seen["command"]
     sent = json.loads(command[command.index("--json-schema") + 1])
     assert sent == GeneratedAnswer.model_json_schema()
+
+
+def test_run_claude_drops_sandbox_proxies_but_keeps_real_ones(monkeypatch):
+    """An agent sandbox that restarts the service leaves loopback proxies behind.
+
+    On 2026-10-24 and again 2026-11-05 Cursor restarted uvicorn from its sandbox,
+    every `claude -p` child inherited HTTPS_PROXY=http://127.0.0.1:<port>, and the
+    sandbox refused api.anthropic.com, so every kit call failed with
+    ERR_PROXY_TUNNEL. A proxy on a real host is a deliberate setting and stays.
+    """
+    seen = {}
+
+    def fake_run(command, **kwargs):
+        seen["env"] = kwargs.get("env")
+        return _Result(_result_payload('{"ok": true}'))
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:57396")
+    monkeypatch.setenv("http_proxy", "http://localhost:57396")
+    monkeypatch.setenv("ALL_PROXY", "socks5://[::1]:57395")
+    monkeypatch.setenv("HTTP_PROXY", "http://proxy.corp.example:8080")
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
+    monkeypatch.setenv("JOB_MACHINE_MARKER", "kept")
+
+    claude_cli.run_claude("hello")
+
+    env = seen["env"]
+    assert env is not None
+    assert "HTTPS_PROXY" not in env
+    assert "http_proxy" not in env
+    assert "ALL_PROXY" not in env
+    assert env["HTTP_PROXY"] == "http://proxy.corp.example:8080"
+    assert env["NO_PROXY"] == "127.0.0.1,localhost"
+    assert env["JOB_MACHINE_MARKER"] == "kept"

@@ -260,6 +260,39 @@ def test_verified_relocation_preference_can_be_answered():
     assert answer.source_ids == ["profile.relocation"]
 
 
+def test_generated_text_follows_house_style():
+    """Harsh's rule: no em dashes and no hyphenated compounds in anything he sends.
+
+    The model ignores that instruction often enough (Socure kit, 2026-11-05:
+    "human-in-the-loop", "fault-tolerant") that it has to be enforced on output.
+    """
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    payload = _valid_kit_payload()
+    payload["cover_letter"] += "\n\nI keep a person in the loop — always."
+    kit = generate_kit(
+        _job(), bank, complete=lambda _: json.dumps(payload), max_retries=0
+    )
+    assert "multitenant RAG system" in kit.cover_letter
+    assert "—" not in kit.cover_letter
+    assert "in the loop, always." in kit.cover_letter
+
+    answer = generate_answer(
+        _job(),
+        bank,
+        "Are you willing to relocate?",
+        complete=lambda _: json.dumps(
+            {
+                "answer": "Yes — I am open to relocation.",
+                "source_ids": ["profile.relocation"],
+                "needs_user_input": False,
+                "clarification": "",
+            }
+        ),
+        max_retries=0,
+    )
+    assert answer.answer == "Yes, I am open to relocation."
+
+
 def test_generate_kit_drops_keywords_absent_from_the_jd():
     """A paraphrased keyword must not sink an otherwise valid kit.
 
