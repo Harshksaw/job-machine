@@ -586,6 +586,26 @@ session start.
 
 ---
 
+## Dossier database (Neon Postgres, since 2026-11-06)
+
+Dossiers, people and session events live in Neon project `odd-voice-74887748`
+(`job-machine-oregon`, aws-us-west-2, branch `main`), one row per document in a
+`documents` table (`app/doc_store.py`). `resume-tailor-service/.env` holds
+`DATABASE_URL` and `DATABASE_URL_UNPOOLED` (written by `neon deploy`, gitignored); the
+service prefers the unpooled URL. Without either variable it falls back to the JSON
+files in `data/`, which are frozen at the 2026-11-06 migration and are only a backup now.
+
+- **Always go through the API.** Never edit `data/*.json` expecting the dashboard to see
+  it, and never write to the database directly.
+- **Region matters.** The first project was created in Sydney (341 ms round trip from
+  Kelowna): the Inbox took 2.5 s and each save about 1 s. Oregon is 0.5 s and 0.2 s.
+  Neon cannot move a project, so a wrong region means a new project plus
+  `scripts/migrate_to_db.py` (idempotent, verifies counts).
+- **Tests never touch Neon.** `tests/conftest.py` strips the database variables that
+  `load_dotenv()` would load; the SQL path is tested on SQLite.
+- **Login:** `neon login` times out after 60 s. If an agent starts it, hand the link to
+  Harsh immediately, or have him run `! neon login` himself.
+
 ## Service operations
 
 The dashboard, tailor, and jobs API are one FastAPI service on `http://127.0.0.1:8420/`,
