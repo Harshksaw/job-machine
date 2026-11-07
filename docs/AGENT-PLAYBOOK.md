@@ -13,6 +13,29 @@ state belongs in the gitignored `SESSION-HANDOFF-*.md`.
 
 ---
 
+## Ego Lite is the apply browser (since 2026-11-07)
+
+Harsh's standing instruction: **use Ego Lite for all job applications.** Job Chrome (CDP
+9223) is no longer the apply lane. Run `ego-browser skill` first and follow the guide it
+prints (it matches the installed version). Use one named TaskSpace per run and print its
+`spaceId`; a space handed to Harsh with `handOff()` becomes his, so start a new name rather
+than reusing it.
+
+Why it replaced job Chrome, from the first day on both:
+
+- Ashby reCAPTCHA Enterprise silently held 2 of 4 job Chrome submits (Socure, LangChain):
+  no confirmation, no errors, button still there. Ego Lite submits reached Ashby's own
+  validation every time and 3 of 3 confirmed (Pylon, Notion AI, plus a validation pass on
+  Applied Intuition). Ego pages report `navigator.webdriver === false`.
+- Ego Lite carries Harsh's Google session, so the Sheet webhook works from it.
+- Wait about 20 seconds on a filled form before clicking Submit; the instant submits were
+  the ones that got held.
+- Ashby adds required fields only at submit time (Notion pronouns, Applied Intuition
+  Education History and immigration case). Read the "needs corrections" list after the
+  first submit, fill those, and submit again on the same page.
+- `page.fill()` refuses a textarea outside the viewport. Click it first (clicks scroll the
+  target into view), then `keyboard.insertText()`.
+
 ## Before any browser session
 
 **Standing rule (corrected 2026-09-02):** `./scripts/start-chrome-debug.sh` (regular
