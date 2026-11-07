@@ -126,7 +126,8 @@ actually runs a live session against workatastartup.com; capture what's learned 
 not invent selectors or flows for it ahead of that.
 
 There is **no** RDS `job_registry`, **no** `jobs-pipeline/` directory, and **no** local
-Postgres jobs mirror. Do not start Docker for a jobs DB, do not look for `RDS_DSN`, and do
+Postgres jobs mirror. Dossiers do live in a hosted Neon Postgres database since
+2026-11-06, but only behind the service API; see "Dossier database" in the playbook. Do not start Docker for a jobs DB, do not look for `RDS_DSN`, and do
 not treat "RDS discovery lane is down" in old session notes as a current task. Existing
 dossiers with `source: job_registry (RDS)` stay as historical records.
 
