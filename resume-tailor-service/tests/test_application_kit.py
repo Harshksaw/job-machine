@@ -8,6 +8,7 @@ from app.application_kit import (
     _allowed_tokens,
     _answer_schema,
     _fact_is_traceable,
+    _judgment_clarification,
     _kit_schema,
     build_source_index,
     generate_answer,
@@ -231,6 +232,32 @@ def test_sensitive_answer_never_calls_model():
     assert answer.needs_user_input is True
     assert answer.answer == ""
     assert "Confirm" in answer.clarification
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What qualities make someone a great Agent Engineer?",
+        "Please share the coding language you prefer to interview in.",
+        "Describe a time you had to trace a production bug.",
+        "What would you build for a visual editor?",
+    ],
+)
+def test_judgment_gate_matches_whole_words_only(question):
+    # "age" inside "Agent" or "language" is not a question about his age.
+    assert _judgment_clarification(question) is None
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What is your current age?",
+        "Will you require visa sponsorship?",
+        "What is your earliest start date?",
+    ],
+)
+def test_judgment_gate_still_catches_personal_questions(question):
+    assert _judgment_clarification(question) is not None
 
 
 def test_real_profile_preferences_are_in_source_ledger():

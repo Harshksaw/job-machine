@@ -469,8 +469,14 @@ def generate_kit(
 
 def _judgment_clarification(question: str) -> str | None:
     lowered = question.lower()
+    # Whole words only: a bare substring test read "Agent" and "language" as
+    # questions about age, and "trace" as one about race.
     matched = next(
-        (pattern for pattern in _JUDGMENT_QUESTION_PATTERNS if pattern in lowered),
+        (
+            pattern
+            for pattern in _JUDGMENT_QUESTION_PATTERNS
+            if re.search(rf"\b{re.escape(pattern)}\b", lowered)
+        ),
         None,
     )
     if matched is None:
