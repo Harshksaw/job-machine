@@ -1,6 +1,6 @@
-"""JSON-file store for outreach people. Local, single-user, no DB — mirrors the
-project's 'filesystem is the index' approach. Writes are atomic (temp + replace)
-and guarded by a lock (sync endpoints run in a threadpool)."""
+"""Store for outreach people. A local JSON file by default (atomic temp + replace
+writes under a lock), or rows in Postgres when DATABASE_URL is set; see
+`app.doc_store`."""
 import json
 import os
 import threading
@@ -8,12 +8,16 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app import doc_store
 from app.errors import PeopleStoreError
 from app.models import Person, PersonInput
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STORE_PATH = BASE_DIR / "data" / "people.json"
-_LOCK = threading.Lock()
+# Re-entrant: a transaction may nest inside another on the same thread.
+_LOCK = threading.RLock()
+_COLLECTION = "people"
+_BACKEND_OVERRIDE = None
 
 
 def _now() -> str:
@@ -54,9 +58,28 @@ def _write(items: list[dict]) -> None:
     os.replace(tmp, STORE_PATH)
 
 
+_JSON_BACKEND = doc_store.JsonFileBackend(
+    lambda: _read_strict(), lambda items: _write(items), _LOCK
+)
+
+
+def _store():
+    return _BACKEND_OVERRIDE or doc_store.sql_backend_from_env() or _JSON_BACKEND
+
+
+def _all_raw() -> list[dict]:
+    store = _store()
+    # The JSON list read stays lenient: a malformed file lists as empty.
+    return _read() if store is _JSON_BACKEND else store.all(_COLLECTION)
+
+
+def _index(person: Person) -> dict:
+    return {"sort_key": person.created_at}
+
+
 def load_people() -> list[Person]:
     out = []
-    for raw in _read():
+    for raw in _all_raw():
         try:
             out.append(Person.model_validate(raw))
         except ValueError:
@@ -65,35 +88,31 @@ def load_people() -> list[Person]:
 
 
 def get_person(person_id: str) -> Person | None:
-    for raw in _read():
+    for raw in _all_raw():
         if raw.get("id") == person_id:
             return Person.model_validate(raw)
     return None
 
 
 def add_person(data: PersonInput) -> Person:
-    with _LOCK:
-        items = _read_strict()
+    with _store().transaction(_COLLECTION) as tx:
         now = _now()
         person = Person(**data.model_dump(), id=uuid.uuid4().hex,
                         created_at=now, updated_at=now)
-        items.append(person.model_dump())
-        _write(items)
+        tx.put(person.model_dump(), _index(person))
         return person
 
 
 def update_person(person_id: str, data: PersonInput) -> Person | None:
-    with _LOCK:
-        items = _read_strict()
-        for i, raw in enumerate(items):
-            if raw.get("id") == person_id:
-                person = Person(**data.model_dump(), id=person_id,
-                                created_at=raw.get("created_at", _now()),
-                                updated_at=_now())
-                items[i] = person.model_dump()
-                _write(items)
-                return person
-        return None
+    with _store().transaction(_COLLECTION) as tx:
+        raw = tx.get(person_id)
+        if raw is None:
+            return None
+        person = Person(**data.model_dump(), id=person_id,
+                        created_at=raw.get("created_at", _now()),
+                        updated_at=_now())
+        tx.put(person.model_dump(), _index(person))
+        return person
 
 
 def person_matches_job(
@@ -125,15 +144,10 @@ def people_for_job(job_id: str, company: str, role: str = "") -> list[Person]:
 
 
 def delete_person(person_id: str) -> bool:
-    with _LOCK:
-        items = _read_strict()
-        kept = [raw for raw in items if raw.get("id") != person_id]
-        if len(kept) == len(items):
-            return False
-        _write(kept)
-        return True
+    with _store().transaction(_COLLECTION) as tx:
+        return tx.delete(person_id)
 
 
 def person_exists(person_id: str) -> bool:
-    with _LOCK:
-        return any(raw.get("id") == person_id for raw in _read_strict())
+    with _store().transaction(_COLLECTION) as tx:
+        return tx.get(person_id) is not None

@@ -1,4 +1,9 @@
-"""Atomic local store for the canonical per-listing job workspace."""
+"""Store for the canonical per-listing job workspace.
+
+Documents live in `app.doc_store`: the local JSON file by default, or one row per
+dossier in Postgres when DATABASE_URL is set. Every mutation is a single
+transaction that reads and writes only the dossier it changes.
+"""
 
 from __future__ import annotations
 
@@ -24,6 +29,7 @@ from app.models import (
     JobWorkspace,
     JobWorkspaceInput,
 )
+from app import doc_store
 from app.errors import JobDecisionConflictError, JobStoreError
 from app.slug import safe_slug
 
@@ -101,14 +107,48 @@ def _write_unlocked(items: list[dict]) -> None:
             pass
 
 
+_COLLECTION = "jobs"
+_JSON_BACKEND = doc_store.JsonFileBackend(
+    lambda: _read_unlocked(), lambda items: _write_unlocked(items), _LOCK
+)
+# Tests set this to a SqlBackend to run the same store logic against SQL.
+_BACKEND_OVERRIDE = None
+
+
+def _store():
+    return _BACKEND_OVERRIDE or doc_store.sql_backend_from_env() or _JSON_BACKEND
+
+
+def _transaction():
+    return _store().transaction(_COLLECTION)
+
+
+def _parse(raw: dict | None) -> JobWorkspace | None:
+    if raw is None:
+        return None
+    try:
+        return JobWorkspace.model_validate(raw)
+    except ValueError:
+        return None
+
+
+def _put(tx, job: JobWorkspace) -> None:
+    tx.put(
+        job.model_dump(mode="json"),
+        {
+            "summary": _summary(job).model_dump(mode="json"),
+            "canonical_url": canonical_job_url(job.job_url) or None,
+            "match_key": _job_key(job.company, job.role),
+            "status": job.status,
+            "sort_key": job.updated_at,
+        },
+    )
+
+
 def _load_valid_unlocked() -> list[JobWorkspace]:
-    jobs: list[JobWorkspace] = []
-    for raw in _read_unlocked():
-        try:
-            jobs.append(JobWorkspace.model_validate(raw))
-        except ValueError:
-            continue
-    return jobs
+    return [
+        job for job in (_parse(raw) for raw in _store().all(_COLLECTION)) if job is not None
+    ]
 
 
 def _input_from_job(job: JobWorkspace) -> JobWorkspaceInput:
@@ -155,54 +195,60 @@ def _revision(
 
 
 def load_jobs() -> list[JobWorkspace]:
-    with _LOCK:
-        jobs = _load_valid_unlocked()
+    jobs = _load_valid_unlocked()
     return sorted(jobs, key=lambda job: job.updated_at, reverse=True)
 
 
 def get_job(job_id: str) -> JobWorkspace | None:
-    with _LOCK:
-        return next((job for job in _load_valid_unlocked() if job.id == job_id), None)
+    return _parse(_store().get(_COLLECTION, job_id))
+
+
+def _summary(job: JobWorkspace) -> JobSummary:
+    return JobSummary(
+        id=job.id,
+        company=job.company,
+        role=job.role,
+        job_url=job.job_url,
+        source=job.source,
+        location=job.location,
+        work_mode=job.work_mode,
+        status=job.status,
+        priority=job.priority,
+        fit_score=job.fit_score,
+        recommendation=(
+            job.fit_analysis.recommendation if job.fit_analysis else None
+        ),
+        next_action=job.next_action,
+        deadline=job.deadline,
+        notes=job.notes,
+        tailored_resume_id=job.tailored_resume_id,
+        has_cover_letter=bool(job.cover_letter.strip()),
+        needs_user_input=any(
+            answer.needs_user_input for answer in job.application_answers
+        ),
+        answer_count=len(job.application_answers),
+        activity_count=len(job.activities),
+        revision_count=len(job.revisions),
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+    )
 
 
 def list_summaries() -> list[JobSummary]:
-    return [
-        JobSummary(
-            id=job.id,
-            company=job.company,
-            role=job.role,
-            job_url=job.job_url,
-            source=job.source,
-            location=job.location,
-            work_mode=job.work_mode,
-            status=job.status,
-            priority=job.priority,
-            fit_score=job.fit_score,
-            recommendation=(
-                job.fit_analysis.recommendation if job.fit_analysis else None
-            ),
-            next_action=job.next_action,
-            deadline=job.deadline,
-            notes=job.notes,
-            tailored_resume_id=job.tailored_resume_id,
-            has_cover_letter=bool(job.cover_letter.strip()),
-            needs_user_input=any(
-                answer.needs_user_input for answer in job.application_answers
-            ),
-            answer_count=len(job.application_answers),
-            activity_count=len(job.activities),
-            revision_count=len(job.revisions),
-            created_at=job.created_at,
-            updated_at=job.updated_at,
-        )
-        for job in load_jobs()
-    ]
+    store = _store()
+    if store.has_index:
+        # The precomputed summary column: the Inbox never loads full dossiers.
+        return [
+            JobSummary.model_validate(summary)
+            for summary in store.index_values(_COLLECTION, "summary")
+            if summary
+        ]
+    return [_summary(job) for job in load_jobs()]
 
 
 def add_job(data: JobWorkspaceInput, *, session: str = "") -> JobWorkspace:
     normalized = _normalized_input(data)
-    with _LOCK:
-        items = _read_unlocked()
+    with _transaction() as tx:
         now = _now()
         activity = _activity(
             JobActivityInput(
@@ -227,8 +273,7 @@ def add_job(data: JobWorkspaceInput, *, session: str = "") -> JobWorkspace:
             created_at=now,
             updated_at=now,
         )
-        items.append(job.model_dump(mode="json"))
-        _write_unlocked(items)
+        _put(tx, job)
         return job
 
 
@@ -241,54 +286,47 @@ def update_job(
     session: str = "",
 ) -> JobWorkspace | None:
     normalized = _normalized_input(data)
-    with _LOCK:
-        items = _read_unlocked()
-        for index, raw in enumerate(items):
-            try:
-                current = JobWorkspace.model_validate(raw)
-            except ValueError:
-                continue
-            if current.id != job_id:
-                continue
+    with _transaction() as tx:
+        current = _parse(tx.get(job_id))
+        if current is None:
+            return None
 
-            before = _input_from_job(current)
-            changed_fields = [
-                key
-                for key in JobWorkspaceInput.model_fields
-                if getattr(before, key) != getattr(normalized, key)
-            ]
-            if not changed_fields:
-                return current
+        before = _input_from_job(current)
+        changed_fields = [
+            key
+            for key in JobWorkspaceInput.model_fields
+            if getattr(before, key) != getattr(normalized, key)
+        ]
+        if not changed_fields:
+            return current
 
-            now = _now()
-            changed_label = ", ".join(field.replace("_", " ") for field in changed_fields)
-            activity = _activity(
-                JobActivityInput(
-                    kind=activity_kind,
-                    title=reason,
-                    detail=f"Changed: {changed_label}",
-                    session=session,
-                ),
-                created_at=now,
-            )
-            revision = _revision(
-                normalized,
-                reason=reason,
-                changed_fields=changed_fields,
-                created_at=now,
-            )
-            updated = JobWorkspace(
-                **normalized.model_dump(),
-                id=current.id,
-                activities=[*current.activities, activity],
-                revisions=[*current.revisions, revision],
-                created_at=current.created_at,
-                updated_at=now,
-            )
-            items[index] = updated.model_dump(mode="json")
-            _write_unlocked(items)
-            return updated
-        return None
+        now = _now()
+        changed_label = ", ".join(field.replace("_", " ") for field in changed_fields)
+        activity = _activity(
+            JobActivityInput(
+                kind=activity_kind,
+                title=reason,
+                detail=f"Changed: {changed_label}",
+                session=session,
+            ),
+            created_at=now,
+        )
+        revision = _revision(
+            normalized,
+            reason=reason,
+            changed_fields=changed_fields,
+            created_at=now,
+        )
+        updated = JobWorkspace(
+            **normalized.model_dump(),
+            id=current.id,
+            activities=[*current.activities, activity],
+            revisions=[*current.revisions, revision],
+            created_at=current.created_at,
+            updated_at=now,
+        )
+        _put(tx, updated)
+        return updated
 
 
 def apply_decision(
@@ -297,16 +335,9 @@ def apply_decision(
     *,
     session: str = "Inbox",
 ) -> JobWorkspace | None:
-    with _LOCK:
-        items = _read_unlocked()
-        for index, raw in enumerate(items):
-            try:
-                current = JobWorkspace.model_validate(raw)
-            except ValueError:
-                continue
-            if current.id != job_id:
-                continue
-
+    with _transaction() as tx:
+        current = _parse(tx.get(job_id))
+        if current is not None:
             allowed_statuses = _DECISION_ALLOWED_STATUSES[decision]
             if current.status not in allowed_statuses:
                 allowed_label = ", ".join(sorted(allowed_statuses))
@@ -363,32 +394,20 @@ def apply_decision(
                 created_at=current.created_at,
                 updated_at=now,
             )
-            items[index] = updated.model_dump(mode="json")
-            _write_unlocked(items)
+            _put(tx, updated)
             return updated
         return None
 
 
 def delete_job(job_id: str) -> bool:
-    with _LOCK:
-        items = _read_unlocked()
-        kept = [raw for raw in items if raw.get("id") != job_id]
-        if len(kept) == len(items):
-            return False
-        _write_unlocked(kept)
-        return True
+    with _transaction() as tx:
+        return tx.delete(job_id)
 
 
 def add_activity(job_id: str, data: JobActivityInput) -> JobWorkspace | None:
-    with _LOCK:
-        items = _read_unlocked()
-        for index, raw in enumerate(items):
-            try:
-                current = JobWorkspace.model_validate(raw)
-            except ValueError:
-                continue
-            if current.id != job_id:
-                continue
+    with _transaction() as tx:
+        current = _parse(tx.get(job_id))
+        if current is not None:
             if data.external_id and any(
                 event.external_id == data.external_id for event in current.activities
             ):
@@ -405,8 +424,7 @@ def add_activity(job_id: str, data: JobActivityInput) -> JobWorkspace | None:
             if data.kind == "applied" and current.status in _PRE_SUBMISSION_STATUSES:
                 patch["status"] = "applied"
             updated = current.model_copy(update=patch)
-            items[index] = updated.model_dump(mode="json")
-            _write_unlocked(items)
+            _put(tx, updated)
             return updated
         return None
 
@@ -667,17 +685,27 @@ def find_matching_job(
     role: str,
     job_url: str = "",
 ) -> JobWorkspace | None:
-    jobs = load_jobs()
+    store = _store()
     clean_url = job_url.strip()
-    if clean_url:
-        canonical = canonical_job_url(clean_url)
-        exact = next(
-            (job for job in jobs if canonical_job_url(job.job_url) == canonical), None
-        )
-        if exact is not None:
-            return exact
     key = _job_key(company, role)
-    candidates = [job for job in jobs if _job_key(job.company, job.role) == key]
+    if store.has_index:
+        # Indexed lookups, newest first, so dedupe never loads every dossier.
+        def by(field: str, value: str) -> list[JobWorkspace]:
+            parsed = (_parse(raw) for raw in store.find(_COLLECTION, field, value))
+            return [job for job in parsed if job is not None]
+
+        url_matches = by("canonical_url", canonical_job_url(clean_url)) if clean_url else []
+        candidates = by("match_key", key)
+    else:
+        jobs = load_jobs()
+        url_matches = (
+            [job for job in jobs if canonical_job_url(job.job_url) == canonical_job_url(clean_url)]
+            if clean_url
+            else []
+        )
+        candidates = [job for job in jobs if _job_key(job.company, job.role) == key]
+    if url_matches:
+        return url_matches[0]
     if not candidates:
         return None
     if clean_url:
@@ -689,7 +717,16 @@ def find_matching_job(
 
 
 def capture_job(data: JobCaptureInput) -> tuple[JobWorkspace, bool]:
-    """Create or enrich a dossier from an agent/browser search session."""
+    """Create or enrich a dossier from an agent/browser search session.
+
+    One transaction, so two captures of the same listing cannot both miss the
+    dedupe lookup and create two dossiers.
+    """
+    with _transaction():
+        return _capture_job(data)
+
+
+def _capture_job(data: JobCaptureInput) -> tuple[JobWorkspace, bool]:
     current = find_matching_job(data.company, data.role, data.job_url)
     if current is None:
         return (
@@ -780,6 +817,15 @@ def upsert_application(
     application: Application,
     *,
     session: str = "Sheet import",
+) -> tuple[JobWorkspace, bool]:
+    with _transaction():
+        return _upsert_application(application, session=session)
+
+
+def _upsert_application(
+    application: Application,
+    *,
+    session: str,
 ) -> tuple[JobWorkspace, bool]:
     current = find_matching_job(
         application.company,

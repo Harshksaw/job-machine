@@ -8,12 +8,25 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app import doc_store
 from app.models import SessionEvent, SessionEventInput, SessionSummary
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STORE_PATH = BASE_DIR / "data" / "sessions.jsonl"
 _LOCK = threading.RLock()
 _MAX_READ_BYTES = 8 * 1024 * 1024
+# With DATABASE_URL set, events are rows in Postgres (see app.doc_store) instead
+# of JSONL lines; `match_key` holds "session|external_id" for idempotent appends.
+_COLLECTION = "session_events"
+_BACKEND_OVERRIDE = None
+
+
+def _sql_store():
+    return _BACKEND_OVERRIDE or doc_store.sql_backend_from_env()
+
+
+def _match_key(session: str, external_id: str) -> str:
+    return f"{session}|{external_id}"
 
 
 def _now() -> str:
@@ -28,6 +41,10 @@ def _parse_line(line: str) -> SessionEvent | None:
 
 
 def _read_all() -> list[SessionEvent]:
+    store = _sql_store()
+    if store is not None:
+        events = (_parse_doc(raw) for raw in store.all(_COLLECTION))
+        return [event for event in events if event is not None]
     try:
         raw = STORE_PATH.read_bytes()
     except FileNotFoundError:
@@ -48,7 +65,42 @@ def _read_all() -> list[SessionEvent]:
     return events
 
 
+def _parse_doc(raw: dict) -> SessionEvent | None:
+    try:
+        return SessionEvent.model_validate(raw)
+    except ValueError:
+        return None
+
+
+def _append_sql(store, data: SessionEventInput) -> SessionEvent:
+    with store.transaction(_COLLECTION) as tx:
+        if data.external_id:
+            key = _match_key(data.session, data.external_id)
+            for raw in store.find(_COLLECTION, "match_key", key):
+                event = _parse_doc(raw)
+                if event is not None:
+                    return event
+        event = SessionEvent(
+            **data.model_dump(),
+            id=uuid.uuid4().hex,
+            created_at=data.occurred_at or _now(),
+        )
+        tx.put(
+            event.model_dump(mode="json"),
+            {
+                "sort_key": event.created_at,
+                "match_key": (
+                    _match_key(data.session, data.external_id) if data.external_id else None
+                ),
+            },
+        )
+        return event
+
+
 def append_event(data: SessionEventInput) -> SessionEvent:
+    store = _sql_store()
+    if store is not None:
+        return _append_sql(store, data)
     with _LOCK:
         if data.external_id:
             for event in _read_all():
