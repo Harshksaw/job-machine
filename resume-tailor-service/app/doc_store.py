@@ -41,7 +41,11 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Connection, Engine
+
+_UPSERT = {"postgresql": postgresql_insert, "sqlite": sqlite_insert}
 
 _JSON = JSON().with_variant(JSONB(), "postgresql")
 
@@ -168,15 +172,15 @@ class _SqlTransaction:
         index = index or {}
         values = {field: index.get(field) for field in INDEX_FIELDS}
         values["doc"] = doc
-        exists = self.conn.execute(
-            select(documents.c.id).where(self._where(doc["id"]))
-        ).first()
-        if exists:
-            self.conn.execute(documents.update().where(self._where(doc["id"])).values(**values))
-        else:
-            self.conn.execute(
-                documents.insert().values(collection=self.collection, id=doc["id"], **values)
+        # One round trip: Postgres and SQLite both upsert on the primary key.
+        insert = _UPSERT[self.conn.dialect.name](documents).values(
+            collection=self.collection, id=doc["id"], **values
+        )
+        self.conn.execute(
+            insert.on_conflict_do_update(
+                index_elements=[documents.c.collection, documents.c.id], set_=values
             )
+        )
 
     def delete(self, doc_id: str) -> bool:
         return self.conn.execute(delete(documents).where(self._where(doc_id))).rowcount > 0
@@ -233,19 +237,41 @@ class SqlBackend:
             finally:
                 self._local.tx = None
 
+    @contextmanager
+    def _read_conn(self) -> Iterator[Connection]:
+        """Reads skip the write lock. Inside a write transaction they reuse its
+        connection so they see its own uncommitted writes; otherwise they take a
+        plain connection, which saves the BEGIN and advisory lock round trips."""
+        current = getattr(self._local, "tx", None)
+        if current is not None:
+            yield current.conn
+            return
+        with self.engine.connect() as conn:
+            yield conn
+
     def all(self, collection: str) -> list[dict]:
-        with self.transaction(collection) as tx:
-            return tx.all()
+        with self._read_conn() as conn:
+            return list(
+                conn.execute(
+                    select(documents.c.doc)
+                    .where(documents.c.collection == collection)
+                    .order_by(documents.c.sort_key)
+                ).scalars()
+            )
 
     def get(self, collection: str, doc_id: str) -> dict | None:
-        with self.transaction(collection) as tx:
-            return tx.get(doc_id)
+        with self._read_conn() as conn:
+            return conn.execute(
+                select(documents.c.doc).where(
+                    (documents.c.collection == collection) & (documents.c.id == doc_id)
+                )
+            ).scalar_one_or_none()
 
     def find(self, collection: str, field: str, value: str) -> list[dict]:
         """Documents whose indexed `field` equals `value`, newest first."""
-        with self.transaction(collection) as tx:
+        with self._read_conn() as conn:
             return list(
-                tx.conn.execute(
+                conn.execute(
                     select(documents.c.doc)
                     .where((documents.c.collection == collection) & (documents.c[field] == value))
                     .order_by(documents.c.sort_key.desc())
@@ -254,9 +280,9 @@ class SqlBackend:
 
     def index_values(self, collection: str, field: str) -> list:
         """One indexed column for the whole collection, newest first."""
-        with self.transaction(collection) as tx:
+        with self._read_conn() as conn:
             return list(
-                tx.conn.execute(
+                conn.execute(
                     select(documents.c[field])
                     .where(documents.c.collection == collection)
                     .order_by(documents.c.sort_key.desc())
