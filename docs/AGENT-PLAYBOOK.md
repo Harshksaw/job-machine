@@ -309,6 +309,36 @@ under a different title.
 
 ---
 
+## Remote job boards
+
+`cd resume-tailor-service && uv run python scripts/remote_boards.py --out <file>` pulls all
+five boards, filters, dedupes, and writes candidates with full JD text. It never writes to
+the dossier store: score each candidate, then capture it. First run 2026-11-06: 764
+listings, 203 kept, 49 scored and captured (14 at fit 7 or higher).
+
+Per board, verified 2026-11-06:
+
+| Board | Endpoint | Notes |
+|---|---|---|
+| Himalayas | `himalayas.app/jobs/api/search?q=&country=Canada&seniority=Entry-level&page=N` | Best source by far (490 of 764). 20 per page. `locationRestrictions` lists the countries a hire may live in; empty means worldwide. |
+| Jobicy | `jobicy.com/api/v2/remote-jobs?count=50&geo=canada&industry=engineering` | `jobLevel` is often "Any". |
+| Remotive | `remotive.com/api/remote-jobs?category=software-dev` | Small feed, mostly worldwide contract roles. |
+| Working Nomads | `workingnomads.com/api/exposed_jobs/` | About 30 recent jobs total; filter on `category_name`. |
+| Remote OK | `remoteok.com/api` | Row 0 is the API terms notice; the terms ask that Remote OK be credited as the source. |
+
+- **Remotive and Remote OK return 403 to the bare Python-urllib client.** The script sends
+  an honest `job-machine-remote-boards/1.0` user agent, which they accept. Do not
+  impersonate a browser.
+- **Dedupe on a normalized role.** Board titles drift from the ATS title ("Junior Software
+  Engineer" vs "Junior Software Engineer (Remote)"), so the script compares company and
+  role with parentheticals and "remote" removed, and reports `company_history` when he
+  already applied elsewhere at that company.
+- **Noise to expect:** staffing shops posting dozens of generic "developer" roles
+  worldwide, per-task AI training gigs, and LATAM-only contractors. The years and flags
+  pass (US residency, French, LATAM, contract) is what makes the list scoreable.
+
+---
+
 ## ZipRecruiter
 
 A standing source, but **live browser search only**. Search URL is

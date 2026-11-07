@@ -112,7 +112,14 @@ rule 3: an outreach message does not go out before Harsh says yes.
 ## Discovery sources
 
 Search and apply via **LinkedIn, Wellfound, YC / Work at a Startup, and company ATS boards
-only**. ZipRecruiter is also standing, but live-browser only (see the playbook). YC's site
+only**. ZipRecruiter is also standing, but live-browser only (see the playbook).
+
+**Remote boards (added 2026-11-06):** Himalayas, Remotive, Jobicy, Working Nomads, and
+Remote OK, harvested with `resume-tailor-service/scripts/remote_boards.py`. It filters to
+engineering roles below senior that a Canada-based candidate can hold remotely and dedupes
+against the dossier store. A remote role limited to US residents is a skip: that means
+living in the US, which is not the on-site relocation the eligibility policy allows. The
+board is for discovery; apply on the employer's own ATS when the listing links to one. YC's site
 mechanics (URL shape, apply-button selectors, dedupe key) are unverified until an agent
 actually runs a live session against workatastartup.com; capture what's learned in
 `docs/AGENT-PLAYBOOK.md` the same way Wellfound and ZipRecruiter are documented there. Do
