@@ -30,6 +30,21 @@ TASKS: dict[str, dict] = {
             "End with a table: company | role | score | reason."
         ),
     },
+    "triage-research": {
+        "label": "Triage research finds",
+        "prompt": _PREAMBLE + (
+            "GET /api/research?status=new and skip items with tracked_dossier set. For each, "
+            "judge fit 1 to 10 against resume-tailor-service/content/resume_bank.yaml (early "
+            "career, about 2 years, backend, full stack, applied AI) and the AGENTS.md "
+            "eligibility policy, using its url, role, remote_scope and notes (GET the posting "
+            "url for the description if needed). POST /api/research/<id>/promote with header "
+            "X-Job-Machine: dashboard when fit is 7 or more and he is eligible. POST "
+            "/api/research/<id>/dismiss with the same header only when clearly ineligible "
+            "(senior, US residents only, on site outside the US and Canada, not engineering). "
+            "Leave everything else as new for Harsh. End with a table: company | role | fit | "
+            "action | reason."
+        ),
+    },
     "liveness": {
         "label": "Check stale postings",
         "prompt": _PREAMBLE + (
