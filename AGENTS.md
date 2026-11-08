@@ -125,6 +125,14 @@ actually runs a live session against workatastartup.com; capture what's learned 
 `docs/AGENT-PLAYBOOK.md` the same way Wellfound and ZipRecruiter are documented there. Do
 not invent selectors or flows for it ahead of that.
 
+**Research stage (added 2026-11-08):** research runs (Cursor or OpenCode portal sweeps
+following `prompts/research-sweep.md`, and the Fantastic Jobs "Research" presets for US, UK
+and Australia remote) stage finds with `POST /api/research` instead of creating dossiers.
+Promotion to a `discovered` dossier happens from the dashboard Search tab or
+`POST /api/research/<id>/promote`. Fantastic Jobs is a 500 job trial: only through the
+dashboard presets, which enforce the budget. The old `job_registry (RDS)` pipeline and its
+dossiers were removed on 2026-11-07.
+
 There is **no** RDS `job_registry`, **no** `jobs-pipeline/` directory, and **no** local
 Postgres jobs mirror. Dossiers do live in a hosted Neon Postgres database since
 2026-11-06, but only behind the service API; see "Dossier database" in the playbook. Do not start Docker for a jobs DB, do not look for `RDS_DSN`, and do
