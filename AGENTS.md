@@ -275,6 +275,14 @@ the playbook.
 - **No hyphenated compound words** in anything Harsh sends (notes, outreach, answers,
   cover letters): "full stack", not "full-stack"; "a person in the loop", not
   "human-in-the-loop". Reword rather than hyphenate.
+- **Parallel agents claim before they touch a dossier (since 2026-11-08).** Claude,
+  Cursor, Codex and OpenCode may run at the same time, so: before working a dossier, POST
+  an activity `{"kind":"note","title":"Claimed by <agent> <session>"}`; skip any dossier
+  claimed by another agent in the last 2 hours or with an `applied` event from any session;
+  and re-GET the dossier immediately before any submit. Only one agent drives a browser
+  apply lane at a time. Free models (OpenCode DeepSeek Free) take no browser work: they
+  score, draft answers through `/answers/generate`, harvest boards and check liveness.
+  Lanes and the live queue are in the newest `SESSION-HANDOFF-*.md`.
 - **Route work by the usage meter (since 2026-11-07).** Before handing off a long task,
   run `python3 tools/ai-meter/meter.py route <direction|heavy|bulk>` and use the tool and
   command it prints. Direction and judgment stay with Claude (Codex once Claude nears its
