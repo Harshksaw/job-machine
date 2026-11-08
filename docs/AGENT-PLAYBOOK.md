@@ -43,6 +43,13 @@ Why it replaced job Chrome, from the first day on both:
   country code (options read "Canada +1"). Focus the input, `ArrowDown`, type, then
   `Enter`; clicking options fails because the list closes between script rounds. Check
   the result in `[class*=single-value]`. Success lands on `.../jobs/<id>/confirmation`.
+- **Lever raises an hCaptcha challenge on every Ego Lite submit** (3 of 3 on 2026-11-07:
+  Xsolla x2, ShyftLabs). Fill the form, click Submit once, then `task.handOff()` and log
+  the dossier as `applying`. Lever always carries a hidden "File exceeds the maximum upload
+  size of 100MB" template in `.error-message`; it is not a real error.
+- A new Ego Lite TaskSpace can land on Google's account chooser and then a passkey prompt
+  when opening the Sheet webhook. That needs Harsh; keep the Sheet logging in a space that
+  already passed it.
 
 ## Before any browser session
 
