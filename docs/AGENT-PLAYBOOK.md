@@ -541,6 +541,23 @@ merged unrelated roles. You still owe the company plus role cross-check, because
 points at a company listing index rather than one posting can canonicalize the same for two
 different jobs.
 
+### Recheck at the moment of Submit, not when the queue was built
+
+On 2026-11-07 two applications (Mercury Command, Valtech) went out twice, about 40
+minutes apart. A Cursor run and a Claude run worked the same queue at the same time. Claude
+had built its list before Cursor's `applied` events landed and never looked again, so the
+rule 8 gate passed on stale data.
+
+- Immediately before clicking Submit, `GET /api/jobs/<id>` again and stop if its status is
+  `applied`, `applying`, `interview` or `rejected`, or if its activity has an `applied`
+  event from any session. A queue snapshot is not a gate.
+- Before starting a run, check for another agent working: `listTaskSpaces()` in Ego Lite
+  (a space named for Cursor, Codex or another run that is still active), recent
+  `GET /api/sessions/events` from another session, and `ps aux | grep -E "cursor-agent|codex exec|opencode run"`.
+  If one is active, do not touch its queue.
+- When Harsh starts an agent himself and reports it "did not work", verify that from its
+  events before redoing its work.
+
 ### A logged submission is not an applied status
 
 The re-send gate reads `status`. Writing a `kind: applied` activity does **not** by itself
