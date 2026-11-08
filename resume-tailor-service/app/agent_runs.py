@@ -6,12 +6,15 @@ detached subprocess in the repo root with its output in logs/agents/.
 """
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 LOG_DIR = REPO / "logs" / "agents"
+_EXTRA_PATHS = [str(Path.home() / d) for d in (".opencode/bin", ".local/bin")] + ["/opt/homebrew/bin", "/usr/local/bin"]
 
 _PREAMBLE = (
     "You are working in the job machine repo. Read AGENTS.md and docs/AGENT-PLAYBOOK.md "
@@ -67,12 +70,16 @@ def start(tool: str, task: str) -> dict:
         raise ValueError(f"unknown tool {tool!r}; use one of: {', '.join(TOOLS)}")
     if task not in TASKS:
         raise ValueError(f"unknown task {task!r}; use one of: {', '.join(TASKS)}")
+    # launchd starts the service with a minimal PATH, so look in the usual install dirs.
+    binary = shutil.which(TOOLS[tool][0], path=os.pathsep.join([*_EXTRA_PATHS, os.environ.get("PATH", "")]))
+    if binary is None:
+        raise ValueError(f"{TOOLS[tool][0]} is not installed or not on PATH")
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     log_path = LOG_DIR / f"{stamp}-{tool}-{task}.log"
     with open(log_path, "w") as log:
         proc = subprocess.Popen(
-            [*TOOLS[tool], TASKS[task]["prompt"]],
+            [binary, *TOOLS[tool][1:], TASKS[task]["prompt"]],
             cwd=REPO, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
             start_new_session=True,
         )

@@ -80,7 +80,8 @@ def test_agent_start_runs_the_named_task(monkeypatch, tmp_path):
 
     monkeypatch.setattr(agent_runs, "LOG_DIR", tmp_path)
     monkeypatch.setattr(agent_runs.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(agent_runs.shutil, "which", lambda name, path=None: "/bin/" + name)
     result = agent_runs.start("opencode", "score-new")
     assert result["pid"] == 4242
-    assert started["cmd"][:2] == ["opencode", "run"]
+    assert started["cmd"][:2] == ["/bin/opencode", "run"]
     assert "Do not submit applications" in started["cmd"][-1]
