@@ -344,7 +344,7 @@ export function decideJob(
 
 // Search tab. POSTs carry X-Job-Machine so a cross site page cannot trigger them.
 export interface SearchOptions {
-  presets: { id: string; label: string }[];
+  presets: { id: string; label: string; stage: string; default_limit: number }[];
   tasks: { id: string; label: string }[];
   tools: string[];
 }
@@ -404,4 +404,32 @@ export function startAgent(tool: string, task: string): Promise<{ pid: number; l
 
 export function listAgentRuns(): Promise<AgentRun[]> {
   return jsonRequest("/api/agents/runs", {}, "Failed to load agent runs.");
+}
+
+export interface ResearchItem {
+  id: string;
+  preset: string;
+  source: string;
+  company: string;
+  role: string;
+  url: string;
+  location: string;
+  remote_scope: string;
+  open_to_canada: boolean | null;
+  salary: string;
+  posted: string;
+  status: string;
+  tracked_dossier: string | null;
+}
+
+export function listResearch(status = "new"): Promise<ResearchItem[]> {
+  return jsonRequest(`/api/research?status=${encodeURIComponent(status)}`, {}, "Failed to load research.");
+}
+
+export function promoteResearch(id: string): Promise<{ dossier_id: string }> {
+  return jsonRequest(`/api/research/${encodeURIComponent(id)}/promote`, { ...DASHBOARD_POST }, "Failed to promote.");
+}
+
+export function dismissResearch(id: string): Promise<{ ok: boolean }> {
+  return jsonRequest(`/api/research/${encodeURIComponent(id)}/dismiss`, { ...DASHBOARD_POST }, "Failed to dismiss.");
 }

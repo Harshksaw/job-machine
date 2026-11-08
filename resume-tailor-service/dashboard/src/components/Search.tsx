@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Bot, Play, Search as SearchIcon } from "lucide-react";
 import {
+  dismissResearch,
+  listResearch,
+  promoteResearch,
+  type ResearchItem,
   getSearchOptions,
   getSearchUsage,
   listAgentRuns,
@@ -26,6 +30,8 @@ export default function Search({ onJobsChanged, onOpenDossier }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [research, setResearch] = useState<ResearchItem[]>([]);
+  const loadResearch = useCallback(() => listResearch().then(setResearch).catch(() => {}), []);
 
   const refresh = useCallback(async () => {
     try {
@@ -39,6 +45,10 @@ export default function Search({ onJobsChanged, onOpenDossier }: Props) {
   }, []);
 
   useEffect(() => {
+    void loadResearch();
+  }, [loadResearch]);
+
+  useEffect(() => {
     void refresh();
     const timer = window.setInterval(() => void listAgentRuns().then(setRuns).catch(() => {}), 10000);
     return () => window.clearInterval(timer);
@@ -48,10 +58,12 @@ export default function Search({ onJobsChanged, onOpenDossier }: Props) {
     setBusy(preset);
     setMessage(null);
     try {
-      const res = await runSearch(preset, limit, timeFrame);
+      const meta = options?.presets.find((p) => p.id === preset);
+      const res = await runSearch(preset, meta?.stage === "research" ? meta.default_limit : limit, timeFrame);
       setResult(res);
       setUsage(res.usage);
-      onJobsChanged();
+      if (meta?.stage === "research") void loadResearch();
+      else onJobsChanged();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Search failed.");
     } finally {
@@ -184,6 +196,46 @@ export default function Search({ onJobsChanged, onOpenDossier }: Props) {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="jm-panel space-y-2 p-4">
+        <h2 className="text-sm font-semibold text-zinc-100">Research ({research.length} new)</h2>
+        <p className="text-xs text-zinc-400">
+          Staged finds from research presets and agent portal sweeps. Promote makes a discovered dossier; amber means the
+          employer may not hire from Canada.
+        </p>
+        <ul className="divide-y divide-zinc-800">
+          {research.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+              <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-zinc-100 hover:underline">
+                {item.company} · {item.role}
+              </a>
+              <span className={item.open_to_canada ? "text-xs text-teal-300" : "text-xs text-amber-300"}>
+                {item.remote_scope || "scope unspecified"}
+              </span>
+              <span className="text-xs text-zinc-500">
+                {item.preset} {item.posted} {item.salary}
+              </span>
+              {item.tracked_dossier && <span className="text-xs text-zinc-500">already tracked</span>}
+              <span className="ml-auto flex gap-2">
+                <button
+                  type="button"
+                  className="jm-btn-secondary h-7 px-2 text-xs"
+                  onClick={() => void promoteResearch(item.id).then(() => { void loadResearch(); onJobsChanged(); })}
+                >
+                  Promote
+                </button>
+                <button
+                  type="button"
+                  className="jm-btn-ghost h-7 px-2 text-xs"
+                  onClick={() => void dismissResearch(item.id).then(() => void loadResearch())}
+                >
+                  Dismiss
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {message && <p className="text-sm text-amber-300">{message}</p>}

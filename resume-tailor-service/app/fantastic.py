@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from app import job_store
+from app import job_store, research_store
 from app.models import JobCaptureInput
 
 API = "https://data.fantastic.jobs/v1/active-ats"
@@ -64,7 +64,66 @@ PRESETS: dict[str, dict] = {
             "ai_visa_sponsorship": "only",
         },
     },
+    # Research presets stage results in research_store instead of creating dossiers.
+    # UK and Australia remote roles usually need local work rights, which he does not
+    # have, so each staged item carries remote_scope for the eligibility call.
+    "us-remote": {
+        "label": "Research: US remote",
+        "stage": "research",
+        "default_limit": 40,
+        "params": {**_BASE, "location_advanced": "United States", "ai_work_arrangement": "Remote Solely"},
+    },
+    "uk-remote": {
+        "label": "Research: UK remote",
+        "stage": "research",
+        "default_limit": 15,
+        "params": {**_BASE, "location_advanced": "United Kingdom", "ai_work_arrangement": "Remote Solely"},
+    },
+    "au-remote": {
+        "label": "Research: Australia remote",
+        "stage": "research",
+        "default_limit": 15,
+        "params": {**_BASE, "location_advanced": "Australia", "ai_work_arrangement": "Remote Solely"},
+    },
 }
+
+# Remote scopes that let someone living in Canada take the job.
+_OPEN_TO_CANADA = ("canada", "north america", "americas", "worldwide", "anywhere", "global")
+
+
+def remote_scope(job: dict) -> tuple[str, bool]:
+    """Where the employer lets remote hires live, and whether Canada fits."""
+    parts = job.get("ai_remote_location_derived") or job.get("ai_remote_location") or []
+    if isinstance(parts, str):
+        parts = [parts]
+    requirements = job.get("location_requirements") or []
+    if isinstance(requirements, str):
+        requirements = [requirements]
+    scope = "; ".join(str(p) for p in [*parts, *requirements] if p) or "unspecified"
+    return scope, any(word in scope.lower() for word in _OPEN_TO_CANADA)
+
+
+def to_research(job: dict, preset: str) -> dict:
+    scope, canada_ok = remote_scope(job)
+    capture = to_capture(job, "")
+    tracked = job_store.find_matching_job(capture.company, capture.role, capture.job_url)
+    return {
+        "id": f"fj-{job.get('id')}",
+        "preset": preset,
+        "source": capture.source,
+        "company": capture.company,
+        "role": capture.role,
+        "url": capture.job_url,
+        "location": capture.location,
+        "remote_scope": scope,
+        "open_to_canada": canada_ok,
+        "visa": job.get("ai_visa_sponsorship"),
+        "experience": job.get("ai_experience_level"),
+        "salary": " ".join(str(job.get(k) or "") for k in ("ai_salary_min_value", "ai_salary_max_value", "ai_salary_currency")).strip(),
+        "posted": (job.get("date_posted") or "")[:10],
+        "jd_text": capture.jd_text,
+        "tracked_dossier": tracked.id if tracked else None,
+    }
 
 _lock = threading.Lock()
 
@@ -156,7 +215,18 @@ def run_search(
         usage["jobs_used"] += len(jobs)
         session = f"Fantastic Jobs {datetime.now(timezone.utc):%Y-%m-%d}"
         new, duplicates = [], []
-        for job in jobs:
+        if PRESETS[preset].get("stage") == "research":
+            for job in jobs:
+                item, created = research_store.add(to_research(job, preset))
+                if created and not item["tracked_dossier"]:
+                    new.append({"id": item["id"], "company": item["company"], "role": item["role"],
+                                "open_to_canada": item["open_to_canada"]})
+                else:
+                    duplicates.append(f"{item['company']} | {item['role']}")
+            jobs_iter: list = []
+        else:
+            jobs_iter = jobs
+        for job in jobs_iter:
             capture = to_capture(job, session)
             if job_store.find_matching_job(capture.company, capture.role, capture.job_url):
                 duplicates.append(f"{capture.company} | {capture.role}")
@@ -166,6 +236,7 @@ def run_search(
         usage["runs"].append({
             "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "preset": preset, "fetched": len(jobs), "new": len(new),
+            "stage": PRESETS[preset].get("stage", "dossier"),
         })
         _save_usage(usage)
     return {"fetched": len(jobs), "new": new, "duplicates": duplicates, "usage": usage_summary()}
