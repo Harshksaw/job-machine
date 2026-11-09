@@ -69,3 +69,10 @@ def test_summarize_reads_codeburn_provider_details():
     # CodeBurn calls the CLI "cursor-agent"; the router calls it "cursor".
     assert providers["cursor"]["day"] == 0.02
     assert providers["cursor-ide"]["day"] == 0.5
+
+
+def test_unhealthy_tool_is_skipped():
+    state = {**_state(), "health": {"opencode": "Model is unavailable"}}
+    choice = meter.pick("bulk", state, POLICY)
+    assert choice["tool"] == "cursor"
+    assert "opencode" in choice["reason"]

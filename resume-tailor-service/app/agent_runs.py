@@ -7,8 +7,12 @@ detached subprocess in the repo root with its output in logs/agents/.
 from __future__ import annotations
 
 import os
+import re
 import shutil
+import signal
 import subprocess
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -59,6 +63,46 @@ TASKS: dict[str, dict] = {
         ),
     },
 }
+# A run that outlives this is stuck (a free model down makes OpenCode retry forever).
+MAX_RUNTIME = 45 * 60
+OPENCODE_LOG = Path.home() / ".local" / "share" / "opencode" / "log" / "opencode.log"
+_OUTAGE_WINDOW = 15 * 60
+_OUTAGE = re.compile(r"timestamp=(\S+Z) .*Model is unavailable")
+
+
+def opencode_unavailable() -> bool:
+    """True when OpenCode logged "Model is unavailable" in the last 15 minutes."""
+    if not OPENCODE_LOG.exists():
+        return False
+    with open(OPENCODE_LOG, "rb") as fh:
+        fh.seek(max(0, OPENCODE_LOG.stat().st_size - 200_000))
+        tail = fh.read().decode("utf-8", "ignore")
+    now = datetime.now(timezone.utc)
+    for match in _OUTAGE.finditer(tail):
+        try:
+            when = datetime.fromisoformat(match.group(1).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if (now - when).total_seconds() < _OUTAGE_WINDOW:
+            return True
+    return False
+
+
+def _watchdog(proc: subprocess.Popen, log_path: Path) -> None:
+    def stop() -> None:
+        if proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                return
+            with open(log_path, "a") as log:
+                log.write(f"\n[job-machine] stopped after {MAX_RUNTIME / 60:g} minutes without finishing\n")
+
+    timer = threading.Timer(MAX_RUNTIME, stop)
+    timer.daemon = True
+    timer.start()
+
+
 TOOLS: dict[str, list[str]] = {
     "codex": ["codex", "exec", "--full-auto"],
     "opencode": ["opencode", "run", "-m", "opencode/deepseek-v4.1-flash-free"],
@@ -74,6 +118,9 @@ def start(tool: str, task: str) -> dict:
     binary = shutil.which(TOOLS[tool][0], path=os.pathsep.join([*_EXTRA_PATHS, os.environ.get("PATH", "")]))
     if binary is None:
         raise ValueError(f"{TOOLS[tool][0]} is not installed or not on PATH")
+    if tool == "opencode" and opencode_unavailable():
+        raise ValueError("OpenCode free models are unavailable right now (Model is unavailable "
+                         "in its log within 15 minutes); use codex or try later")
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     log_path = LOG_DIR / f"{stamp}-{tool}-{task}.log"
@@ -83,6 +130,7 @@ def start(tool: str, task: str) -> dict:
             cwd=REPO, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
             start_new_session=True,
         )
+    _watchdog(proc, log_path)
     return {"pid": proc.pid, "tool": tool, "task": task, "log": log_path.name}
 
 

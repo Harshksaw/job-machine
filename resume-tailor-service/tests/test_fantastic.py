@@ -81,7 +81,47 @@ def test_agent_start_runs_the_named_task(monkeypatch, tmp_path):
     monkeypatch.setattr(agent_runs, "LOG_DIR", tmp_path)
     monkeypatch.setattr(agent_runs.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(agent_runs.shutil, "which", lambda name, path=None: "/bin/" + name)
+    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", tmp_path / "none.log")
     result = agent_runs.start("opencode", "score-new")
     assert result["pid"] == 4242
     assert started["cmd"][:2] == ["/bin/opencode", "run"]
     assert "Do not submit applications" in started["cmd"][-1]
+
+
+def test_opencode_is_refused_while_its_free_models_are_down(monkeypatch, tmp_path):
+    log = tmp_path / "opencode.log"
+    now = agent_runs.datetime.now(agent_runs.timezone.utc)
+    stamp = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    log.write_text(f'timestamp={stamp} level=ERROR message="stream error" error.error="AI_APICallError: Upstream request failed: Model is unavailable."\n')
+    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", log)
+    assert agent_runs.opencode_unavailable()
+    with pytest.raises(ValueError, match="free models are unavailable"):
+        agent_runs.start("opencode", "score-new")
+
+
+def test_old_opencode_failures_do_not_block(monkeypatch, tmp_path):
+    log = tmp_path / "opencode.log"
+    log.write_text('timestamp=2026-01-01T00:00:00.000Z level=ERROR error.error="Model is unavailable."\n')
+    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", log)
+    assert not agent_runs.opencode_unavailable()
+
+
+def test_runs_are_killed_after_the_time_limit(monkeypatch, tmp_path):
+    killed = []
+
+    class FakeProc:
+        pid = 777
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(agent_runs, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", tmp_path / "none.log")
+    monkeypatch.setattr(agent_runs.subprocess, "Popen", lambda cmd, **kw: FakeProc())
+    monkeypatch.setattr(agent_runs.shutil, "which", lambda name, path=None: "/bin/" + name)
+    monkeypatch.setattr(agent_runs.os, "killpg", lambda pid, sig: killed.append(pid))
+    monkeypatch.setattr(agent_runs, "MAX_RUNTIME", 0.05)
+    result = agent_runs.start("codex", "score-new")
+    agent_runs.time.sleep(0.3)
+    assert killed == [777]
+    assert "stopped after" in (tmp_path / result["log"]).read_text()

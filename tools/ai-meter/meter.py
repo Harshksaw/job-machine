@@ -17,6 +17,7 @@ reason says so: the router never blocks work, it only steers it.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import time
@@ -27,6 +28,24 @@ HERE = Path(__file__).resolve().parent
 POLICY_PATH = HERE / "policy.json"
 STATE_PATH = HERE.parent.parent / "logs" / "ai-usage.json"
 STALE_AFTER = 300  # seconds; matches the launchd poll interval
+OPENCODE_LOG = Path.home() / ".local" / "share" / "opencode" / "log" / "opencode.log"
+
+
+def _opencode_health() -> str | None:
+    """"Model is unavailable" in OpenCode's log within 15 minutes means its free models are down."""
+    if not OPENCODE_LOG.exists():
+        return None
+    with open(OPENCODE_LOG, "rb") as fh:
+        fh.seek(max(0, OPENCODE_LOG.stat().st_size - 200_000))
+        tail = fh.read().decode("utf-8", "ignore")
+    now = datetime.now(timezone.utc)
+    for stamp in re.findall(r"timestamp=(\S+Z) .*Model is unavailable", tail):
+        try:
+            if (now - datetime.fromisoformat(stamp.replace("Z", "+00:00"))).total_seconds() < 900:
+                return "Model is unavailable"
+        except ValueError:
+            continue
+    return None
 
 # CodeBurn ids mapped to router names: "cursor" in policy.json is the CLI, so
 # CodeBurn's "cursor" (the editor) is renamed out of its way.
@@ -46,6 +65,9 @@ def summarize(today: dict, week: dict) -> dict:
 
 
 def _over(name: str, state: dict, policy: dict) -> str | None:
+    down = state.get("health", {}).get(name)
+    if down:
+        return f"{name} is down ({down})"
     budget = policy.get("budgets", {}).get(name)
     if not budget:
         return None
@@ -89,6 +111,7 @@ def poll() -> dict:
     state = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "providers": summarize(_codeburn("today"), _codeburn("week")),
+        "health": {name: down for name, down in (("opencode", _opencode_health()),) if down},
     }
     policy = load_policy()
     state["routes"] = {kind: pick(kind, state, policy) for kind in policy["routes"]}
