@@ -437,3 +437,96 @@ export function promoteResearch(id: string): Promise<{ dossier_id: string }> {
 export function dismissResearch(id: string): Promise<{ ok: boolean }> {
   return jsonRequest(`/api/research/${encodeURIComponent(id)}/dismiss`, { ...DASHBOARD_POST }, "Failed to dismiss.");
 }
+
+export interface SystemStats {
+  generated_at: string;
+  totals: {
+    dossiers: number;
+    applied: number;
+    responded: number;
+    rejected: number;
+    waiting: number;
+    response_rate: number | null;
+  };
+  by_status: Record<string, number>;
+  by_source: { source: string; applied: number; responded: number; rejected: number; response_rate: number | null }[];
+  by_fit: { fit: number; tracked: number; applied: number; responded: number; response_rate: number | null }[];
+  weekly: { week: string; applied: number }[];
+  backlog: { strong_unapplied: number; research_new: number };
+  people: Record<string, number>;
+  ai_usage: {
+    generated_at: string | null;
+    providers: {
+      provider: string;
+      day: number;
+      week: number;
+      calls_day: number;
+      day_budget: number | null;
+      week_budget: number | null;
+    }[];
+  } | null;
+  service: { started_at: string; database: string };
+}
+
+export interface ConnectionInfo {
+  id: string;
+  label: string;
+  what: string;
+}
+
+export interface ConnectionResult {
+  id: string;
+  status: "ok" | "warn" | "fail";
+  detail: string;
+  ms: number;
+}
+
+export interface TelemetrySpan {
+  name: string;
+  kind: "request" | "call";
+  status: number | null;
+  duration_ms: number;
+  started_at: string;
+  error: boolean;
+  trace_id: string;
+}
+
+export interface TelemetrySummary {
+  enabled: boolean;
+  service: string;
+  exporter: string | null;
+  buffered: number;
+  buffer_size: number;
+  since: string | null;
+  routes: {
+    name: string;
+    kind: "request" | "call";
+    count: number;
+    errors: number;
+    p50_ms: number;
+    p95_ms: number;
+    max_ms: number;
+  }[];
+  recent_errors: TelemetrySpan[];
+  slowest: TelemetrySpan[];
+}
+
+export function getSystemStats(refresh = false): Promise<SystemStats> {
+  return jsonRequest(`/api/system/stats${refresh ? "?refresh=true" : ""}`, {}, "Failed to load stats.");
+}
+
+export function listConnections(): Promise<ConnectionInfo[]> {
+  return jsonRequest("/api/system/connections", {}, "Failed to load connections.");
+}
+
+export function checkConnection(id: string): Promise<ConnectionResult> {
+  return jsonRequest(
+    `/api/system/connections/${encodeURIComponent(id)}/check`,
+    { ...DASHBOARD_POST },
+    "Check failed."
+  );
+}
+
+export function getTelemetry(): Promise<TelemetrySummary> {
+  return jsonRequest("/api/system/telemetry", {}, "Failed to load telemetry.");
+}

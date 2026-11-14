@@ -246,6 +246,14 @@ def list_summaries() -> list[JobSummary]:
     return [_summary(job) for job in load_jobs()]
 
 
+REPORT_FIELDS = ("status", "source", "fit_score", "updated_at", "activities")
+
+
+def report_rows() -> list[dict]:
+    """Just the fields the Settings stats need, without each dossier's JD and revisions."""
+    return _store().fields(_COLLECTION, REPORT_FIELDS)
+
+
 def add_job(data: JobWorkspaceInput, *, session: str = "") -> JobWorkspace:
     normalized = _normalized_input(data)
     with _transaction() as tx:

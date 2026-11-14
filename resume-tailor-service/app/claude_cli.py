@@ -4,6 +4,7 @@ import re
 import subprocess
 from collections.abc import Callable
 
+from app import telemetry
 from app.errors import ClaudeCliError
 
 # "claude-haiku-4-5" is a valid, current model id/alias for the `claude` CLI
@@ -50,6 +51,19 @@ def _subprocess_env() -> dict[str, str]:
 
 
 def run_claude(
+    prompt: str,
+    timeout: int = 600,
+    model: str = MODEL_NAME,
+    json_schema: dict | None = None,
+) -> str:
+    """`_run_claude` inside a span. It is the slowest thing this service does, and the
+    span carries the model, tokens and cost for the Settings tab and Langfuse."""
+    # Marked as a generation up front, so a call that fails still reaches Langfuse.
+    with telemetry.span("claude.cli", structured=json_schema is not None, **telemetry.GENERATION):
+        return _run_claude(prompt, timeout, model, json_schema)
+
+
+def _run_claude(
     prompt: str,
     # 600s, not 300s. Under a parallel batch the CLI queues behind other
     # in-flight calls, and the 2026-08-16 run lost five otherwise-fine
@@ -129,6 +143,7 @@ def run_claude(
         # frames up otherwise, which reads like a prompt bug rather than an
         # empty turn.
         raise ClaudeCliError("claude CLI returned an empty response")
+    telemetry.record_generation(prompt, text, payload, model)
     return text
 
 

@@ -8,9 +8,23 @@ import pytest
 _DATABASE_VARS = ("DATABASE_URL", "DATABASE_URL_UNPOOLED")
 
 
+
+# The same .env carries the Langfuse keys, and telemetry is set up when the app is
+# imported. load_dotenv never overrides a variable that is already set, so blanking
+# these keeps test spans out of the real Langfuse project.
+_EXPORTER_VARS = (
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+)
+
+
 def pytest_configure(config):
     for name in _DATABASE_VARS:
         os.environ.pop(name, None)
+    for name in _EXPORTER_VARS:
+        os.environ[name] = ""
 
 
 @pytest.fixture(autouse=True)

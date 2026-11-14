@@ -140,6 +140,9 @@ class JsonFileBackend:
         with self.transaction(collection) as tx:
             return tx.get(doc_id)
 
+    def fields(self, collection: str, names: tuple[str, ...]) -> list[dict]:
+        return [{name: doc.get(name) for name in names} for doc in self.all(collection)]
+
 
 # ---------------------------------------------------------------------------
 # SQL (SQLite in tests, Postgres on Neon)
@@ -277,6 +280,17 @@ class SqlBackend:
                     .order_by(documents.c.sort_key.desc())
                 ).scalars()
             )
+
+    def fields(self, collection: str, names: tuple[str, ...]) -> list[dict]:
+        """Only the named top level fields of every document. Reports use this: a
+        dossier carries its JD and every revision, so whole documents are a slow read."""
+        with self._read_conn() as conn:
+            rows = conn.execute(
+                select(*(documents.c.doc[name].label(name) for name in names)).where(
+                    documents.c.collection == collection
+                )
+            )
+            return [dict(row._mapping) for row in rows]
 
     def index_values(self, collection: str, field: str) -> list:
         """One indexed column for the whole collection, newest first."""

@@ -5,6 +5,7 @@ import {
   Inbox as InboxIcon,
   RefreshCw,
   Search as SearchIcon,
+  Settings as SettingsIcon,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -16,8 +17,9 @@ import People from "./components/People";
 import JobWorkspace from "./components/JobWorkspace";
 import Inbox from "./components/Inbox";
 import Search from "./components/Search";
+import Settings from "./components/Settings";
 
-type View = "inbox" | "workspace" | "board" | "people" | "search";
+type View = "inbox" | "workspace" | "board" | "people" | "search" | "settings";
 
 const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   inbox: { title: "Inbox", subtitle: "Decisions and approvals waiting on you" },
@@ -25,13 +27,18 @@ const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   board: { title: "Board", subtitle: "Pipeline by stage" },
   people: { title: "People", subtitle: "Outreach contacts and drafts" },
   search: { title: "Search", subtitle: "Find new roles and start agents" },
+  settings: { title: "Settings", subtitle: "Stats, connections, and telemetry" },
 };
 
 const CLOSED = new Set(["rejected", "skipped", "archived"]);
 
 function viewFromHash(): View {
   const head = window.location.hash.replace(/^#/, "").split("/")[0];
-  return head === "workspace" || head === "board" || head === "people" || head === "search"
+  return head === "workspace" ||
+    head === "board" ||
+    head === "people" ||
+    head === "search" ||
+    head === "settings"
     ? head
     : "inbox";
 }
@@ -115,6 +122,7 @@ export default function App() {
     { id: "board", label: "Board", icon: Columns3, count: counts.board, hint: "applied" },
     { id: "people", label: "People", icon: Users, count: counts.people, hint: "to approve" },
     { id: "search", label: "Search", icon: SearchIcon, count: 0, hint: "find roles" },
+    { id: "settings", label: "Settings", icon: SettingsIcon, count: 0, hint: "stats and connections" },
   ];
 
   const copy = VIEW_COPY[view];
@@ -217,6 +225,8 @@ export default function App() {
             />
           ) : view === "search" ? (
             <Search onJobsChanged={() => void loadJobs()} onOpenDossier={openDossier} />
+          ) : view === "settings" ? (
+            <Settings />
           ) : view === "board" ? (
             <Board jobs={jobs} onOpen={openDossier} />
           ) : (

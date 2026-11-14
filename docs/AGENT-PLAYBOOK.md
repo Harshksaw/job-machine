@@ -723,3 +723,48 @@ wall. Open the URL in a tab and read the `<pre>` for `{"ok":true}`. URL is in `A
 Chrome's built-in JSON viewer can wrap the response so the `<pre>` is not found. Read
 `document.body.innerText` instead. Never reload the URL to re-check: the webhook appends a
 row on every load, so a reload creates a duplicate.
+
+## Mail sync (since 2026-11-14)
+
+Outcomes arrive by email and nothing in the service reads mail, so until this existed the
+dashboard showed 3 interviews and 6 rejections while the inbox held about 14 positive
+responses and 36 rejections. The run is `prompts/mail-sync.md`: an agent with Gmail
+access classifies outcome emails into an events file, and
+`resume-tailor-service/scripts/mail_outcomes.py` matches them to dossiers and writes an
+activity per email (`external_id: gmail:<message id>`, so reruns are safe) plus the
+`rejected` or `interview` status. Dry run first; `--apply` writes.
+
+Gotchas: a Gmail phrase search for rejection wording also matches receipts ("if you are
+not selected"), so read the thread when a snippet is cut off. Companies with several
+applied dossiers (Faire, Instacart, Agave) come back ambiguous until the event's `role`
+is set to the dossier's exact title.
+
+## Settings tab and telemetry (since 2026-11-14)
+
+The dashboard Settings tab (`#settings`, `app/system.py`) shows the funnel (applied, heard
+back, rejected, by source, by fit, per week), runs connection checks, and lists request
+latency. "Heard back" counts any dossier with an `interview` activity, so log assessments
+and interviews with `kind: interview` or the rate reads low. Stats come from
+`job_store.report_rows()`, a narrow read: loading whole dossiers for a report took 20
+seconds against Neon, the narrow read takes 2.
+
+Connection checks are `POST /api/system/connections/<id>/check` with the
+`X-Job-Machine: dashboard` header. None spends a model call or a search credit. Add a
+check by adding an entry to `CHECKS` in `app/system.py`.
+
+OpenTelemetry (`app/telemetry.py`) traces every request and the headless `claude` call.
+Spans always land in an in-memory buffer that the Settings tab reads. To export them, set
+`OTEL_EXPORTER_OTLP_ENDPOINT` (OTLP over HTTP, for example `http://localhost:4318`) in
+`resume-tailor-service/.env` and restart. `OTEL_SDK_DISABLED=true` turns tracing off.
+Wrap a new slow outside call in `with telemetry.span("name", key=value):`.
+
+**Langfuse (live since 2026-11-14).** It ingests OTLP, so no SDK is needed. The service
+reads `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and `LANGFUSE_BASE_URL` from
+`resume-tailor-service/.env` (gitignored) and exports only the `claude.cli` spans there,
+because the dashboard polls the API every 20 seconds and request spans would bury them.
+Setting `OTEL_EXPORTER_OTLP_ENDPOINT` instead sends every span to that collector.
+`tests/conftest.py` blanks these variables so test runs never export. The `claude.cli`
+span carries model, tokens and cost. Prompts and replies
+hold resume and application text, so they are sent only with
+`JOB_MACHINE_TRACE_CONTENT=true`. Only the service's own model calls (kit, tailor, answers)
+are traced; Claude Code, Cursor and Codex agent sessions are not.
