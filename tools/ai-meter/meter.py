@@ -17,7 +17,9 @@ reason says so: the router never blocks work, it only steers it.
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -46,6 +48,24 @@ def _opencode_health() -> str | None:
         except ValueError:
             continue
     return None
+
+def _cursor_health() -> str | None:
+    """A logged out Cursor CLI exits quickly with "Not logged in", and every agent run
+    started on it fails, so the router must not pick it however much budget it has."""
+    binary = shutil.which(
+        "cursor-agent",
+        path=os.pathsep.join([str(Path.home() / ".local/bin"), "/opt/homebrew/bin", os.environ.get("PATH", "")]),
+    )
+    if binary is None:
+        return None  # not installed here; nothing to route around
+    try:
+        out = subprocess.run(
+            [binary, "status"], capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    return "Not logged in" if "not logged in" in (out.stdout + out.stderr).lower() else None
+
 
 # CodeBurn ids mapped to router names: "cursor" in policy.json is the CLI, so
 # CodeBurn's "cursor" (the editor) is renamed out of its way.
@@ -111,7 +131,11 @@ def poll() -> dict:
     state = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "providers": summarize(_codeburn("today"), _codeburn("week")),
-        "health": {name: down for name, down in (("opencode", _opencode_health()),) if down},
+        "health": {
+            name: down
+            for name, down in (("opencode", _opencode_health()), ("cursor", _cursor_health()))
+            if down
+        },
     }
     policy = load_policy()
     state["routes"] = {kind: pick(kind, state, policy) for kind in policy["routes"]}

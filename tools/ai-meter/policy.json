@@ -7,7 +7,7 @@
   },
   "routes": {
     "direction": ["claude", "codex"],
-    "heavy": ["cursor", "opencode", "codex"],
+    "heavy": ["cursor", "codex"],
     "bulk": ["cursor", "codex"]
   },
   "tools": {
@@ -22,10 +22,6 @@
     "cursor": {
       "command": "cursor-agent -p --force \"<brief>\"",
       "note": "Long, token heavy work: apply batches, harvests, refactors. Reads AGENTS.md."
-    },
-    "opencode": {
-      "command": "opencode run -m opencode/deepseek-v4.1-flash-free \"<brief>\"",
-      "note": "Free model. Bulk text: summaries, extraction, first drafts. Verify its output."
     }
   }
 }
