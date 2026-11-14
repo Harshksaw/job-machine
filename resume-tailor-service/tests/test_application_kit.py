@@ -44,9 +44,9 @@ def _job() -> JobWorkspace:
 def _valid_kit_payload() -> dict:
     cover = """Acme Cloud needs a backend engineer who can connect reliable services with useful product outcomes. That is the work I have been doing across production platforms, where careful delivery matters as much as the implementation itself.
 
-At Ommuse, I built a Go HubSpot sync for a 12K+ user music platform, including async batching and deduplication across 8 API trigger points. I also shipped infrastructure across AWS, Docker, Pulumi, and GitHub Actions. That experience maps directly to dependable backend ownership.
+At Ommuse, I built a Go HubSpot sync for a 12K+ user music platform, including async batching and deduplication across 8 API trigger points. I also owned the infrastructure behind it on AWS, written in Pulumi. That experience maps directly to dependable backend ownership.
 
-My Document Intelligence Platform adds the applied AI side: a multi-tenant RAG system using FastAPI, LangChain, and Qdrant, deployed on AWS ECS Fargate with idempotent ingestion. It gives me practical context for building RAG features while keeping failure handling and operations visible.
+My Document Intelligence Platform adds the applied AI side: a multi-tenant RAG system on FastAPI and Qdrant, deployed on AWS ECS Fargate with idempotent ingestion. It gives me practical context for building RAG features while keeping failure handling and operations visible.
 
 I would bring Acme Cloud evidence from shipped systems, a direct approach to unknowns, and the range to move between backend code, infrastructure, and product details. I would value a conversation about the Backend Engineer role and the problems the team wants this hire to own."""
     return {

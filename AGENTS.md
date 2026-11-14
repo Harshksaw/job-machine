@@ -125,7 +125,7 @@ actually runs a live session against workatastartup.com; capture what's learned 
 `docs/AGENT-PLAYBOOK.md` the same way Wellfound and ZipRecruiter are documented there. Do
 not invent selectors or flows for it ahead of that.
 
-**Research stage (added 2026-11-08):** research runs (Cursor or OpenCode portal sweeps
+**Research stage (added 2026-11-08):** research runs (Cursor portal sweeps
 following `prompts/research-sweep.md`, and the Fantastic Jobs "Research" presets for US, UK
 and Australia remote) stage finds with `POST /api/research` instead of creating dossiers.
 Promotion to a `discovered` dossier happens from the dashboard Search tab or
@@ -284,18 +284,23 @@ the playbook.
   cover letters): "full stack", not "full-stack"; "a person in the loop", not
   "human-in-the-loop". Reword rather than hyphenate.
 - **Parallel agents claim before they touch a dossier (since 2026-11-08).** Claude,
-  Cursor, Codex and OpenCode may run at the same time, so: before working a dossier, POST
+  Cursor and Codex may run at the same time, so: before working a dossier, POST
   an activity `{"kind":"note","title":"Claimed by <agent> <session>"}`; skip any dossier
   claimed by another agent in the last 2 hours or with an `applied` event from any session;
   and re-GET the dossier immediately before any submit. Only one agent drives a browser
-  apply lane at a time. Free models (OpenCode DeepSeek Free) take no browser work: they
-  score, draft answers through `/answers/generate`, harvest boards and check liveness.
+  apply lane at a time. OpenCode was dropped on 2026-11-09: every free model failed (401,
+  "Model is unavailable", or an empty reply) and it never finished a task.
   Lanes and the live queue are in the newest `SESSION-HANDOFF-*.md`.
+- **Per job research (since 2026-11-09).** The dashboard Overview tab has a "Research
+  this job" button that starts Cursor on the `research-job` task in
+  `resume-tailor-service/app/agent_runs.py`: full JD, `apply_url` (the employer's own
+  form, since board links are not apply links), company context, why this role, the kit
+  (fit vs resume plus cover letter), up to 3 people, draft form answers, and a
+  `research_brief` with SUMMARY, APPLY AT, GAPS, WHAT TO PUT IN, NEEDS HARSH and PEOPLE.
 - **Route work by the usage meter (since 2026-11-07).** Before handing off a long task,
   run `python3 tools/ai-meter/meter.py route <direction|heavy|bulk>` and use the tool and
   command it prints. Direction and judgment stay with Claude (Codex once Claude nears its
-  budget); token heavy work goes to the Cursor CLI; bulk text goes to a free OpenCode
-  model. Budgets and routes are in `tools/ai-meter/policy.json`; spend comes from
+  budget); token heavy work and bulk text go to the Cursor CLI, then Codex. Budgets and routes are in `tools/ai-meter/policy.json`; spend comes from
   CodeBurn and refreshes every 5 minutes into `logs/ai-usage.json`. Do not hold back on
   outcomes, but do send bulk work to the cheaper tool the meter names.
 - Be lean for speed, not for budget: batch independent tool calls, prefer text extraction

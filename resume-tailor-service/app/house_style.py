@@ -50,3 +50,38 @@ def unhyphenate(text: str) -> str:
 
 def apply_house_style(text: str) -> str:
     return unhyphenate(strip_dashes(text))
+
+
+# Harsh, 2026-11-09: answers must read like an engineer wrote them himself. These are
+# the phrases recruiters spot as model output; a hit sends the draft back for a retry.
+AI_TELLS = (
+    "i am excited", "i'm excited", "excited to", "thrilled", "passionate", "delve",
+    "leverag", "showcas", "robust", "seamless", "cutting edge", "cutting-edge",
+    "spearhead", "in today's", "fast paced", "fast-paced", "tapestry", "testament to",
+    "aligns perfectly", "align perfectly", "unique blend", "synergy", "game changer",
+    "game-changer", "world class", "world-class", "eager to contribute",
+    "meaningful impact", "i would love the opportunity", "honed", "invaluable",
+    "not only", "i am confident that", "i'm confident that", "look no further",
+)
+
+# Three or more capitalised or dotted names in one comma list ("React, Node.js,
+# PostgreSQL, Redis and AWS") reads as a keyword dump, not an answer.
+_NAME = r"[A-Z][\w.+#]*"
+_STACK_LIST = re.compile(
+    rf"\b{_NAME}(?:,\s+{_NAME})+,?\s+(?:and|or)\s+{_NAME}"  # A, B and C / A, B, and C
+    rf"|\b(?:{_NAME},\s+){{2,}}{_NAME}"  # A, B, C
+)
+
+
+def voice_errors(text: str, label: str) -> list[str]:
+    lowered = text.lower()
+    errors = [
+        f"{label} uses AI sounding phrase {tell!r}; say it plainly"
+        for tell in AI_TELLS
+        if tell in lowered
+    ]
+    if _STACK_LIST.search(text):
+        errors.append(
+            f"{label} lists a tech stack; name at most two tools and lead with what changed for users"
+        )
+    return errors

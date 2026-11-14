@@ -1,4 +1,6 @@
-import { Target } from "lucide-react";
+import { useState } from "react";
+import { ExternalLink, Search, Target } from "lucide-react";
+import { startAgent } from "../api";
 import type { JobWorkspaceInput } from "../types";
 import JobPeople from "./JobPeople";
 
@@ -17,9 +19,70 @@ const label = "text-sm font-medium text-zinc-300";
 
 export default function JobOverview({ jobId, draft, onChange, onPeopleChanged }: Props) {
   const analysis = draft.fit_analysis;
+  const [researchMessage, setResearchMessage] = useState("");
+  const [researching, setResearching] = useState(false);
+
+  const research = async () => {
+    setResearching(true);
+    setResearchMessage("");
+    try {
+      const started = await startAgent("cursor", "research-job", jobId);
+      setResearchMessage(
+        `Cursor is researching this job (pid ${started.pid}). Reload in a few minutes. Log: logs/agents/${started.log}`
+      );
+    } catch (error) {
+      setResearchMessage(error instanceof Error ? error.message : "Failed to start research.");
+    } finally {
+      setResearching(false);
+    }
+  };
 
   return (
     <div className="divide-y divide-zinc-800">
+      <section className="space-y-3 px-4 py-5 lg:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold text-zinc-100">Research brief</h3>
+          <button
+            type="button"
+            className="jm-btn-primary ml-auto inline-flex items-center gap-1.5"
+            onClick={() => void research()}
+            disabled={researching}
+          >
+            <Search className="h-4 w-4" />
+            {draft.research_brief ? "Research again" : "Research this job"}
+          </button>
+        </div>
+        {researchMessage && <p className="text-xs text-zinc-400">{researchMessage}</p>}
+        <label className={label}>
+          Apply at
+          <div className="flex gap-2">
+            <input
+              className={field}
+              value={draft.apply_url}
+              onChange={(event) => onChange("apply_url", event.target.value)}
+              placeholder="The employer's own application page"
+            />
+            {draft.apply_url && (
+              <a
+                className="jm-icon-btn mt-1"
+                href={draft.apply_url}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open application page"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            )}
+          </div>
+        </label>
+        <textarea
+          className={`${field} min-h-48 resize-y whitespace-pre-wrap text-sm leading-relaxed`}
+          value={draft.research_brief}
+          onChange={(event) => onChange("research_brief", event.target.value)}
+          placeholder="Not researched yet. Research this job fills the summary, apply link, gaps, what to put in each form field, what only you can answer, and people to contact."
+          aria-label="Research brief"
+        />
+      </section>
       {analysis && (
         <section className="space-y-4 px-4 py-5 lg:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start">

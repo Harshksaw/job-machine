@@ -394,10 +394,14 @@ export function runSearch(preset: string, limit: number, timeFrame: string): Pro
   );
 }
 
-export function startAgent(tool: string, task: string): Promise<{ pid: number; log: string }> {
+export function startAgent(
+  tool: string,
+  task: string,
+  jobId?: string
+): Promise<{ pid: number; log: string }> {
   return jsonRequest(
     "/api/agents/run",
-    { ...DASHBOARD_POST, body: JSON.stringify({ tool, task }) },
+    { ...DASHBOARD_POST, body: JSON.stringify({ tool, task, job_id: jobId ?? null }) },
     "Failed to start the agent."
   );
 }

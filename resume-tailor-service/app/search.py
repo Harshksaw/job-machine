@@ -29,6 +29,7 @@ class SearchRequest(BaseModel):
 class AgentRequest(BaseModel):
     tool: str
     task: str
+    job_id: str | None = None
 
 
 @router.get("/api/search/presets")
@@ -64,7 +65,7 @@ def run(data: SearchRequest, x_job_machine: str | None = Header(default=None)) -
 def run_agent(data: AgentRequest, x_job_machine: str | None = Header(default=None)) -> dict:
     _require_dashboard(x_job_machine)
     try:
-        return agent_runs.start(data.tool, data.task)
+        return agent_runs.start(data.tool, data.task, data.job_id)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 

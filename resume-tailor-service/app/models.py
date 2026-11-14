@@ -283,6 +283,8 @@ class JobWorkspaceInput(BaseModel):
     company: str
     role: str
     job_url: str = ""
+    # The employer's own application page when job_url is a board listing.
+    apply_url: str = ""
     source: str = ""
     location: str = ""
     work_mode: str = ""
@@ -293,6 +295,9 @@ class JobWorkspaceInput(BaseModel):
     jd_text: str = ""
     company_context: str = ""
     why_this_role: str = ""
+    # Plain text from the research-job agent: summary, apply link, gaps, what to
+    # put in each form field, what only Harsh can answer, people.
+    research_brief: str = ""
     notes: str = ""
     next_action: str = ""
     deadline: str = ""

@@ -8,7 +8,7 @@
   "routes": {
     "direction": ["claude", "codex"],
     "heavy": ["cursor", "opencode", "codex"],
-    "bulk": ["opencode", "cursor"]
+    "bulk": ["cursor", "codex"]
   },
   "tools": {
     "claude": {

@@ -97,3 +97,18 @@ def test_invented_figures_are_still_rejected():
     assert not literal_fact_is_traceable("3+", corpus)
     assert not literal_fact_is_traceable("500K+", corpus)
     assert literal_fact_is_traceable("30K+", corpus)
+
+
+def test_reformatted_bank_dates_are_traceable():
+    # Live 2026-11-09: the bank says "Apr 2026 -- Present" and "Dec 2024 -- Jun 2025";
+    # the kit wrote "2026-Present" and "2024-Jun" and every kit was thrown away.
+    corpus = "apr 2026 -- present; dec 2024 -- jun 2025; jan 2024 -- dec 2024"
+    for fact in ("2026-Present", "2024-Jun", "2024-Dec", "Dec 2024", "2024/2025"):
+        assert literal_fact_is_traceable(fact, corpus), fact
+
+
+def test_date_compounds_with_absent_pieces_or_figures_are_rejected():
+    corpus = "apr 2026 -- present; dec 2024 -- jun 2025"
+    assert not literal_fact_is_traceable("2019-Present", corpus)
+    assert not literal_fact_is_traceable("2024-40K", corpus)
+    assert not literal_fact_is_traceable("2024-Q3", corpus)

@@ -142,7 +142,36 @@ def literal_fact_is_traceable(fact: str, corpus_lower: str) -> bool:
     if lowered in corpus_lower:
         return True
     stem = singularize(fact)
-    return stem != lowered and stem in corpus_lower
+    if stem != lowered and stem in corpus_lower:
+        return True
+    return _date_compound_is_traceable(lowered, corpus_lower)
+
+
+_YEAR_RE = re.compile(r"(19|20)\d\d")
+_DATE_WORDS = {"present", "current"}
+
+
+def _date_compound_is_traceable(lowered: str, corpus_lower: str) -> bool:
+    """The bank stores "Apr 2026 -- Present"; the model writes "2026-Present"
+    or "2024-Jun" and the whole kit was thrown away (2026-11-09). A compound
+    passes only when every piece is a year, a month or "present" that the
+    corpus already contains as a word, so a figure or an absent year is still
+    caught.
+    """
+    parts = [p for p in re.split(r"[\s/-]+", lowered) if p]
+    if len(parts) < 2:
+        return False
+    for part in parts:
+        if _YEAR_RE.fullmatch(part) or part in _DATE_WORDS:
+            names = {part}
+        elif part in MONTH_ALIASES or part in MONTH_ALIASES.values():
+            full = MONTH_ALIASES.get(part, part)
+            names = {full} | {short for short, long in MONTH_ALIASES.items() if long == full}
+        else:
+            return False
+        if not any(re.search(rf"\b{name}\b", corpus_lower) for name in names):
+            return False
+    return True
 
 
 def fact_is_traceable(fact: str, allowed: set[str]) -> bool:

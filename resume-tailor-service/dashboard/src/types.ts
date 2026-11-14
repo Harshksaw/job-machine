@@ -156,6 +156,8 @@ export interface JobWorkspaceInput {
   jd_text: string;
   company_context: string;
   why_this_role: string;
+  research_brief: string;
+  apply_url: string;
   notes: string;
   next_action: string;
   deadline: string;

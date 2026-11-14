@@ -68,7 +68,7 @@ def test_agent_tasks_are_fixed():
     assert response.status_code == 400
 
 
-def test_agent_start_runs_the_named_task(monkeypatch, tmp_path):
+def _fake_start(monkeypatch, tmp_path):
     started = {}
 
     class FakeProc:
@@ -81,29 +81,41 @@ def test_agent_start_runs_the_named_task(monkeypatch, tmp_path):
     monkeypatch.setattr(agent_runs, "LOG_DIR", tmp_path)
     monkeypatch.setattr(agent_runs.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(agent_runs.shutil, "which", lambda name, path=None: "/bin/" + name)
-    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", tmp_path / "none.log")
-    result = agent_runs.start("opencode", "score-new")
+    return started
+
+
+def test_agent_start_runs_the_named_task(monkeypatch, tmp_path):
+    started = _fake_start(monkeypatch, tmp_path)
+    result = agent_runs.start("cursor", "score-new")
     assert result["pid"] == 4242
-    assert started["cmd"][:2] == ["/bin/opencode", "run"]
+    assert started["cmd"][:2] == ["/bin/cursor-agent", "-p"]
     assert "Do not submit applications" in started["cmd"][-1]
 
 
-def test_opencode_is_refused_while_its_free_models_are_down(monkeypatch, tmp_path):
-    log = tmp_path / "opencode.log"
-    now = agent_runs.datetime.now(agent_runs.timezone.utc)
-    stamp = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    log.write_text(f'timestamp={stamp} level=ERROR message="stream error" error.error="AI_APICallError: Upstream request failed: Model is unavailable."\n')
-    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", log)
-    assert agent_runs.opencode_unavailable()
-    with pytest.raises(ValueError, match="free models are unavailable"):
-        agent_runs.start("opencode", "score-new")
+def test_opencode_is_no_longer_offered():
+    # Every free model failed on 2026-11-07 and 11-08; the lane was dropped.
+    assert "opencode" not in agent_runs.TOOLS
 
 
-def test_old_opencode_failures_do_not_block(monkeypatch, tmp_path):
-    log = tmp_path / "opencode.log"
-    log.write_text('timestamp=2026-01-01T00:00:00.000Z level=ERROR error.error="Model is unavailable."\n')
-    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", log)
-    assert not agent_runs.opencode_unavailable()
+def test_job_research_runs_on_one_named_dossier(monkeypatch, tmp_path):
+    started = _fake_start(monkeypatch, tmp_path)
+    job_id = "93bd70fa0de747a398ed4af6cd6c45dc"
+    result = agent_runs.start("cursor", "research-job", job_id)
+    assert result["job_id"] == job_id
+    prompt = started["cmd"][-1]
+    assert f"/api/jobs/{job_id}" in prompt
+    assert "research_brief" in prompt and "apply_url" in prompt
+    assert job_id in result["log"]
+
+
+@pytest.mark.parametrize("job_id", [None, "", "../etc", "93bd70fa; rm -rf ~", "X" * 32])
+def test_job_research_needs_a_real_job_id(job_id):
+    with pytest.raises(ValueError):
+        agent_runs.start("cursor", "research-job", job_id)
+
+
+def test_job_tasks_are_not_listed_as_bulk_tasks():
+    assert "research-job" not in agent_runs.TASKS
 
 
 def test_runs_are_killed_after_the_time_limit(monkeypatch, tmp_path):
@@ -116,7 +128,6 @@ def test_runs_are_killed_after_the_time_limit(monkeypatch, tmp_path):
             return None
 
     monkeypatch.setattr(agent_runs, "LOG_DIR", tmp_path)
-    monkeypatch.setattr(agent_runs, "OPENCODE_LOG", tmp_path / "none.log")
     monkeypatch.setattr(agent_runs.subprocess, "Popen", lambda cmd, **kw: FakeProc())
     monkeypatch.setattr(agent_runs.shutil, "which", lambda name, path=None: "/bin/" + name)
     monkeypatch.setattr(agent_runs.os, "killpg", lambda pid, sig: killed.append(pid))

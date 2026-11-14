@@ -12,7 +12,7 @@ from app import traceability
 from app.bank import ResumeBank
 from app.claude_cli import schema_completer
 from app.errors import JobGenerationError
-from app.house_style import strip_dashes, unhyphenate
+from app.house_style import strip_dashes, unhyphenate, voice_errors
 from app.models import (
     GeneratedAnswer,
     GeneratedApplicationKit,
@@ -268,6 +268,7 @@ def validate_kit(
         errors.extend(_fact_errors(item, allowed, f"positioning {index}"))
 
     cover = kit.cover_letter.strip()
+    errors.extend(voice_errors(cover, "cover letter"))
     if analysis.recommendation in {"apply", "review"}:
         count = _word_count(cover)
         if count < 120 or count > 360:
@@ -309,6 +310,18 @@ def validate_kit(
             errors.append("cover letter contains an unresolved placeholder")
         errors.extend(_fact_errors(cover, allowed, "cover letter"))
     return errors
+
+
+# Harsh, 2026-11-09: answers and letters must read like he wrote them. The validator
+# (house_style.voice_errors) rejects the phrases and stack lists named here.
+_VOICE = """Voice: write the way Harsh talks, plainly, as one person. Lead with what
+changed for real users or the team (who used it, what got faster, cheaper or fixed,
+the ledger's own numbers), then say briefly how. Name at most two tools, and only
+where they matter to the answer; never list a stack. Mix short and long sentences.
+Contractions are fine. Banned: excited, thrilled, passionate, leverage, showcase,
+robust, seamless, cutting edge, spearheaded, delve, fast paced, testament to,
+aligns perfectly, synergy, honed, invaluable, "not only", "I would love the
+opportunity", "I am confident that"."""
 
 
 def _kit_prompt(
@@ -357,6 +370,7 @@ Rules:
    2-3 cited real accomplishments, acknowledge a material gap when useful, and
    close directly. Sound like one engineer writing to another. No generic
    enthusiasm, flattery, placeholders, "passionate", or "I am writing to apply".
+   {_VOICE}
 7. A low score must not delete, archive, or skip the dossier.
 8. NEVER use an em-dash. Not in the cover letter, the role thesis, positioning,
    evidence, or any other field. Use a comma, a period, a colon, or restructure
@@ -518,7 +532,8 @@ Verified candidate sources:
 Use only verified candidate facts and relevant company/JD context. Answer the
 question immediately, then support it with the smallest useful amount of
 specific evidence. Do not add a greeting or sign-off. Do not invent. Cite every
-candidate claim through source_ids. If a truthful answer requires an unknown
+candidate claim through source_ids.
+{_VOICE} If a truthful answer requires an unknown
 personal preference or decision, set needs_user_input=true, leave answer empty,
 and state exactly what must be confirmed.
 {correction}
@@ -552,6 +567,7 @@ def validate_answer(
         errors.append("answer must cite at least one candidate source")
     if "[" in answer.answer or "]" in answer.answer:
         errors.append("answer contains an unresolved placeholder")
+    errors.extend(voice_errors(answer.answer, "answer"))
     allowed = " ".join(
         [
             *(sources[source_id] for source_id in answer.source_ids if source_id in sources),
