@@ -142,6 +142,7 @@ export const INBOX_QUEUES = [
   "decide",
   "ready",
   "applied",
+  "follow-up",
   "needs-you",
   "all",
 ] as const;
@@ -152,6 +153,7 @@ export const INBOX_QUEUE_LABEL: Record<InboxQueue, string> = {
   decide: "Needs decision",
   ready: "Approved",
   applied: "Applied",
+  "follow-up": "Follow up",
   "needs-you": "Needs you",
   all: "All",
 };
@@ -166,6 +168,7 @@ export function inInboxQueue(
     status: string;
     needs_user_input?: boolean;
     queued_person_count?: number;
+    follow_up_eligible?: boolean;
   },
   queue: InboxQueue
 ): boolean {
@@ -178,6 +181,7 @@ export function inInboxQueue(
   }
   if (queue === "decide") return DECIDE.has(job.status);
   if (queue === "ready") return READY.has(job.status);
+  if (queue === "follow-up") return Boolean(job.follow_up_eligible);
   return APPLIED.has(job.status);
 }
 

@@ -3,6 +3,7 @@
 
 import type {
   ApplicationAnswerInput,
+  FollowUpNudge,
   JobActivityInput,
   JobDecision,
   JobSummary,
@@ -139,6 +140,14 @@ export async function deletePerson(id: string): Promise<void> {
 
 export function listJobs(): Promise<JobSummary[]> {
   return jsonRequest<JobSummary[]>("/api/jobs", {}, "Failed to load job dossiers.");
+}
+
+export function listFollowUpNudges(): Promise<FollowUpNudge[]> {
+  return jsonRequest<FollowUpNudge[]>(
+    "/api/jobs/follow-ups",
+    {},
+    "Failed to load follow up queue."
+  );
 }
 
 export function getJob(id: string): Promise<JobWorkspace> {
@@ -463,6 +472,13 @@ export interface SystemStats {
       calls_day: number;
       day_budget: number | null;
       week_budget: number | null;
+    }[];
+    agents?: {
+      tool: string;
+      status: "ok" | "blocked" | "idle";
+      label: string;
+      detail: string;
+      at: string | null;
     }[];
   } | null;
   service: { started_at: string; database: string };

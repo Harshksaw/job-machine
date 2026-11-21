@@ -210,4 +210,15 @@ export interface JobSummary {
   updated_at: string;
 }
 
+export interface FollowUpNudge {
+  job_id: string;
+  company: string;
+  role: string;
+  application_date: string;
+  age_days: number;
+  state: "due" | "overdue";
+  draft: string;
+  approval_required: boolean;
+}
+
 export type JobDecision = "approve" | "hold" | "applied";

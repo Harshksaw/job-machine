@@ -405,6 +405,19 @@ class JobSummary(BaseModel):
     updated_at: str
 
 
+class FollowUpNudge(BaseModel):
+    """A read-only, approval-gated application follow-up draft."""
+
+    job_id: str
+    company: str
+    role: str
+    application_date: str
+    age_days: int
+    state: str
+    draft: str
+    approval_required: bool = True
+
+
 class GeneratedApplicationKit(BaseModel):
     analysis: FitAnalysis
     cover_letter: str = ""

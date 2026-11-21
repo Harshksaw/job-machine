@@ -20,6 +20,7 @@ from app.models import (
     Application,
     ApplicationAnswer,
     ApplicationAnswerInput,
+    FollowUpNudge,
     GeneratedApplicationKit,
     JobActivity,
     JobActivityInput,
@@ -248,10 +249,84 @@ def list_summaries() -> list[JobSummary]:
 
 REPORT_FIELDS = ("status", "source", "fit_score", "updated_at", "activities")
 
+FOLLOW_UP_MIN_DAYS = 7
+_FOLLOW_UP_STATUSES = frozenset({"applied", "outreach"})
+_RESPONSE_ACTIVITY_KINDS = frozenset({"reply", "interview"})
+
 
 def report_rows() -> list[dict]:
     """Just the fields the Settings stats need, without each dossier's JD and revisions."""
     return _store().fields(_COLLECTION, REPORT_FIELDS)
+
+
+def _activity_time(activity: JobActivity) -> datetime | None:
+    value = activity.occurred_at or activity.created_at
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def follow_up_nudges(*, now: datetime | None = None) -> list[FollowUpNudge]:
+    """Return strong applied listings that need an approval-gated follow up.
+
+    This is deliberately read-only. A nudge is eligible seven days after the most
+    recent logged application and remains visible as overdue until a reply or
+    interview is logged. The returned text is a draft, never a send instruction.
+    """
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=timezone.utc)
+    else:
+        current_time = current_time.astimezone(timezone.utc)
+
+    nudges: list[FollowUpNudge] = []
+    for job in load_jobs():
+        if (job.fit_score or 0) < 8 or job.status not in _FOLLOW_UP_STATUSES:
+            continue
+        applications = [
+            event_time
+            for activity in job.activities
+            if activity.kind == "applied"
+            if (event_time := _activity_time(activity)) is not None
+        ]
+        if not applications:
+            continue
+        applied_at = max(applications)
+        if any(
+            response_at is not None and response_at >= applied_at
+            for activity in job.activities
+            if activity.kind in _RESPONSE_ACTIVITY_KINDS
+            for response_at in [_activity_time(activity)]
+        ):
+            continue
+        age_days = (current_time - applied_at).days
+        if age_days < FOLLOW_UP_MIN_DAYS:
+            continue
+        state = "due" if age_days <= 10 else "overdue"
+        application_date = applied_at.date().isoformat()
+        nudges.append(
+            FollowUpNudge(
+                job_id=job.id,
+                company=job.company,
+                role=job.role,
+                application_date=application_date,
+                age_days=age_days,
+                state=state,
+                draft=(
+                    "Hello,\n\n"
+                    f"I wanted to follow up on my application for the {job.role} "
+                    f"role at {job.company}, submitted on {application_date}. "
+                    "I remain interested in the work your team is doing and would "
+                    "be glad to share anything else that would help.\n\n"
+                    "Thank you for your time."
+                ),
+            )
+        )
+    return sorted(nudges, key=lambda nudge: (-nudge.age_days, nudge.company, nudge.role))
 
 
 def add_job(data: JobWorkspaceInput, *, session: str = "") -> JobWorkspace:

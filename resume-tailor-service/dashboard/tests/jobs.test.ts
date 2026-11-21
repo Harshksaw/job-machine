@@ -28,6 +28,21 @@ test("needs-you includes blocked answers and queued outreach", () => {
   );
 });
 
+test("follow-up queue includes only server-eligible application nudges", () => {
+  assert.equal(
+    inInboxQueue({ status: "applied", follow_up_eligible: true }, "follow-up"),
+    true
+  );
+  assert.equal(
+    inInboxQueue({ status: "applied", follow_up_eligible: false }, "follow-up"),
+    false
+  );
+  assert.equal(
+    inInboxQueue({ status: "rejected", follow_up_eligible: false }, "follow-up"),
+    false
+  );
+});
+
 test("inboxBlocker prefers the action a human needs to take", () => {
   assert.equal(
     inboxBlocker({

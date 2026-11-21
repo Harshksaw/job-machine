@@ -1,6 +1,6 @@
 # Job Machine: End-to-End System Architecture
 
-Last code and local-build verification: 2026-08-27. The RDS `job_registry` /
+Last code and local-build verification: 2026-11-18. The RDS `job_registry` /
 `jobs-pipeline` bulk-discovery lane has been removed; it no longer exists.
 Launchd-specific claims below were last checked 2026-08-07 against
 `job-search/push-2026-08-01` @ `8d151cb`.
@@ -16,8 +16,9 @@ Two loosely coupled subsystems plus one agent driving them:
 | 1 | **Agent / browser lane** | `AGENTS.md`, `prompts/`, `browser-profile/` | Claude Code CLI + Playwright MCP on the host | Searching, reading listings, filling and submitting forms, outreach |
 | 2 | **Resume-tailor service** | `resume-tailor-service/` | FastAPI on `127.0.0.1:8420`, supervised by launchd | Inbox, dossiers, session history, tailored PDFs, application kits, people, dashboard UI |
 
-Discovery is LinkedIn, Wellfound, and company ATS only. There is no RDS jobs
-database and no local Postgres mirror.
+Discovery is LinkedIn, Wellfound, company ATS boards, and the approved remote boards.
+There is no RDS jobs database and no local Postgres mirror. Dossiers, people, and
+staged research results are stored in hosted Neon Postgres through the service API.
 
 Two external dependencies: the **Anthropic models** (reached through the local
 `claude` CLI, no API key) and a **Google Apps Script webhook** (compact sheet log).
@@ -30,7 +31,8 @@ flowchart LR
     subgraph svc["resume-tailor-service :8420 (launchd)"]
       API["FastAPI app.main"]
       SPA["React SPA<br/>app/static (prebuilt)"]
-      STORE[("data/jobs.json<br/>data/people.json<br/>data/sessions.jsonl")]
+      STORE[("Neon Postgres<br/>documents: jobs, people, research")]
+      SESS[("data/sessions.jsonl<br/>append only narrative")]
       OUT[("output/slug-hash/<br/>resume.pdf + meta.json")]
     end
     CLI["claude CLI (headless -p)"]
@@ -40,6 +42,7 @@ flowchart LR
   PW -->|LinkedIn / Wellfound / ATS| WEB[("Job boards + ATS")]
   CC -->|REST| API
   API --> STORE
+  API --> SESS
   API --> OUT
   API --> CLI
   CLI --> ANT[("Anthropic models")]
@@ -90,16 +93,18 @@ sequenceDiagram
 ### 3.1 Module map
 
 ```
-app/main.py          FastAPI app; /health, /tailor; mounts 4 routers; SPA last
+app/main.py          FastAPI app; /health, /tailor; mounts API routers; SPA last
 ├─ app/dashboard.py  /api/applications, /api/tailored/{id}[/pdf], /api/resume-bank
 ├─ app/jobs.py       /api/jobs …  CRUD, capture, decisions, job people,
 │                    activity, restore, generate-kit, answers CRUD + generate
 ├─ app/people.py     /api/people CRUD
 └─ app/sessions.py   /api/sessions summaries, filtered events, append
 
-app/job_store.py     the real core. JSON store with threading.RLock,
-                     atomic writes, revisions, activity log, dedup on capture
-app/people_store.py  same pattern, simpler
+app/job_store.py     dossier core: revisions, activity log, and capture dedupe
+app/people_store.py  people records and dossier associations
+app/research_store.py staged discovery rows, promoted only on an explicit action
+app/doc_store.py     Neon Postgres document backend, indexed for URL and role dedupe;
+                     JSON files remain a local test and no-DATABASE_URL fallback
 app/session_store.py append-only JSONL narrative with per-session idempotency
 app/application_kit.py  kit + answer generation AND their fact-traceability gate
 app/tailor.py        prompt build -> model -> parse -> validate -> 1 retry
@@ -167,17 +172,27 @@ Commit `5ca2699` loosened this after over-strict traceability caused 502s on
 
 ### 3.4 Persistence
 
-No database in the service. `data/jobs.json` and `data/people.json` are read and
-written whole under process-local locks with atomic replacement. Each dossier
-carries its own `activities[]` (append-only event log) and `revisions[]`
-(restorable snapshots), so job history lives inside the record.
-`data/sessions.jsonl` adds a cross-job, append-only narrative: explicit dossier
-activities and Inbox mutations with a session label are mirrored there, while
-direct browser/agent events use `POST /api/sessions/event`. External IDs are
-idempotent within a session, reads and appends share a re-entrant lock,
-malformed JSONL rows are skipped, and reads are bounded to the most recent 8
-MiB. Mirroring is best-effort after the primary mutation so an auxiliary I/O
-failure is logged without returning a false failure for data already saved.
+Production records live in hosted Neon Postgres, selected by `DATABASE_URL_UNPOOLED`
+or `DATABASE_URL`. The service stores jobs, people, and research records in the
+`documents` table as JSONB documents with indexed `canonical_url`, `match_key`,
+`status`, `sort_key`, and lightweight summary columns. That lets the Inbox and
+dossier dedupe avoid loading every full JD and revision history. Postgres write
+transactions take a collection advisory lock, so separate service processes cannot
+interleave a read modify write update. The direct Neon URL is preferred for the
+long running FastAPI process; the driver disables prepared statements so a pooled URL
+also remains compatible with PgBouncer transaction pooling.
+
+The JSON stores (`data/jobs.json`, `data/people.json`, and `data/research.json`) are
+a deliberately retained fallback for local development and tests when no database URL
+is set. They are not the production source of truth. Each dossier still carries its own
+`activities[]` append only log and `revisions[]` restorable snapshots.
+
+`data/sessions.jsonl` remains the local cross job, append only narrative: explicit
+dossier activities and Inbox mutations with a session label are mirrored there, while
+direct browser and agent events use `POST /api/sessions/event`. External IDs are
+idempotent within a session, malformed rows are skipped, and reads are bounded to the
+most recent 8 MiB. Mirroring is best effort after the primary database mutation, so an
+auxiliary I/O failure does not report a false failure for a saved dossier.
 
 People can be pinned to a dossier by `job_id`. Legacy people without a job ID
 remain company-level and optionally role-specific. Inbox summary counts and

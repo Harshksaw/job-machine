@@ -143,6 +143,30 @@ def test_capture_endpoint_is_automation_friendly(monkeypatch, tmp_path):
     assert response.json()["jd_text"] == "Full listing text"
 
 
+def test_follow_up_endpoint_returns_read_only_approval_gated_drafts(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    payload = {key: job[key] for key in JobWorkspaceInput.model_fields}
+    payload.update({"status": "applied", "fit_score": 8})
+    assert client.put(f"/api/jobs/{job['id']}", json=payload).status_code == 200
+    assert client.post(
+        f"/api/jobs/{job['id']}/activity",
+        json={
+            "kind": "applied",
+            "title": "Application submitted",
+            "occurred_at": "2026-11-10T12:00:00+00:00",
+        },
+    ).status_code == 200
+
+    response = client.get("/api/jobs/follow-ups")
+
+    assert response.status_code == 200
+    nudge = response.json()[0]
+    assert nudge["job_id"] == job["id"]
+    assert nudge["approval_required"] is True
+    assert "Backend Engineer" in nudge["draft"]
+
+
 def test_sensitive_answer_is_saved_as_needing_input(monkeypatch, tmp_path):
     client = _client(monkeypatch, tmp_path)
     created = _create(client)

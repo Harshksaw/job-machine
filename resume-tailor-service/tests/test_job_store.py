@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -286,6 +287,52 @@ def test_applied_activity_never_regresses_a_later_status(monkeypatch, tmp_path):
     )
     assert updated is not None
     assert updated.status == "interview"
+
+
+def test_follow_up_nudges_only_queue_strong_unanswered_applications(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    now = datetime(2026, 11, 18, tzinfo=timezone.utc)
+
+    due = job_store.add_job(
+        JobWorkspaceInput(company="Due", role="Engineer", status="applied", fit_score=8)
+    )
+    overdue = job_store.add_job(
+        JobWorkspaceInput(company="Overdue", role="Engineer", status="outreach", fit_score=9)
+    )
+    replied = job_store.add_job(
+        JobWorkspaceInput(company="Replied", role="Engineer", status="applied", fit_score=10)
+    )
+    low_fit = job_store.add_job(
+        JobWorkspaceInput(company="Low fit", role="Engineer", status="applied", fit_score=7)
+    )
+    recent = job_store.add_job(
+        JobWorkspaceInput(company="Recent", role="Engineer", status="applied", fit_score=8)
+    )
+    for job, days_ago in ((due, 7), (overdue, 11), (replied, 8), (low_fit, 8), (recent, 6)):
+        job_store.add_activity(
+            job.id,
+            JobActivityInput(
+                kind="applied",
+                title="Application submitted",
+                occurred_at=(now - timedelta(days=days_ago)).isoformat(),
+            ),
+        )
+    job_store.add_activity(
+        replied.id,
+        JobActivityInput(
+            kind="reply",
+            title="Recruiter replied",
+            occurred_at=(now - timedelta(days=7)).isoformat(),
+        ),
+    )
+
+    nudges = job_store.follow_up_nudges(now=now)
+
+    assert [nudge.job_id for nudge in nudges] == [overdue.id, due.id]
+    assert [nudge.state for nudge in nudges] == ["overdue", "due"]
+    assert all(nudge.approval_required for nudge in nudges)
+    assert "Overdue" in nudges[0].draft
+    assert "Engineer" in nudges[0].draft
 
 
 def test_malformed_store_is_never_overwritten(monkeypatch, tmp_path):

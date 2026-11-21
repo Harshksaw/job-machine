@@ -1,0 +1,10 @@
+# Public ATS boards to poll. Add a company only after verifying its public board token.
+#
+# boards:
+#   - company: Example Co
+#     provider: greenhouse  # greenhouse | lever | ashby
+#     token: example-co     # board token, not a private credential
+#
+# The watcher stages only untracked listings in the Research queue. It never creates a
+# dossier or sends an application. Keep this list deliberately small and targeted.
+boards: []

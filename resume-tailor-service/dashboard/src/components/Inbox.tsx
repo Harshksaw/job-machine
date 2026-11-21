@@ -16,6 +16,7 @@ import {
 import type {
   ApplicationAnswer,
   ApplicationAnswerInput,
+  FollowUpNudge,
   JobDecision,
   JobSummary,
   JobWorkspace,
@@ -24,6 +25,7 @@ import {
   addJobActivity,
   decideJob,
   getJob,
+  listFollowUpNudges,
   listJobs,
   updateApplicationAnswer,
 } from "../api";
@@ -50,6 +52,7 @@ interface Props {
 
 export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }: Props) {
   const [jobs, setJobs] = useState<JobSummary[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUpNudge[]>([]);
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -64,8 +67,9 @@ export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }:
   const loadList = useCallback(async (silent = false) => {
     if (!silent) setPhase("loading");
     try {
-      const next = await listJobs();
+      const [next, nudges] = await Promise.all([listJobs(), listFollowUpNudges()]);
       setJobs(next);
+      setFollowUps(nudges);
       setPhase("ready");
       setError("");
     } catch (err) {
@@ -129,21 +133,24 @@ export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }:
       decide: 0,
       ready: 0,
       applied: 0,
+      "follow-up": 0,
       "needs-you": 0,
       all: 0,
     };
+    const followUpIds = new Set(followUps.map((nudge) => nudge.job_id));
     for (const job of jobs) {
       for (const key of INBOX_QUEUES) {
-        if (inInboxQueue(job, key)) next[key] += 1;
+        if (inInboxQueue({ ...job, follow_up_eligible: followUpIds.has(job.id) }, key)) next[key] += 1;
       }
     }
     return next;
-  }, [jobs]);
+  }, [jobs, followUps]);
 
   const shown = useMemo(() => {
+    const followUpIds = new Set(followUps.map((nudge) => nudge.job_id));
     const q = query.trim().toLowerCase();
     const filtered = jobs.filter((job) => {
-      if (!inInboxQueue(job, queue)) return false;
+      if (!inInboxQueue({ ...job, follow_up_eligible: followUpIds.has(job.id) }, queue)) return false;
       if (minFit != null && (job.fit_score ?? 0) < minFit) return false;
       if (!q) return true;
       return (
@@ -157,7 +164,7 @@ export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }:
       );
     });
     return sortInbox(filtered);
-  }, [jobs, queue, minFit, query]);
+  }, [jobs, followUps, queue, minFit, query]);
 
   const decide = async (decision: JobDecision) => {
     if (!ticket) return;
@@ -314,6 +321,7 @@ export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }:
             ) : ticket ? (
               <TicketDetail
                 job={ticket}
+                followUp={followUps.find((nudge) => nudge.job_id === ticket.id) ?? null}
                 busy={busy}
                 onDecide={(decision) => void decide(decision)}
                 onUpdated={(job) => {
@@ -585,6 +593,7 @@ function BlockedAnswerEditor({
 
 function TicketDetail({
   job,
+  followUp,
   busy,
   onDecide,
   onUpdated,
@@ -592,6 +601,7 @@ function TicketDetail({
   onPeopleChanged,
 }: {
   job: JobWorkspace;
+  followUp: FollowUpNudge | null;
   busy: JobDecision | null;
   onDecide: (decision: JobDecision) => void;
   onUpdated: (job: JobWorkspace) => void;
@@ -738,6 +748,18 @@ function TicketDetail({
             <Clock3 className="mt-1 h-5 w-5 shrink-0" aria-hidden />
             {job.next_action}
           </p>
+        )}
+
+        {followUp && (
+          <section className="rounded-md border border-amber-700 bg-amber-950/20 p-4">
+            <h3 className="text-sm font-semibold text-amber-100">Follow up draft</h3>
+            <p className="mt-2 text-sm leading-relaxed text-amber-50/90">
+              {followUp.age_days} days since application, {followUp.state}. Use only with a recruiter, talent, or HR contact. Harsh approval is required before any message is sent.
+            </p>
+            <pre className="mt-3 whitespace-pre-wrap rounded bg-zinc-950/60 p-3 font-sans text-sm leading-6 text-zinc-100">
+              {followUp.draft}
+            </pre>
+          </section>
         )}
 
         {blocked.length > 0 && (

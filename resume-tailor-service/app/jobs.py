@@ -22,6 +22,7 @@ from app.errors import (
 from app.models import (
     Application,
     ApplicationAnswerInput,
+    FollowUpNudge,
     GenerateAnswerRequest,
     JobActivityInput,
     JobCaptureInput,
@@ -165,6 +166,12 @@ def list_jobs(
         )
         for job in jobs
     ]
+
+
+@router.get("/api/jobs/follow-ups", response_model=list[FollowUpNudge])
+def list_follow_up_nudges() -> list[FollowUpNudge]:
+    """Read-only approval queue. It cannot send or approve a message."""
+    return job_store.follow_up_nudges()
 
 
 @router.post("/api/jobs", response_model=JobWorkspace, status_code=201)
