@@ -17,6 +17,12 @@ const STATUS_STYLE: Record<ConnectionResult["status"], { dot: string; text: stri
   fail: { dot: "bg-rose-400", text: "text-rose-300", label: "Down" },
 };
 
+const AGENT_STATUS_STYLE = {
+  ok: { dot: "bg-teal-400", text: "text-teal-300" },
+  blocked: { dot: "bg-rose-400", text: "text-rose-300" },
+  idle: { dot: "bg-zinc-600", text: "text-zinc-500" },
+} as const;
+
 function percent(rate: number | null): string {
   return rate === null ? "n/a" : `${(rate * 100).toFixed(rate < 0.1 ? 1 : 0)}%`;
 }
@@ -342,6 +348,24 @@ export default function Settings() {
             <Wallet className="h-4 w-4 text-teal-300" aria-hidden /> AI spend (CAD)
           </h2>
           <p className="mt-1 text-xs text-zinc-500">From the usage meter, refreshed {when(stats.ai_usage.generated_at)}.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {(stats.ai_usage.agents ?? []).map((agent) => {
+              const style = AGENT_STATUS_STYLE[agent.status];
+              return (
+                <div key={agent.tool} className="rounded-md border border-zinc-800 p-2.5">
+                  <div className="flex items-center gap-2 text-sm text-zinc-100">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} aria-hidden />
+                    {agent.tool}
+                    <span className={`ml-auto text-xs ${style.text}`}>{agent.label}</span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-zinc-500" title={agent.detail}>
+                    {agent.detail || "Start a run to see its status"}
+                  </p>
+                  {agent.at && <p className="text-xs text-zinc-600">as of {when(agent.at)}</p>}
+                </div>
+              );
+            })}
+          </div>
           <table className="mt-3 w-full text-sm tabular-nums">
             <thead className="text-left text-xs text-zinc-500">
               <tr>
@@ -365,6 +389,14 @@ export default function Settings() {
                     }`}
                   >
                     {row.week.toFixed(2)}
+                    {row.week_budget ? (
+                      <div className="ml-auto mt-1 h-1 w-20 rounded bg-zinc-800" aria-hidden>
+                        <div
+                          className={`h-1 rounded ${row.week >= row.week_budget * 0.8 ? "bg-amber-400" : "bg-teal-400"}`}
+                          style={{ width: `${Math.min(100, (row.week / row.week_budget) * 100)}%` }}
+                        />
+                      </div>
+                    ) : null}
                   </td>
                   <td className="py-1.5 text-right">{row.week_budget ?? "none"}</td>
                   <td className="py-1.5 text-right">{row.calls_day}</td>

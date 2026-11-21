@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, Header, HTTPException
 
 from app import (
+    agent_health,
     agent_runs,
     doc_store,
     fantastic,
@@ -147,7 +148,11 @@ def _ai_usage() -> dict | None:
         for name, spend in usage.get("providers", {}).items()
         if spend.get("week") or name in budgets
     ]
-    return {"generated_at": usage.get("generated_at"), "providers": providers}
+    return {
+        "generated_at": usage.get("generated_at"),
+        "providers": providers,
+        "agents": agent_health.agent_health(agent_runs.LOG_DIR),
+    }
 
 
 def _stats() -> dict:

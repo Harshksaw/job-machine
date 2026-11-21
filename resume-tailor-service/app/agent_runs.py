@@ -73,7 +73,11 @@ JOB_TASKS: dict[str, dict] = {
             "You are working in the job machine repo. Read AGENTS.md and docs/AGENT-PLAYBOOK.md "
             "first and follow every hard rule, above all: never fabricate; every claim traces to "
             "resume-tailor-service/content/resume_bank.yaml. Do not submit applications, send "
-            "outreach, or drive any browser. Research exactly one dossier: "
+            "outreach, or click any final Submit or Apply button. You may use Ego Lite for read "
+            "only research: run `ego-browser skill` first, create ONE TaskSpace named "
+            "\"research {job_id}\", never reuse or hand off a space, never sign in, enter a "
+            "password or solve a captcha, never type into the form beyond reading it, and close "
+            "your space when done. Research exactly one dossier: "
             "http://127.0.0.1:8420/api/jobs/{job_id}. Before anything else POST "
             "/api/jobs/{job_id}/activity {{\"kind\":\"note\",\"title\":\"Claimed by Cursor "
             "research-job\"}}; stop if another agent claimed it in the last 2 hours. Then:\n"
@@ -88,12 +92,17 @@ JOB_TASKS: dict[str, dict] = {
             "4. why_this_role: 2 to 4 sentences tying the role to his real bank evidence.\n"
             "5. Fit vs resume: POST /api/jobs/{job_id}/generate-kit (allow up to 5 minutes). It "
             "writes fit_analysis and the cover letter; if it fails, record the error, do not "
-            "write a letter yourself.\n"
+            "write a letter yourself. If a cover letter exists afterwards (new or already there), "
+            "GET the dossier and confirm cover_letter is saved on it so the dashboard shows it, "
+            "and say in the brief whether the form has a cover letter field.\n"
             "6. People: find up to 3 real people (hiring manager, engineering lead, recruiter) "
             "from public pages and POST them to /api/jobs/{job_id}/people with their profile "
             "url and why they matter. Never contact anyone.\n"
             "7. Form answers: list the questions this application form is likely to ask (read "
-            "the real form over HTTP when the ATS exposes it). For each free text question POST "
+            "the real form: open apply_url in your own Ego Lite TaskSpace and read the actual "
+            "fields, required marks, dropdown options and any upload, without filling or "
+            "submitting; fall back to HTTP only if the page will not load). For each free text "
+            "question POST "
             "/api/jobs/{job_id}/answers/generate with constraints \"Under 120 words. First "
             "person, plain. No em dashes.\". Personal values come from docs/PERSONAL-ANSWERS.md "
             "only; when a value is missing there, mark it for Harsh, never guess.\n"
@@ -116,7 +125,7 @@ JOB_TASKS: dict[str, dict] = {
     },
 }
 # A run that outlives this is stuck (a free model down makes OpenCode retry forever).
-MAX_RUNTIME = 45 * 60
+MAX_RUNTIME = 4 * 60 * 60
 def _watchdog(proc: subprocess.Popen, log_path: Path) -> None:
     def stop() -> None:
         if proc.poll() is None:
@@ -136,7 +145,8 @@ def _watchdog(proc: subprocess.Popen, log_path: Path) -> None:
 # or an empty reply) and it never finished a task.
 TOOLS: dict[str, list[str]] = {
     "cursor": ["cursor-agent", "-p", "--force", "--trust", "--output-format", "text"],
-    "codex": ["codex", "exec", "--full-auto"],
+    # The sandbox blocks loopback by default, so without network_access Codex cannot reach the dossier API.
+    "codex": ["codex", "exec", "-s", "workspace-write", "-c", "sandbox_workspace_write.network_access=true"],
 }
 
 
