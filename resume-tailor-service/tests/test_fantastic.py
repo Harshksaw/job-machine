@@ -136,3 +136,16 @@ def test_runs_are_killed_after_the_time_limit(monkeypatch, tmp_path):
     agent_runs.time.sleep(0.3)
     assert killed == [777]
     assert "stopped after" in (tmp_path / result["log"]).read_text()
+
+
+def test_advanced_params_never_hold_a_bare_multi_word_name():
+    # Fantastic Jobs parses *_advanced as a tsquery, so "United States" is a 400. A multi word
+    # name needs the phrase operator: "United <-> States".
+    import re
+
+    for name, preset in fantastic.PRESETS.items():
+        for key, value in preset["params"].items():
+            if not key.endswith("_advanced"):
+                continue
+            for piece in re.split(r"\s*(?:<->|[|&()!])\s*", value):
+                assert not re.search(r"\s", piece.strip()), f"{name}.{key}: {piece!r}"

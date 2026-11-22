@@ -35,6 +35,8 @@ _TITLE = (
     "machine <-> learning | AI | applied <-> AI | forward <-> deployed) & "
     "!(senior | staff | principal | lead | manager | director | head)"
 )
+# Every *_advanced value is a tsquery: a space inside a name is a syntax error (400, "Invalid
+# syntax in advanced search expression"), so a multi word place needs <-> ("United <-> States").
 _BASE = {
     "title_advanced": _TITLE,
     "ai_experience_level": "0-2,2-5",
@@ -51,7 +53,7 @@ PRESETS: dict[str, dict] = {
         "label": "Remote in Canada or US, early career",
         "params": {
             **_BASE,
-            "location_advanced": "Canada | United States",
+            "location_advanced": "Canada | (United <-> States)",
             "ai_work_arrangement": "Remote Solely,Remote OK",
         },
     },
@@ -59,7 +61,7 @@ PRESETS: dict[str, dict] = {
         "label": "US roles that sponsor visas, new grad",
         "params": {
             **_BASE,
-            "location_advanced": "United States",
+            "location_advanced": "United <-> States",
             "ai_experience_level": "0-2",
             "ai_visa_sponsorship": "only",
         },
@@ -71,13 +73,27 @@ PRESETS: dict[str, dict] = {
         "label": "Research: US remote",
         "stage": "research",
         "default_limit": 40,
-        "params": {**_BASE, "location_advanced": "United States", "ai_work_arrangement": "Remote Solely"},
+        "params": {**_BASE, "location_advanced": "United <-> States", "ai_work_arrangement": "Remote Solely"},
+    },
+    # The API has no company size filter, so startups are approximated by the ATSes small
+    # companies use (`source`).
+    "startup-remote": {
+        "label": "Research: remote startups, Canada or US",
+        "stage": "research",
+        "default_limit": 40,
+        "params": {
+            **_BASE,
+            "location_advanced": "Canada | (United <-> States)",
+            "ai_work_arrangement": "Remote Solely",
+            "ai_experience_level": "0-2",
+            "source": "ashby,lever,workable",
+        },
     },
     "uk-remote": {
         "label": "Research: UK remote",
         "stage": "research",
         "default_limit": 15,
-        "params": {**_BASE, "location_advanced": "United Kingdom", "ai_work_arrangement": "Remote Solely"},
+        "params": {**_BASE, "location_advanced": "United <-> Kingdom", "ai_work_arrangement": "Remote Solely"},
     },
     "au-remote": {
         "label": "Research: Australia remote",
