@@ -141,10 +141,23 @@ def _watchdog(proc: subprocess.Popen, log_path: Path) -> None:
     timer.start()
 
 
-# OpenCode was dropped on 2026-11-09: every free model failed (401, "Model is unavailable",
-# or an empty reply) and it never finished a task.
+# Cursor always runs Grok 4.7 Medium. OpenCode is the fallback; OPENCODE_TIER in .env picks its
+# model: "free" (default) or "go" (the paid OpenCode Go plan). Only Harsh flips it to "go".
+# (OpenCode was dropped on 2026-11-09 when its free models failed; big-pickle finished three
+# real research runs on 2026-11-22.)
+OPENCODE_MODELS = {"free": "opencode/big-pickle", "go": "opencode-go/deepseek-v4-pro"}
+
+
+def _opencode_model() -> str:
+    tier = os.environ.get("OPENCODE_TIER", "free").strip().lower() or "free"
+    if tier not in OPENCODE_MODELS:
+        raise ValueError(f"OPENCODE_TIER must be one of: {', '.join(OPENCODE_MODELS)}")
+    return OPENCODE_MODELS[tier]
+
+
 TOOLS: dict[str, list[str]] = {
-    "cursor": ["cursor-agent", "-p", "--force", "--trust", "--output-format", "text"],
+    "cursor": ["cursor-agent", "-p", "--force", "--trust", "--model", "grok-4.7-medium", "--output-format", "text"],
+    "opencode": ["opencode", "run"],  # start() appends -m <model from OPENCODE_TIER>
     # The sandbox blocks loopback by default, so without network_access Codex cannot reach the dossier API.
     "codex": ["codex", "exec", "-s", "workspace-write", "-c", "sandbox_workspace_write.network_access=true"],
 }
@@ -171,7 +184,7 @@ def start(tool: str, task: str, job_id: str | None = None) -> dict:
     log_path = LOG_DIR / f"{stamp}-{tool}-{task}{'-' + job_id if job_id else ''}.log"
     with open(log_path, "w") as log:
         proc = subprocess.Popen(
-            [binary, *TOOLS[tool][1:], prompt],
+            [binary, *TOOLS[tool][1:], *(["-m", _opencode_model()] if tool == "opencode" else []), prompt],
             cwd=REPO, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
             start_new_session=True,
         )

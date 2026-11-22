@@ -92,9 +92,23 @@ def test_agent_start_runs_the_named_task(monkeypatch, tmp_path):
     assert "Do not submit applications" in started["cmd"][-1]
 
 
-def test_opencode_is_no_longer_offered():
-    # Every free model failed on 2026-11-07 and 11-08; the lane was dropped.
-    assert "opencode" not in agent_runs.TOOLS
+def test_cursor_always_runs_grok_4_7_medium(monkeypatch, tmp_path):
+    started = _fake_start(monkeypatch, tmp_path)
+    agent_runs.start("cursor", "score-new")
+    assert started["cmd"][started["cmd"].index("--model") + 1] == "grok-4.7-medium"
+
+
+def test_opencode_runs_the_free_model_unless_the_tier_is_flipped(monkeypatch, tmp_path):
+    started = _fake_start(monkeypatch, tmp_path)
+    monkeypatch.delenv("OPENCODE_TIER", raising=False)
+    agent_runs.start("opencode", "score-new")
+    assert started["cmd"][started["cmd"].index("-m") + 1] == "opencode/big-pickle"
+    monkeypatch.setenv("OPENCODE_TIER", "go")
+    agent_runs.start("opencode", "score-new")
+    assert started["cmd"][started["cmd"].index("-m") + 1].startswith("opencode-go/")
+    monkeypatch.setenv("OPENCODE_TIER", "paid")
+    with pytest.raises(ValueError):
+        agent_runs.start("opencode", "score-new")
 
 
 def test_job_research_runs_on_one_named_dossier(monkeypatch, tmp_path):
