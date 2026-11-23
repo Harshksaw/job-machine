@@ -168,3 +168,11 @@ def test_advanced_params_never_hold_a_bare_multi_word_name():
 def test_agent_prompts_protect_the_root_resume():
     prompts = [t["prompt"] for t in (*agent_runs.TASKS.values(), *agent_runs.JOB_TASKS.values())]
     assert all("resume.pdf" in p and "Never write to" in p for p in prompts)
+
+
+def test_antigravity_runs_headless_through_agy(monkeypatch, tmp_path):
+    started = _fake_start(monkeypatch, tmp_path)
+    result = agent_runs.start("antigravity", "score-new")
+    assert started["cmd"][:3] == ["/bin/agy", "--dangerously-skip-permissions", "-p"]
+    assert "Do not submit applications" in started["cmd"][-1]
+    assert "-antigravity-" in result["log"]

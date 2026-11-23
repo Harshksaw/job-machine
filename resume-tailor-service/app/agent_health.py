@@ -10,7 +10,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-TOOLS = ("cursor", "codex", "opencode")
+TOOLS = ("cursor", "codex", "opencode", "antigravity")
 # An agent log echoes its prompt and the repo docs near the top, so only the end counts.
 _TAIL = 1500
 # First match wins.

@@ -160,6 +160,8 @@ def _opencode_model() -> str:
 TOOLS: dict[str, list[str]] = {
     "cursor": ["cursor-agent", "-p", "--force", "--trust", "--model", "grok-4.7-medium", "--output-format", "text"],
     "opencode": ["opencode", "run"],  # start() appends -m <model from OPENCODE_TIER>
+    # Antigravity CLI (`agy`), default model; headless runs need the permission skip, as Cursor needs --force.
+    "antigravity": ["agy", "--dangerously-skip-permissions", "-p"],
     # The sandbox blocks loopback by default, so without network_access Codex cannot reach the dossier API.
     "codex": ["codex", "exec", "-s", "workspace-write", "-c", "sandbox_workspace_write.network_access=true"],
 }
