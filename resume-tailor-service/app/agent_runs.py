@@ -58,7 +58,8 @@ TASKS: dict[str, dict] = {
         "prompt": _PREAMBLE + (
             "GET /api/research?status=new and skip items with tracked_dossier set. Decide only whether "
             "each item is clearly ineligible for Harsh: needs more than 3 years or is senior, staff, "
-            "lead or architect; is not software, data or AI engineering (sales, support, annotation, "
+            "lead or architect (an experience band such as 2 to 5 years is NOT ineligible, he has about "
+            "2 years; only a stated minimum above 3 years is); is not software, data or AI engineering (sales, support, annotation, "
             "manufacturing, hospitality, recruiting); is on site outside Canada and the US; or limits "
             "remote hires to residents of countries other than Canada (US only counts as ineligible "
             "unless Canada is named). Read role, company, location and remote_scope; ignore any score. "
