@@ -156,3 +156,9 @@ def test_canonical_compile_emits_only_the_allowed_warning(tmp_path):
     assert seen == sorted(MANIFEST["allowed_warnings"]), (
         f"LaTeX warnings changed.\nexpected: {MANIFEST['allowed_warnings']}\ngot: {seen}"
     )
+
+
+def test_root_resume_pdf_is_not_truncated():
+    # An agent run once left resume.pdf at 0 bytes; fail loudly instead of at render time.
+    data = (REPO_ROOT / "resume.pdf").read_bytes()
+    assert data.startswith(b"%PDF") and len(data) > 10_000

@@ -163,3 +163,8 @@ def test_advanced_params_never_hold_a_bare_multi_word_name():
                 continue
             for piece in re.split(r"\s*(?:<->|[|&()!])\s*", value):
                 assert not re.search(r"\s", piece.strip()), f"{name}.{key}: {piece!r}"
+
+
+def test_agent_prompts_protect_the_root_resume():
+    prompts = [t["prompt"] for t in (*agent_runs.TASKS.values(), *agent_runs.JOB_TASKS.values())]
+    assert all("resume.pdf" in p and "Never write to" in p for p in prompts)

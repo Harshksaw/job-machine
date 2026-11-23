@@ -24,6 +24,7 @@ _PREAMBLE = (
     "You are working in the job machine repo. Read AGENTS.md and docs/AGENT-PLAYBOOK.md "
     "first and follow every hard rule. The dossier API is http://127.0.0.1:8420. "
     "Do not submit applications, send outreach, or drive any browser in this task. "
+    "Never write to, regenerate or delete resume.pdf in the repo root. "
 )
 TASKS: dict[str, dict] = {
     "score-new": {
@@ -73,7 +74,8 @@ JOB_TASKS: dict[str, dict] = {
             "You are working in the job machine repo. Read AGENTS.md and docs/AGENT-PLAYBOOK.md "
             "first and follow every hard rule, above all: never fabricate; every claim traces to "
             "resume-tailor-service/content/resume_bank.yaml. Do not submit applications, send "
-            "outreach, or click any final Submit or Apply button. You may use Ego Lite for read "
+            "outreach, or click any final Submit or Apply button. Never write to, regenerate or "
+            "delete resume.pdf in the repo root. You may use Ego Lite for read "
             "only research: run `ego-browser skill` first, create ONE TaskSpace named "
             "\"research {job_id}\", never reuse or hand off a space, never sign in, enter a "
             "password or solve a captcha, never type into the form beyond reading it, and close "
