@@ -176,3 +176,19 @@ def test_antigravity_runs_headless_through_agy(monkeypatch, tmp_path):
     assert started["cmd"][:3] == ["/bin/agy", "--dangerously-skip-permissions", "-p"]
     assert "Do not submit applications" in started["cmd"][-1]
     assert "-antigravity-" in result["log"]
+
+
+def test_gemini_runs_on_the_api_key_home_and_cheap_model(monkeypatch, tmp_path):
+    started = _fake_start(monkeypatch, tmp_path)
+    seen = {}
+    real = agent_runs.subprocess.Popen
+    monkeypatch.setattr(agent_runs.subprocess, "Popen", lambda cmd, **kw: (seen.update(kw), real(cmd, **kw))[1])
+    agent_runs.start("gemini", "triage-filter")
+    cmd = started["cmd"]
+    assert cmd[cmd.index("-m") + 1] == "gemini-3.5-flash-lite"
+    assert seen["env"]["GEMINI_CLI_HOME"].endswith(".job-machine-gemini")
+    assert "Never promote" in cmd[-1]
+
+
+def test_other_tools_keep_the_normal_environment(monkeypatch, tmp_path):
+    assert "GEMINI_CLI_HOME" not in agent_runs._tool_env("cursor")

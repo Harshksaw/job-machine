@@ -53,6 +53,20 @@ TASKS: dict[str, dict] = {
             "action | reason."
         ),
     },
+    "triage-filter": {
+        "label": "Filter research finds (dismiss only)",
+        "prompt": _PREAMBLE + (
+            "GET /api/research?status=new and skip items with tracked_dossier set. Decide only whether "
+            "each item is clearly ineligible for Harsh: needs more than 3 years or is senior, staff, "
+            "lead or architect; is not software, data or AI engineering (sales, support, annotation, "
+            "manufacturing, hospitality, recruiting); is on site outside Canada and the US; or limits "
+            "remote hires to residents of countries other than Canada (US only counts as ineligible "
+            "unless Canada is named). Read role, company, location and remote_scope; ignore any score. "
+            "POST /api/research/<id>/dismiss with header X-Job-Machine: dashboard only for those. "
+            "Never promote, never score fit, never touch dossiers. Leave everything else as new. "
+            "End with a table: company | role | action | reason."
+        ),
+    },
     "liveness": {
         "label": "Check stale postings",
         "prompt": _PREAMBLE + (
@@ -162,9 +176,20 @@ TOOLS: dict[str, list[str]] = {
     "opencode": ["opencode", "run"],  # start() appends -m <model from OPENCODE_TIER>
     # Antigravity CLI (`agy`), default model; headless runs need the permission skip, as Cursor needs --force.
     "antigravity": ["agy", "--dangerously-skip-permissions", "-p"],
+    # Gemini CLI on the Google AI Studio key (GEMINI_API_KEY in .env), cheap small model for bulk triage.
+    "gemini": ["gemini", "--skip-trust", "--yolo", "-m", "gemini-3.5-flash-lite", "-p"],
     # The sandbox blocks loopback by default, so without network_access Codex cannot reach the dossier API.
     "codex": ["codex", "exec", "-s", "workspace-write", "-c", "sandbox_workspace_write.network_access=true"],
 }
+
+
+def _tool_env(tool: str) -> dict[str, str]:
+    env = dict(os.environ)
+    if tool == "gemini":
+        # The global Gemini settings select the retired Google login. A separate home selects the
+        # API key instead and leaves ~/.gemini alone (see ~/.job-machine-gemini/.gemini/settings.json).
+        env["GEMINI_CLI_HOME"] = str(Path.home() / ".job-machine-gemini")
+    return env
 
 
 def start(tool: str, task: str, job_id: str | None = None) -> dict:
@@ -190,7 +215,7 @@ def start(tool: str, task: str, job_id: str | None = None) -> dict:
         proc = subprocess.Popen(
             [binary, *TOOLS[tool][1:], *(["-m", _opencode_model()] if tool == "opencode" else []), prompt],
             cwd=REPO, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-            start_new_session=True,
+            start_new_session=True, env=_tool_env(tool),
         )
     _watchdog(proc, log_path)
     return {"pid": proc.pid, "tool": tool, "task": task, "job_id": job_id, "log": log_path.name}
