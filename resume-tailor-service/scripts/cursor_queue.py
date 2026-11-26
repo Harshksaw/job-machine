@@ -86,6 +86,8 @@ Lane: apply. Follow the apply section of docs/BACKLOG-RUN-PROMPT.md (Gmail check
 letter recipe, fill but never submit). Browser budget: ONE Ego Lite TaskSpace per dossier, at
 most 2 spaces open at once and at most 2 tabs per space. Close each space as soon as the dossier is
 filled and handed off or parked. Never open a listing you are not about to fill.
+In the handoff activity, list every field label with the exact value typed or picked, and every
+field left blank with why; save free text answers via POST /api/jobs/<id>/answers.
 """,
     "review": _COMMON + """
 Lane: review. NO BROWSER. Quality over speed: these are the few Tier A jobs that matter most.

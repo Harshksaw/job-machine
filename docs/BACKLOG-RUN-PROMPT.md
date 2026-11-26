@@ -90,7 +90,10 @@ other field back.
 4. Open the real application form in Ego Lite and read every field before typing. Fill
    everything the answers file and bank support. Leave blank anything personal that is not
    on file, and note it.
-5. Log an activity note: what you filled, what Harsh must do, what was blocked. Hand the
+5. Log an activity note: what you filled, what Harsh must do, what was blocked. List EVERY
+   field with its exact label and the exact value typed or picked (dropdowns, ratings, yes or
+   no, salary, links) and every field left blank with why, so answers can be reused later.
+   Save free text answers with `POST /api/jobs/<id>/answers` as well. Hand the
    space off. Move to the next dossier.
 
 ## Never get stuck

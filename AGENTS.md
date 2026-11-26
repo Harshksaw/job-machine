@@ -1,8 +1,9 @@
 # Job Machine: canonical agent brief
 
-**Every agent working in this repo reads this file first.** Claude Code, Cursor, and any
-other assistant. The tool-specific files (`CLAUDE.md`, `.cursor/rules/job-machine.mdc`)
-are thin pointers to this one and hold no rules of their own.
+**Every agent working in this repo reads this file first.** Claude Code, Cursor,
+Antigravity, and any other assistant. The tool-specific files (`CLAUDE.md`,
+`.cursor/rules/job-machine.mdc`, `.agent/rules/job-machine.md`) are thin pointers to this
+one and hold no rules of their own.
 
 This repo runs Harsh Saw's job search: discover listings, score fit, build an
 evidence-backed application kit, apply, mine people, log everything. The service is a
@@ -24,7 +25,7 @@ two files disagree, the owning file below wins.
 | Personal answers: address, salary numbers, exact work status, DOB, French, start date | `docs/PERSONAL-ANSWERS.md` | **no, gitignored** |
 | Operating techniques, ATS JD fetches, per-site gotchas, known-broken lanes | `docs/AGENT-PLAYBOOK.md` | yes, committed |
 | Dashboard (system of record: Inbox + dossiers) | `http://127.0.0.1:8420/` | local only |
-| Live queue state: applied, blocked, in flight | newest `SESSION-HANDOFF-*.md` (current: `SESSION-HANDOFF-2026-08-28.md`) | **no, gitignored** |
+| Live queue state: applied, blocked, in flight | newest `SESSION-HANDOFF-*.md` (current: `SESSION-HANDOFF-2026-11-25.md`) | **no, gitignored** |
 | Browser profile setup and CDP wiring | `docs/BROWSER_PROFILE.md` | yes, committed |
 | Service internals, endpoints, persistence | `docs/ARCHITECTURE.md`, `resume-tailor-service/README.md` | yes, committed |
 
@@ -302,8 +303,10 @@ the playbook.
   an activity `{"kind":"note","title":"Claimed by <agent> <session>"}`; skip any dossier
   claimed by another agent in the last 2 hours or with an `applied` event from any session;
   and re-GET the dossier immediately before any submit. Only one agent drives a browser
-  apply lane at a time. OpenCode was dropped on 2026-11-09: every free model failed (401,
-  "Model is unavailable", or an empty reply) and it never finished a task.
+  apply lane at a time, except parallel Ego Lite apply agents with separate TaskSpaces and
+  separate claimed dossiers. Tool status as of 2026-11-25 (Cursor out of credit, OpenCode
+  free `big-pickle` only, Gemini flash lite only) is in `docs/AGENT-PLAYBOOK.md` under
+  "Batch runner and fallback CLIs".
   Lanes and the live queue are in the newest `SESSION-HANDOFF-*.md`.
 - **Search Gmail before filling any form (since 2026-11-23).** The local database stops at
   the Nov 7 snapshot, so a dossier marked `ready` may already be applied or rejected. Search
