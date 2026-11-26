@@ -61,7 +61,10 @@ def test_job_crud_activity_and_restore(monkeypatch, tmp_path):
 
     listed = client.get("/api/jobs").json()
     assert listed[0]["id"] == job_id
+    assert "jd_text" not in listed[0]
+    assert "research_brief" not in listed[0]
     assert "revisions" not in listed[0]
+    assert "activities" not in listed[0]
     assert listed[0]["has_cover_letter"] is False
     assert listed[0]["needs_user_input"] is False
     assert listed[0]["work_mode"] == ""

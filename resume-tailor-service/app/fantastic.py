@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import urllib.parse
 import urllib.request
@@ -31,77 +32,96 @@ TRIAL = {"jobs": 500, "requests": 100}
 MAX_LIMIT = 50
 
 _TITLE = (
-    "(software | developer | engineer | full <-> stack | backend | frontend | "
+    "(software | developer | full <-> stack | backend | frontend | "
     "machine <-> learning | AI | applied <-> AI | forward <-> deployed) & "
-    "!(senior | staff | principal | lead | manager | director | head)"
+    "!(senior | staff | principal | lead | manager | director | head | founding | "
+    "support | sales | customer | solutions | GTM | QA | test | consultant | trainer | "
+    "mechanical | industrial | manufacturing | hardware | field | success | specialist | "
+    "intern | internship)"
 )
 # Every *_advanced value is a tsquery: a space inside a name is a syntax error (400, "Invalid
 # syntax in advanced search expression"), so a multi word place needs <-> ("United <-> States").
 _BASE = {
     "title_advanced": _TITLE,
-    "ai_experience_level": "0-2,2-5",
     "ai_employment_type": "FULL_TIME",
     "organization_agency": "exclude",
+    "ai_work_arrangement": "Remote Solely",
     "description_format": "text",
 }
+# Remote only, in this order of priority: Canada, US, Australia, UK. No experience level
+# filter (the title filter still drops senior and above) and no hybrid. Small companies are
+# approximated by the ATSes they use; `is_big_company` sets the rest aside.
+_SMALL_ATS = "ashby,lever,workable"
 PRESETS: dict[str, dict] = {
-    "canada": {
-        "label": "Canada, early career engineering",
-        "params": {**_BASE, "location_advanced": "Canada"},
+    "remote-ca": {
+        "label": "Remote Canada (first priority)",
+        "default_limit": 25,
+        "params": {**_BASE, "location_advanced": "Canada", "source": _SMALL_ATS},
     },
-    "remote-na": {
-        "label": "Remote in Canada or US, early career",
-        "params": {
-            **_BASE,
-            "location_advanced": "Canada | (United <-> States)",
-            "ai_work_arrangement": "Remote Solely,Remote OK",
-        },
-    },
-    "us-sponsor": {
-        "label": "US roles that sponsor visas, new grad",
-        "params": {
-            **_BASE,
-            "location_advanced": "United <-> States",
-            "ai_experience_level": "0-2",
-            "ai_visa_sponsorship": "only",
-        },
-    },
-    # Research presets stage results in research_store instead of creating dossiers.
-    # UK and Australia remote roles usually need local work rights, which he does not
-    # have, so each staged item carries remote_scope for the eligibility call.
-    "us-remote": {
-        "label": "Research: US remote",
+    "remote-us": {
+        "label": "Research: remote US",
         "stage": "research",
-        "default_limit": 40,
-        "params": {**_BASE, "location_advanced": "United <-> States", "ai_work_arrangement": "Remote Solely"},
+        "default_limit": 25,
+        "params": {**_BASE, "location_advanced": "United <-> States", "source": _SMALL_ATS},
     },
-    # The API has no company size filter, so startups are approximated by the ATSes small
-    # companies use (`source`).
-    "startup-remote": {
-        "label": "Research: remote startups, Canada or US",
+    "remote-au": {
+        "label": "Research: remote Australia",
         "stage": "research",
-        "default_limit": 40,
-        "params": {
-            **_BASE,
-            "location_advanced": "Canada | (United <-> States)",
-            "ai_work_arrangement": "Remote Solely",
-            "ai_experience_level": "0-2",
-            "source": "ashby,lever,workable",
-        },
+        "default_limit": 10,
+        "params": {**_BASE, "location_advanced": "Australia", "source": _SMALL_ATS},
     },
-    "uk-remote": {
-        "label": "Research: UK remote",
+    "remote-uk": {
+        "label": "Research: remote UK",
+        "stage": "research",
+        "default_limit": 10,
+        "params": {**_BASE, "location_advanced": "United <-> Kingdom", "source": _SMALL_ATS},
+    },
+    "remote-eu": {
+        "label": "Research: remote Europe",
         "stage": "research",
         "default_limit": 15,
-        "params": {**_BASE, "location_advanced": "United <-> Kingdom", "ai_work_arrangement": "Remote Solely"},
-    },
-    "au-remote": {
-        "label": "Research: Australia remote",
-        "stage": "research",
-        "default_limit": 15,
-        "params": {**_BASE, "location_advanced": "Australia", "ai_work_arrangement": "Remote Solely"},
+        "params": {**_BASE, "location_advanced": "Europe | Germany | France | Netherlands | "
+                   "Ireland | Spain | Portugal | Poland | Sweden | Denmark | Switzerland",
+                   "source": _SMALL_ATS},
     },
 }
+
+BIG_COMPANY_EMPLOYEES = 1000
+_BIG_NAMES = {
+    "google", "alphabet", "amazon", "aws", "microsoft", "meta", "apple", "netflix", "oracle",
+    "ibm", "salesforce", "adobe", "intel", "nvidia", "cisco", "sap", "dell", "vmware", "uber",
+    "lyft", "airbnb", "stripe", "shopify", "paypal", "ebay", "linkedin", "tesla", "spotify",
+    "accenture", "deloitte", "pwc", "kpmg", "ey", "capgemini", "infosys", "tcs", "wipro",
+    "cognizant", "rbc", "td", "bmo", "scotiabank", "cibc", "jpmorgan", "goldman sachs",
+    "morgan stanley", "citi", "wells fargo", "bank of america", "openai", "anthropic",
+    "databricks", "snowflake", "atlassian", "workday", "servicenow", "intuit", "walmart",
+}
+
+
+_TOO_SENIOR = re.compile(r"senior|\bsr\b|staff|principal|\blead\b|manager|director|head of", re.I)
+
+
+def _in_india(job: dict) -> bool:
+    places = [*(job.get("locations_derived") or []), *(job.get("ai_remote_location_derived") or [])]
+    return any("india" in str(p).lower() for p in places)
+
+
+def is_big_company(job: dict) -> str:
+    """Reason this employer is a big name (empty string when it looks small)."""
+    name = (job.get("organization") or "").strip().lower()
+    if name in _BIG_NAMES or any(name.startswith(f"{n} ") for n in _BIG_NAMES):
+        return "big name"
+    for key in ("linkedin_org_employees", "linkedin_org_size"):
+        value = job.get(key)
+        if isinstance(value, (int, float)):
+            employees = int(value)
+        else:
+            nums = [int(n.replace(",", "")) for n in re.findall(r"\d[\d,]*", str(value or ""))]
+            employees = min(nums) if nums else 0
+        if employees >= BIG_COMPANY_EMPLOYEES:
+            return f"{employees}+ employees"
+    return ""
+
 
 # Remote scopes that let someone living in Canada take the job.
 _OPEN_TO_CANADA = ("canada", "north america", "americas", "worldwide", "anywhere", "global")
@@ -230,29 +250,37 @@ def run_search(
         usage["requests_used"] += 1
         usage["jobs_used"] += len(jobs)
         session = f"Fantastic Jobs {datetime.now(timezone.utc):%Y-%m-%d}"
-        new, duplicates = [], []
-        if PRESETS[preset].get("stage") == "research":
-            for job in jobs:
+        new, duplicates, aside = [], [], []
+        staged = PRESETS[preset].get("stage") == "research"
+        for job in jobs:
+            if _TOO_SENIOR.search(job.get("title") or "") or _in_india(job):
+                continue
+            reason = is_big_company(job)
+            if reason:
+                # Keep it aside, deduped and visible, but out of the queue and out of the way.
+                item = to_research(job, preset)
+                item["status"] = "dismissed"
+                item["aside_reason"] = reason
+                research_store.add(item)
+                aside.append(f"{item['company']} ({reason})")
+            elif staged:
                 item, created = research_store.add(to_research(job, preset))
                 if created and not item["tracked_dossier"]:
                     new.append({"id": item["id"], "company": item["company"], "role": item["role"],
                                 "open_to_canada": item["open_to_canada"]})
                 else:
                     duplicates.append(f"{item['company']} | {item['role']}")
-            jobs_iter: list = []
-        else:
-            jobs_iter = jobs
-        for job in jobs_iter:
-            capture = to_capture(job, session)
-            if job_store.find_matching_job(capture.company, capture.role, capture.job_url):
-                duplicates.append(f"{capture.company} | {capture.role}")
-                continue
-            created, _ = job_store.capture_job(capture)
-            new.append({"id": created.id, "company": created.company, "role": created.role})
+            else:
+                capture = to_capture(job, session)
+                if job_store.find_matching_job(capture.company, capture.role, capture.job_url):
+                    duplicates.append(f"{capture.company} | {capture.role}")
+                    continue
+                created, _ = job_store.capture_job(capture)
+                new.append({"id": created.id, "company": created.company, "role": created.role})
         usage["runs"].append({
             "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "preset": preset, "fetched": len(jobs), "new": len(new),
+            "preset": preset, "fetched": len(jobs), "new": len(new), "aside": len(aside),
             "stage": PRESETS[preset].get("stage", "dossier"),
         })
         _save_usage(usage)
-    return {"fetched": len(jobs), "new": new, "duplicates": duplicates, "usage": usage_summary()}
+    return {"fetched": len(jobs), "new": new, "aside": aside, "duplicates": duplicates, "usage": usage_summary()}

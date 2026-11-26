@@ -195,7 +195,7 @@ export default function JobDetail({
 
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex h-8 items-center rounded-md border px-2 text-xs font-semibold ${fitTone(
+              className={`jm-badge h-8 px-2.5 text-xs normal-case tracking-normal ${fitTone(
                 draft.fit_score
               )}`}
             >

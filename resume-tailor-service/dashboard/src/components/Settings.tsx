@@ -152,7 +152,7 @@ export default function Settings() {
 
           <section className="grid gap-4 lg:grid-cols-2">
             <div className="jm-panel p-4">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+              <h2 className="flex items-center gap-2 mb-3 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100">
                 <BarChart3 className="h-4 w-4 text-teal-300" aria-hidden /> By source
               </h2>
               <table className="mt-3 w-full text-sm tabular-nums">
@@ -180,7 +180,7 @@ export default function Settings() {
             </div>
 
             <div className="jm-panel p-4">
-              <h2 className="text-sm font-semibold text-zinc-100">By fit score</h2>
+              <h2 className="mb-3 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100">By fit score</h2>
               <table className="mt-3 w-full text-sm tabular-nums">
                 <thead className="text-left text-xs text-zinc-500">
                   <tr>
@@ -207,7 +207,7 @@ export default function Settings() {
           </section>
 
           <section className="jm-panel p-4">
-            <h2 className="text-sm font-semibold text-zinc-100">Applications per week</h2>
+            <h2 className="mb-3 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100">Applications per week</h2>
             <ol className="mt-3 flex h-36 items-end gap-2" aria-label="Applications per week, last 12 weeks">
               {stats.weekly.map((week) => (
                 <li key={week.week} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
@@ -227,7 +227,7 @@ export default function Settings() {
 
       <section className="jm-panel p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+          <h2 className="flex items-center gap-2 mb-3 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100">
             <Plug className="h-4 w-4 text-teal-300" aria-hidden /> Connections
           </h2>
           <p className="text-xs text-zinc-500">
@@ -289,7 +289,7 @@ export default function Settings() {
 
       {telemetry && (
         <section className="jm-panel p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+          <h2 className="flex items-center gap-2 mb-3 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100">
             <Activity className="h-4 w-4 text-teal-300" aria-hidden /> Telemetry
           </h2>
           <p className="mt-1 text-xs text-zinc-500">
@@ -344,7 +344,7 @@ export default function Settings() {
 
       {stats?.ai_usage && (
         <section className="jm-panel p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+          <h2 className="flex items-center gap-2 mb-3 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100">
             <Wallet className="h-4 w-4 text-teal-300" aria-hidden /> AI spend (CAD)
           </h2>
           <p className="mt-1 text-xs text-zinc-500">From the usage meter, refreshed {when(stats.ai_usage.generated_at)}.</p>

@@ -117,8 +117,9 @@ only**. ZipRecruiter is also standing, but live-browser only (see the playbook).
 **Remote boards (added 2026-11-06):** Himalayas, Remotive, Jobicy, Working Nomads, and
 Remote OK, harvested with `resume-tailor-service/scripts/remote_boards.py`. It filters to
 engineering roles below senior that a Canada-based candidate can hold remotely and dedupes
-against the dossier store. A remote role limited to US residents is a skip: that means
-living in the US, which is not the on-site relocation the eligibility policy allows. The
+against the dossier store. A remote role limited to US, UK or Australian residents is no longer a skip (since
+2026-11-25): with fit 7 or higher it is **Tier A2**, second priority after roles open to Canada.
+Answer its forms honestly: authorized in that country No, sponsorship Yes. The
 board is for discovery; apply on the employer's own ATS when the listing links to one. YC's site
 mechanics (URL shape, apply-button selectors, dedupe key) are unverified until an agent
 actually runs a live session against workatastartup.com; capture what's learned in
@@ -130,7 +131,12 @@ following `prompts/research-sweep.md`, and the Fantastic Jobs "Research" presets
 and Australia remote) stage finds with `POST /api/research` instead of creating dossiers.
 Promotion to a `discovered` dossier happens from the dashboard Search tab or
 `POST /api/research/<id>/promote`. Fantastic Jobs is a 500 job trial: only through the
-dashboard presets, which enforce the budget. The old `job_registry (RDS)` pipeline and its
+dashboard presets, which enforce the budget. **Search policy since 2026-11-25:** remote only, no hybrid, no experience level filter (senior
+and above is still dropped by title). Employers in Canada, the US, Europe, the UK or Australia, nothing based in India. Order: Canada
+(`remote-ca`, straight to dossiers), then US, Europe, UK, Australia (`remote-us`, `remote-eu`,
+`remote-uk`, `remote-au`, staged in research). Batch work through
+`resume-tailor-service/scripts/cursor_queue.py`. Prefer small startups: big names and
+employers with 1,000+ staff are kept aside as dismissed research items, never worked. The old `job_registry (RDS)` pipeline and its
 dossiers were removed on 2026-11-07.
 
 There is **no** RDS `job_registry`, **no** `jobs-pipeline/` directory, and **no** local
@@ -241,11 +247,15 @@ Statuses: `applied` | `people-mined` | `outreach-sent` | `outreach-queued` | `re
 
 ## Automation browser
 
-**Default:** the **isolated job profile**. `JOB_MACHINE_CDP_PORT=9223
-./scripts/start-job-chrome.sh`, probe with
-`curl -fsS http://127.0.0.1:9223/json/version`, then
-`export BU_CDP_URL=http://127.0.0.1:9223`. It runs alongside daily Chrome.
-Full setup: `docs/BROWSER_PROFILE.md`.
+**Default since 2026-11-07: Ego Lite.** Run `ego-browser skill` first and follow the guide
+it prints. Use one named TaskSpace per run, print its `spaceId`, and never reuse a space
+that was handed to Harsh. Ego Lite carries his logins, so sign in only if he asks. Gotchas
+per ATS are in `docs/AGENT-PLAYBOOK.md` under "Ego Lite is the apply browser". Read only
+research (opening an apply page to see its real fields) is allowed in your own space;
+never click the final Submit from a research run.
+
+The isolated job Chrome profile (port 9223) below is **retired** and kept as history.
+Setup for it, if it is ever needed again: `docs/BROWSER_PROFILE.md`.
 
 **Regular Chrome over CDP no longer works and cannot be fixed.** Chrome 136 and
 later refuse remote debugging on the default user data directory. Chrome still
@@ -283,6 +293,10 @@ the playbook.
 - **No hyphenated compound words** in anything Harsh sends (notes, outreach, answers,
   cover letters): "full stack", not "full-stack"; "a person in the loop", not
   "human-in-the-loop". Reword rather than hyphenate.
+- **Application answers must not read like AI (Harsh, 2026-11-24).** Keep form answers and
+  essays casual, short and curated: one or two real facts, the way a person types a quick
+  reply, in whatever format the field expects. No buzzwords, no tidy three part lists, no
+  "I am excited to" openers, no resume tour. Fewer words beats more.
 - **Parallel agents claim before they touch a dossier (since 2026-11-08).** Claude,
   Cursor and Codex may run at the same time, so: before working a dossier, POST
   an activity `{"kind":"note","title":"Claimed by <agent> <session>"}`; skip any dossier
@@ -291,6 +305,10 @@ the playbook.
   apply lane at a time. OpenCode was dropped on 2026-11-09: every free model failed (401,
   "Model is unavailable", or an empty reply) and it never finished a task.
   Lanes and the live queue are in the newest `SESSION-HANDOFF-*.md`.
+- **Search Gmail before filling any form (since 2026-11-23).** The local database stops at
+  the Nov 7 snapshot, so a dossier marked `ready` may already be applied or rejected. Search
+  the inbox for "thank you for applying" plus the company name. A confirmation or rejection
+  means mark the dossier and stop. Notion and Scale AI were filled twice this way.
 - **Per job research (since 2026-11-09).** The dashboard Overview tab has a "Research
   this job" button that starts Cursor on the `research-job` task in
   `resume-tailor-service/app/agent_runs.py`: full JD, `apply_url` (the employer's own

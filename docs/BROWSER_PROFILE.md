@@ -1,5 +1,10 @@
 # Browser automation: CDP attach
 
+> **Retired as the default on 2026-11-07.** Job applications and apply page research now
+> use **Ego Lite** (`ego-browser skill`, one named TaskSpace per run). See `AGENTS.md`
+> "Automation browser" and `docs/AGENT-PLAYBOOK.md` "Ego Lite is the apply browser". The
+> rest of this file describes the isolated Chrome profile and is kept as history.
+
 Job-machine automation attaches to Chrome over CDP. **Default:** the isolated job
 profile on port 9223.
 

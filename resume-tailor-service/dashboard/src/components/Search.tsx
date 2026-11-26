@@ -50,7 +50,10 @@ export default function Search({ onJobsChanged, onOpenDossier }: Props) {
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void listAgentRuns().then(setRuns).catch(() => {}), 10000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void listAgentRuns().then(setRuns).catch(() => {});
+    }, 60_000);
     return () => window.clearInterval(timer);
   }, [refresh]);
 

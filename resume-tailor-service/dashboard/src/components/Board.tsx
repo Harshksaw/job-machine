@@ -77,11 +77,11 @@ export default function Board({ jobs, onOpen }: Props) {
           <section
             key={column.id}
             aria-label={column.label}
-            className="flex min-h-0 flex-col rounded-xl border border-zinc-800 bg-surface"
+            className="flex min-h-0 flex-col rounded-xl border border-zinc-700 bg-surface"
           >
-            <header className="flex items-center justify-between px-3 py-2.5">
-              <h2 className="text-sm font-semibold text-zinc-200">{column.label}</h2>
-              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs tabular-nums text-zinc-400">
+            <header className="flex items-center justify-between border-b border-zinc-700 px-3 py-3">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-200">{column.label}</h2>
+              <span className="jm-badge tabular-nums text-zinc-200">
                 {column.jobs.length}
               </span>
             </header>
@@ -113,7 +113,7 @@ function BoardCard({ job, onOpen }: { job: JobSummary; onOpen: () => void }) {
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-zinc-100">{job.company}</div>
-          <div className="mt-0.5 line-clamp-2 text-sm text-zinc-400">{job.role}</div>
+          <div className="mt-1 line-clamp-2 text-sm leading-snug text-zinc-200">{job.role}</div>
         </div>
         <span className={`jm-badge shrink-0 ${fitTone(job.fit_score)}`}>
           {job.fit_score ?? "–"}

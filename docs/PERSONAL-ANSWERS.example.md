@@ -57,7 +57,19 @@ Rules and eligibility policy are in `AGENTS.md`. Techniques are in `docs/AGENT-P
 -
 
 ### EEO and demographics
-- Voluntary. Leave blank; do not answer on the candidate's behalf.
+- Voluntary. Leave blank unless the candidate has explicitly given values to reuse.
+
+### Form field index
+
+A label to answer table the filler reads before typing. Copy the headings into the real
+file and fill them from the sections above and the resume bank. Do not put real values in
+this template.
+
+- Name and contact
+- School and work
+- Authorization, place, and pay
+- Demographics, only when the candidate has given them
+- Pause list: anything required that has no row
 
 ### Never
 - Never fabricate experience, skills, dates, or numbers. Every claim traces to

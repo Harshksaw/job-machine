@@ -25,9 +25,9 @@ def _job(n, org="Acme", scope=None):
 
 
 def test_research_preset_stages_instead_of_creating_dossiers():
-    result = fantastic.run_search("uk-remote", 2, fetch=lambda _: [_job(1), _job(2, "Beta", ["Worldwide"])])
+    result = fantastic.run_search("remote-uk", 2, fetch=lambda _: [_job(1), _job(2, "Beta", ["Worldwide"])])
     assert job_store.load_jobs() == []
-    staged = research_store.list_items("uk-remote")
+    staged = research_store.list_items("remote-uk")
     assert {i["company"] for i in staged} == {"Acme", "Beta"}
     by_company = {i["company"]: i for i in staged}
     assert by_company["Acme"]["open_to_canada"] is False
@@ -36,8 +36,8 @@ def test_research_preset_stages_instead_of_creating_dossiers():
 
 
 def test_research_dedupes_on_url():
-    fantastic.run_search("au-remote", 1, fetch=lambda _: [_job(1)])
-    again = fantastic.run_search("au-remote", 1, fetch=lambda _: [_job(1)])
+    fantastic.run_search("remote-au", 1, fetch=lambda _: [_job(1)])
+    again = fantastic.run_search("remote-au", 1, fetch=lambda _: [_job(1)])
     assert again["new"] == [] and len(research_store.list_items()) == 1
 
 

@@ -255,7 +255,7 @@ export default function JobWorkspace({
                               />
                             )}
                           </div>
-                          <div className="mt-0.5 truncate text-sm text-zinc-400">
+                          <div className="mt-1 truncate text-sm text-zinc-200">
                             {job.role}
                           </div>
                         </div>

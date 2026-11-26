@@ -80,7 +80,9 @@ export default function Inbox({ onOpenDossier, onPeopleChanged, onJobsChanged }:
 
   useEffect(() => {
     void loadList();
-    const timer = window.setInterval(() => void loadList(true), 15000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadList(true);
+    }, 60_000);
     return () => window.clearInterval(timer);
   }, [loadList]);
 
@@ -373,7 +375,7 @@ function TicketRow({
             )}
             <span className="truncate text-sm font-semibold text-zinc-100">{job.company}</span>
           </div>
-          <div className="mt-0.5 truncate text-sm text-zinc-400">{job.role}</div>
+          <div className="mt-1 truncate text-sm text-zinc-200">{job.role}</div>
         </div>
         <span className={`jm-badge shrink-0 tabular-nums ${fitTone(job.fit_score)}`}>
           {job.fit_score ?? "–"}

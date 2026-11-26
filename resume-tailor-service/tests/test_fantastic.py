@@ -22,9 +22,9 @@ def _job(n, org="Acme", title="Software Engineer"):
 
 
 def test_run_captures_new_and_skips_known_listings():
-    first = fantastic.run_search("canada", 2, fetch=lambda _: [_job(1), _job(2, "Beta")])
+    first = fantastic.run_search("remote-ca", 2, fetch=lambda _: [_job(1), _job(2, "Beta")])
     assert len(first["new"]) == 2
-    again = fantastic.run_search("canada", 2, fetch=lambda _: [_job(1), _job(3, "Gamma")])
+    again = fantastic.run_search("remote-ca", 2, fetch=lambda _: [_job(1), _job(3, "Gamma")])
     assert [n["company"] for n in again["new"]] == ["Gamma"]
     assert again["duplicates"] == ["Acme | Software Engineer"]
     captured = job_store.load_jobs()
@@ -33,7 +33,7 @@ def test_run_captures_new_and_skips_known_listings():
 
 
 def test_usage_counts_jobs_returned_and_requests():
-    fantastic.run_search("remote-na", 5, fetch=lambda _: [_job(1), _job(2, "B")])
+    fantastic.run_search("remote-ca", 5, fetch=lambda _: [_job(1), _job(2, "B")])
     usage = fantastic.usage_summary()
     assert usage["jobs_used"] == 2 and usage["requests_used"] == 1
     assert usage["jobs_left"] == 498
@@ -41,21 +41,22 @@ def test_usage_counts_jobs_returned_and_requests():
 
 def test_budget_refuses_a_run_that_could_cross_the_trial(monkeypatch):
     monkeypatch.setattr(fantastic, "TRIAL", {"jobs": 10, "requests": 100})
-    fantastic.run_search("canada", 8, fetch=lambda _: [_job(n, f"O{n}") for n in range(8)])
+    fantastic.run_search("remote-ca", 8, fetch=lambda _: [_job(n, f"O{n}") for n in range(8)])
     with pytest.raises(ValueError, match="trial jobs left"):
-        fantastic.run_search("canada", 5, fetch=lambda _: [])
+        fantastic.run_search("remote-ca", 5, fetch=lambda _: [])
 
 
 def test_preset_params_respect_eligibility():
-    params = fantastic.PRESETS["canada"]["params"]
+    params = fantastic.PRESETS["remote-ca"]["params"]
     assert params["organization_agency"] == "exclude"
     assert "senior" in params["title_advanced"]
-    assert params["ai_experience_level"] == "0-2,2-5"
+    assert "ai_experience_level" not in params
+    assert params["ai_work_arrangement"] == "Remote Solely"
 
 
 def test_search_and_agent_posts_need_the_dashboard_header():
     client = TestClient(app)
-    assert client.post("/api/search/run", json={"preset": "canada"}).status_code == 403
+    assert client.post("/api/search/run", json={"preset": "remote-ca"}).status_code == 403
     assert client.post("/api/agents/run", json={"tool": "codex", "task": "score-new"}).status_code == 403
 
 
@@ -192,3 +193,17 @@ def test_gemini_runs_on_the_api_key_home_and_cheap_model(monkeypatch, tmp_path):
 
 def test_other_tools_keep_the_normal_environment(monkeypatch, tmp_path):
     assert "GEMINI_CLI_HOME" not in agent_runs._tool_env("cursor")
+
+
+def test_big_companies_are_kept_aside_not_captured():
+    big = {**_job(9, "Google"), "organization": "Google"}
+    mid = {**_job(10, "Mid"), "linkedin_org_employees": 5000}
+    result = fantastic.run_search("remote-ca", 3, fetch=lambda _: [big, mid, _job(11, "Tiny")])
+    assert [n["company"] for n in result["new"]] == ["Tiny"]
+    assert len(result["aside"]) == 2
+
+
+def test_india_based_roles_are_dropped():
+    india = {**_job(12, "Desi"), "locations_derived": ["Bengaluru, Karnataka, India"]}
+    result = fantastic.run_search("remote-ca", 2, fetch=lambda _: [india, _job(13, "Kept")])
+    assert [n["company"] for n in result["new"]] == ["Kept"]

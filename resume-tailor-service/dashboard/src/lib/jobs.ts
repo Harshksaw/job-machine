@@ -29,17 +29,17 @@ export const JOB_STATUS_LABEL: Record<string, string> = {
 };
 
 export const JOB_STATUS_STYLE: Record<string, string> = {
-  discovered: "border-zinc-600 bg-zinc-800 text-zinc-300",
-  researching: "border-cyan-700/70 bg-cyan-950/50 text-cyan-300",
-  ready: "border-teal-700/70 bg-teal-950/50 text-teal-300",
-  applying: "border-amber-700/70 bg-amber-950/50 text-amber-300",
-  applied: "border-sky-700/70 bg-sky-950/50 text-sky-300",
-  outreach: "border-fuchsia-800/70 bg-fuchsia-950/40 text-fuchsia-300",
-  interview: "border-emerald-700/70 bg-emerald-950/50 text-emerald-300",
-  offer: "border-lime-700/70 bg-lime-950/50 text-lime-300",
-  rejected: "border-rose-800/70 bg-rose-950/40 text-rose-300",
-  skipped: "border-zinc-600 bg-zinc-800 text-zinc-300",
-  archived: "border-zinc-600 bg-zinc-800 text-zinc-300",
+  discovered: "border-zinc-500 bg-zinc-800 text-zinc-100",
+  researching: "border-cyan-400 bg-cyan-950 text-cyan-100",
+  ready: "border-teal-400 bg-teal-950 text-teal-100",
+  applying: "border-amber-400 bg-amber-950 text-amber-100",
+  applied: "border-sky-400 bg-sky-950 text-sky-100",
+  outreach: "border-fuchsia-400 bg-fuchsia-950 text-fuchsia-100",
+  interview: "border-emerald-400 bg-emerald-950 text-emerald-100",
+  offer: "border-lime-400 bg-lime-950 text-lime-100",
+  rejected: "border-rose-400 bg-rose-950 text-rose-100",
+  skipped: "border-zinc-500 bg-zinc-800 text-zinc-200",
+  archived: "border-zinc-500 bg-zinc-800 text-zinc-300",
 };
 
 export const JOB_PRIORITIES = ["low", "normal", "high", "dream"] as const;
@@ -111,10 +111,10 @@ export function formatJobDate(value: string): string {
 }
 
 export function fitTone(score: number | null): string {
-  if (score == null) return "border-zinc-600 bg-zinc-800 text-zinc-300";
-  if (score >= 8) return "border-emerald-600 bg-emerald-950/50 text-emerald-200";
-  if (score >= 6) return "border-amber-600 bg-amber-950/50 text-amber-200";
-  return "border-rose-700 bg-rose-950/40 text-rose-200";
+  if (score == null) return "border-zinc-400 bg-zinc-800 text-zinc-100";
+  if (score >= 8) return "border-emerald-300 bg-emerald-950 text-emerald-100";
+  if (score >= 6) return "border-amber-300 bg-amber-950 text-amber-100";
+  return "border-rose-300 bg-rose-950 text-rose-100";
 }
 
 export function inboxBlocker(job: {

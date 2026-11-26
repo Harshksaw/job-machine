@@ -80,7 +80,9 @@ export default function App() {
 
   useEffect(() => {
     void refreshAll();
-    const timer = window.setInterval(() => void loadJobs(), 20000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadJobs();
+    }, 60_000);
     return () => window.clearInterval(timer);
   }, [refreshAll, loadJobs]);
 
@@ -205,9 +207,9 @@ export default function App() {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex items-baseline gap-3 border-b border-zinc-800 px-4 py-3 lg:px-6 lg:py-4">
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-50">{copy.title}</h1>
-          <p className="truncate text-sm text-zinc-500">{copy.subtitle}</p>
+        <header className="flex items-end gap-4 border-b border-zinc-700 bg-surface px-4 py-4 lg:px-6">
+          <h1 className="text-xl font-semibold tracking-tight text-zinc-50">{copy.title}</h1>
+          <p className="mb-0.5 truncate text-sm text-zinc-300">{copy.subtitle}</p>
         </header>
 
         <main id="content" tabIndex={-1} className="min-h-0 flex-1 overflow-hidden p-3 lg:p-4">

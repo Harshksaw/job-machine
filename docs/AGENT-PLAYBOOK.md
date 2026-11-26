@@ -11,6 +11,29 @@ verify against the live page rather than assuming the page is broken.
 code, dossier id, third-party name, or anything from `docs/PERSONAL-ANSWERS.md`. Live queue
 state belongs in the gitignored `SESSION-HANDOFF-*.md`.
 
+## Filling known answers
+
+Before typing into a form, read the **Form field index** in `docs/PERSONAL-ANSWERS.md`.
+Match the label to a row and use that answer. Do not re-decide name, phone, school, work
+authorization, pay, or demographics on each listing. A label with no row is a pause.
+
+These mechanics are what made the indexed answers stick:
+
+- An element id that starts with a digit is an invalid CSS selector. Use
+  `getElementById` or `[id="..."]`.
+- Scroll, wait, then read `getBoundingClientRect` again before a coordinate click. A rect
+  taken in the same turn as `scrollIntoView` is stale, and a click whose `y` is outside
+  the viewport does not hit Submit.
+- Match a dropdown option on the full option text. A short needle such as "No" also
+  matches unrelated countries.
+- School search: type the school from the resume bank. If the list says there are no
+  options, choose the option whose text is exactly Other, then type the school into the
+  follow-up field. Never choose a different school.
+- After Submit, read the correction list. A second submit is only for a page that listed
+  missing fields and showed no confirmation. No confirmation and no errors means stop.
+- A location wall that says the employer is not accepting the current location, with
+  relocation not allowed, means cancel. Do not edit the profile city to get past it.
+
 ---
 
 ## Ego Lite is the apply browser (since 2026-11-07)
@@ -450,7 +473,9 @@ Verified over CDP on 2026-10-07:
   confirms the choice.
 - **Education History** has a school combobox, plus degree and major inputs and native
   month/year selects. Setting the selects with the native value setter plus `change`
-  works. Start date can be left blank.
+  works. Start date can be left blank. If the school search says no results, pick Other
+  and fill the follow-up with the school from the resume bank. The answer itself is in
+  the personal answers form field index.
 - **Forms add required questions** that the GraphQL form snapshot did not show, for
   example Superhuman's "willing to relocate". Always read the error list after submit.
 - **A cookie banner covers the Submit button.** Click "Necessary Only" first.

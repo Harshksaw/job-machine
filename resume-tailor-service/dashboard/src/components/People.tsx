@@ -134,7 +134,7 @@ export default function People({ people, companies, onChanged }: Props) {
                     {p.company}{p.role ? <span className="text-zinc-400"> · {p.role}</span> : null}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`inline-flex rounded-md border px-1.5 py-0.5 text-xs ${STATUS_STYLE[p.status] ?? ""}`}>
+                    <span className={`jm-badge ${STATUS_STYLE[p.status] ?? ""}`}>
                       {STATUS_LABEL[p.status] ?? p.status}
                     </span>
                   </td>
