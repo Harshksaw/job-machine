@@ -14,6 +14,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from app.models import (
@@ -535,6 +536,28 @@ def add_activity(job_id: str, data: JobActivityInput) -> JobWorkspace | None:
             _put(tx, updated)
             return updated
         return None
+
+
+def add_activity_unless(
+    job_id: str,
+    data: JobActivityInput,
+    refuse: Callable[[JobWorkspace], str],
+) -> tuple[JobWorkspace | None, str]:
+    """Add an activity only when ``refuse`` returns "" for the dossier as it is inside the
+    write transaction; otherwise write nothing and return its reason. Check and write
+    are one transaction, so two pipeline runs cannot both claim the same dossier."""
+    with _transaction() as tx:
+        current = _parse(tx.get(job_id))
+        if current is None:
+            return None, ""
+        reason = refuse(current)
+        if reason:
+            return current, reason
+        updated = current.model_copy(
+            update={"activities": [*current.activities, _activity(data)], "updated_at": _now()}
+        )
+        _put(tx, updated)
+        return updated, ""
 
 
 def restore_revision(

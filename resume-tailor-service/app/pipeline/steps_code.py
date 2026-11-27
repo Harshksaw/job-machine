@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 from app import job_store
-from app.models import JobActivity, JobActivityInput
+from app.models import JobActivity, JobActivityInput, JobWorkspace
 from app.pipeline import ats
 from app.pipeline.runner import Pipeline, StepContext, StepFailed, StepResult, StepSpec
 
@@ -40,36 +40,48 @@ def _when(activity: JobActivity) -> datetime | None:
     return None
 
 
-def _claim(ctx: StepContext) -> StepResult:
-    """Claim the dossier for this run, the way interactive agents do (AGENTS.md).
+_APPLIED = "already applied"
+_OWN = "own claim"
 
-    The claim is an activity, not a field write, so it goes straight through
-    `job_store.add_activity` and sits outside the runner's owned field check, which
-    covers `StepResult.writes` only."""
-    job = ctx.job
+
+def _claim_conflict(job: JobWorkspace, session: str) -> str:
+    """"" when the run may claim the dossier, else why not."""
     if job.status in _SUBMITTED_STATUSES or any(a.kind == "applied" for a in job.activities):
-        return StepResult(output={"claimed": False}, stop="cancelled", reason="already applied")
-    session = _session(ctx)
-    title = f"Claimed by {session}"
+        return _APPLIED
     cutoff = datetime.now(timezone.utc) - CLAIM_WINDOW
-    already = False
+    own = False
     for activity in job.activities:
         if not activity.title.startswith("Claimed by"):
             continue
-        if activity.title == title or activity.session == session:
-            already = True  # this run's own claim, from before a resume
+        if activity.title == f"Claimed by {session}" or activity.session == session:
+            own = True  # this run's own claim, from before a resume
             continue
         moment = _when(activity)
         if moment is None or moment >= cutoff:
-            raise StepFailed(f"claimed by another session: {activity.title}"[:200])
-    if already:
-        return StepResult(output={"claimed": True})
-    job_store.add_activity(
-        job.id,
-        JobActivityInput(
-            kind="note", title=title, session=session, external_id=f"pipeline-claim-{ctx.run.id}"
-        ),
+            return f"claimed by another session: {activity.title}"[:200]
+    return _OWN if own else ""
+
+
+def _claim(ctx: StepContext) -> StepResult:
+    """Claim the dossier for this run, the way interactive agents do (AGENTS.md).
+
+    The check runs on the dossier as it is inside the write transaction, not on the step
+    snapshot, so two runs cannot both claim it. The claim is an activity, not a field
+    write, so it goes through `job_store.add_activity_unless` and sits outside the
+    runner's owned field check, which covers `StepResult.writes` only."""
+    session = _session(ctx)
+    job, conflict = job_store.add_activity_unless(
+        ctx.job.id,
+        JobActivityInput(kind="note", title=f"Claimed by {session}", session=session,
+                         external_id=f"pipeline-claim-{ctx.run.id}"),
+        lambda current: _claim_conflict(current, session),
     )
+    if job is None:
+        raise StepFailed(f"dossier {ctx.job.id} no longer exists")
+    if conflict == _APPLIED:
+        return StepResult(output={"claimed": False}, stop="cancelled", reason=_APPLIED)
+    if conflict and conflict != _OWN:
+        raise StepFailed(conflict)
     return StepResult(output={"claimed": True})
 
 

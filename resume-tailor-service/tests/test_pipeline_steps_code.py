@@ -102,6 +102,27 @@ def test_claim_is_idempotent_for_its_own_run():
     assert titles.count(own) == 1
 
 
+
+def test_claim_checks_the_live_dossier_not_the_step_snapshot(monkeypatch):
+    """Two runs racing for one dossier: a claim that lands after the step context was
+    loaded must still be seen, so the check and the write happen in one transaction."""
+    job = _job()
+    original = runner._context
+
+    def stale_context(run_id):
+        ctx = original(run_id)
+        _activity(job, "Claimed by pipeline other-run", session="pipeline other-run",
+                  occurred_at=_ago(minutes=1))
+        return ctx
+
+    monkeypatch.setattr(runner, "_context", stale_context)
+    result = _run(job, steps_code.claim_step())
+    assert result.status == "failed"
+    titles = [a.title for a in job_store.get_job(job.id).activities]
+    assert titles.count("Claimed by pipeline other-run") == 1
+    assert f"Claimed by pipeline {result.id}" not in titles
+
+
 # fetch_jd
 
 FIXTURES = Path(__file__).parent / "fixtures" / "ats"
