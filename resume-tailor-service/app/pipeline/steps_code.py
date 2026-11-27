@@ -17,7 +17,7 @@ from typing import Callable
 from app import job_store
 from app.models import JobActivity, JobActivityInput
 from app.pipeline import ats
-from app.pipeline.runner import StepContext, StepFailed, StepResult, StepSpec
+from app.pipeline.runner import Pipeline, StepContext, StepFailed, StepResult, StepSpec
 
 CLAIM_WINDOW = timedelta(hours=2)
 # Below this a JD is too thin to score or tailor against; the agent fallback takes over.
@@ -73,8 +73,8 @@ def _claim(ctx: StepContext) -> StepResult:
     return StepResult(output={"claimed": True})
 
 
-def claim_step() -> StepSpec:
-    return StepSpec("claim", "code", run=_claim)
+def claim_step(deps: tuple[str, ...] = ()) -> StepSpec:
+    return StepSpec("claim", "code", deps=deps, run=_claim)
 
 
 def _urls(ctx: StepContext) -> list[str]:
@@ -86,7 +86,7 @@ def _urls(ctx: StepContext) -> list[str]:
     return seen
 
 
-def fetch_jd_step(http: ats.Http | None = None) -> StepSpec:
+def fetch_jd_step(http: ats.Http | None = None, deps: tuple[str, ...] = ()) -> StepSpec:
     def fetch(ctx: StepContext) -> StepResult:
         existing = (ctx.job.jd_text or "").strip()
         if len(existing) >= JD_MIN_CHARS:
@@ -104,7 +104,7 @@ def fetch_jd_step(http: ats.Http | None = None) -> StepSpec:
             output["needs_agent"] = True
         return StepResult(output=output, writes=writes)
 
-    return StepSpec("fetch_jd", "code", owns=("jd_text",), run=fetch)
+    return StepSpec("fetch_jd", "code", deps=deps, owns=("jd_text",), run=fetch)
 
 
 Check = Callable[[str], tuple[str, str]]
@@ -124,7 +124,7 @@ def _default_check() -> Check:
     return _check
 
 
-def liveness_step(check: Check | None = None) -> StepSpec:
+def liveness_step(check: Check | None = None, deps: tuple[str, ...] = ()) -> StepSpec:
     def live(ctx: StepContext) -> StepResult:
         url = (ctx.job.apply_url or ctx.job.job_url or "").strip()
         state, evidence = (check or _default_check())(url)
@@ -140,7 +140,7 @@ def liveness_step(check: Check | None = None) -> StepSpec:
             reason=f"posting closed: {evidence}",
         )
 
-    return StepSpec("liveness", "code", owns=("notes",), run=live)
+    return StepSpec("liveness", "code", deps=deps, owns=("notes",), run=live)
 
 
 def _follow(url: str, get: ats.Http) -> tuple[str, str]:
@@ -161,7 +161,7 @@ def _follow(url: str, get: ats.Http) -> tuple[str, str]:
     return "", why
 
 
-def resolve_apply_url_step(http: ats.Http | None = None) -> StepSpec:
+def resolve_apply_url_step(http: ats.Http | None = None, deps: tuple[str, ...] = ()) -> StepSpec:
     def resolve(ctx: StepContext) -> StepResult:
         current = (ctx.job.apply_url or "").strip()
         if current:
@@ -183,7 +183,7 @@ def resolve_apply_url_step(http: ats.Http | None = None) -> StepSpec:
         # Left empty for the agent fallback (M4); an unconfirmed URL is never written.
         return StepResult(output={"needs_agent": True, "reason": reason[:300]})
 
-    return StepSpec("resolve_apply_url", "code", owns=("apply_url",), run=resolve)
+    return StepSpec("resolve_apply_url", "code", deps=deps, owns=("apply_url",), run=resolve)
 
 
 MISSING = "not available yet"
@@ -301,3 +301,19 @@ def brief_step(deps: tuple[str, ...] = ()) -> StepSpec:
         return StepResult(output={"status": status}, writes=writes)
 
     return StepSpec("brief", "code", deps=deps, owns=("research_brief", "status"), run=brief)
+
+
+def code_steps(http: ats.Http | None = None, check: Check | None = None) -> tuple[StepSpec, ...]:
+    """The code steps of section 4 as one chain. The agent steps (eligibility, fit_score,
+    company_context, kit, form_fields, people, answers, review) slot in with M4."""
+    return (
+        claim_step(),
+        fetch_jd_step(http, deps=("claim",)),
+        liveness_step(check, deps=("fetch_jd",)),
+        resolve_apply_url_step(http, deps=("liveness",)),
+        brief_step(deps=("resolve_apply_url",)),
+    )
+
+
+# Code steps only, with the real network: for a live dry run on one dossier.
+PACKET_CODE_PIPELINE = Pipeline("packet_code", code_steps())

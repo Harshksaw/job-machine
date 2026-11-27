@@ -428,3 +428,38 @@ def test_brief_says_nothing_flagged_once_answers_exist_and_none_need_harsh():
     _run(job, steps_code.brief_step())
     s = _sections(job_store.get_job(job.id).research_brief)
     assert s["NEEDS HARSH"] == "nothing flagged"
+
+
+# the code pipeline end to end
+
+
+def test_packet_code_pipeline_wires_the_steps_in_order():
+    pipeline = steps_code.PACKET_CODE_PIPELINE
+    assert pipeline.order == ["claim", "fetch_jd", "liveness", "resolve_apply_url", "brief"]
+    deps = {step.name: step.deps for step in pipeline.steps}
+    assert deps == {"claim": (), "fetch_jd": ("claim",), "liveness": ("fetch_jd",),
+                    "resolve_apply_url": ("liveness",), "brief": ("resolve_apply_url",)}
+    assert all(step.kind == "code" for step in pipeline.steps)
+    assert [s.name for s in steps_code.code_steps()] == pipeline.order
+
+
+def test_code_steps_run_end_to_end_offline():
+    board = "https://remotive.com/remote-jobs/software-dev/backend-engineer-123"
+    job = _job(job_url=board)
+    http = FakeHttp({
+        ("HEAD", board): (200, GH_POSTING, ""),
+        "https://boards-api.greenhouse.io/v1/boards/acme/jobs/4012345": (200, "x", _fixture("greenhouse_job.json")),
+    })
+    checked = []
+    pipeline = Pipeline("packet_code", steps_code.code_steps(
+        http=http, check=lambda url: checked.append(url) or ("live", "stub")))
+    created = store.create_run(job.id, pipeline.name, pipeline.order)
+    result = runner.run(created.id, pipeline, owner="w1")
+    assert result.status == "packet_ready", result.terminal_reason
+    saved = job_store.get_job(job.id)
+    # fetch_jd runs before resolve, so the board URL had no JD; resolve found the ATS.
+    assert result.steps["fetch_jd"].output["needs_agent"] is True
+    assert saved.apply_url == GH_POSTING
+    assert checked == [board]
+    assert saved.status == "ready" and GH_POSTING in saved.research_brief
+    assert any(a.title == f"Claimed by pipeline {result.id}" for a in saved.activities)
