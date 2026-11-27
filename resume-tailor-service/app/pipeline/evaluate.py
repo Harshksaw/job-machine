@@ -3,7 +3,10 @@ chosen adapters or a prompt version, and compare pass rate, review pass rate, ti
 cost side by side before a prompt or model change gets live traffic.
 
 This path only reads. It never patches a dossier, never adds a person and never writes
-to the attempt ledger (eval tries would skew the live router's pass rates). A step's
+to the attempt ledger (eval tries would skew the live router's pass rates). An sdk
+adapter runs without its MCP servers (only the read only built in tools), and a try
+during which the dossier changed fails with that reason. A CLI agent has its own shell,
+so it is trusted the same way it is in a live run. A step's
 finish function is run to apply its rules, except `people`, whose finish saves people,
 so people is judged on its schema alone. Raw agent output still lands under
 logs/pipeline/eval-<stamp>/ like any adapter call.
@@ -97,6 +100,14 @@ def run_eval(dossier_ids: list[str], steps: list[str], adapter_names: list[str],
     missing = [name for name in adapter_names if name not in cfg.adapters]
     if missing:
         raise ValueError(f"unknown adapter: {', '.join(missing)}")
+    # A disabled adapter may be evaluated (that is how a new model earns its place), but
+    # never on a step the live router would not give it.
+    lacking = [f"{name} lacks capability {registry[step].capability} for {step}"
+               for step in steps for name in adapter_names
+               if registry[step].capability not in cfg.adapters[name].capabilities]
+    if lacking:
+        raise ValueError("; ".join(lacking))
+    specs = {name: cfg.adapters[name].model_copy(update={"mcp": []}) for name in adapter_names}
     run_id = "eval-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     rows: list[dict] = []
     with _prompt_dir(prompt_dir):
@@ -114,10 +125,14 @@ def run_eval(dossier_ids: list[str], steps: list[str], adapter_names: list[str],
                     ctx = _context(job, step_name, run_id)
                     t0 = time.monotonic()
                     try:
-                        result = build(cfg.adapters[name]).invoke(step, ctx, [])
+                        result = build(specs[name]).invoke(step, ctx, [])
                     except Exception as exc:
                         result = AdapterResult(outcome="error", error=f"{type(exc).__name__}: {exc}"[:300])
                     ok, review, error = _judge(step, result, ctx)
+                    after = job_store.get_job(job_id)
+                    if after is None or after.updated_at != job.updated_at:
+                        ok, error = False, "dossier changed during the eval; check what the agent wrote"
+                        job = after or job
                     row.update(model=result.model or row["model"], prompt_version=result.prompt_version, ok=ok,
                                review_pass=review, duration_ms=int((time.monotonic() - t0) * 1000),
                                cost=result.cost, outcome=result.outcome, error=error)

@@ -155,7 +155,7 @@ def complete(capability: str, prompt: str, schema, *, step: str = "", exclude_ad
             left = _left(deadline, failed)
             timeout = spec.timeout_for(capability)
             if left is not None:
-                timeout = max(1, min(timeout, int(left)))
+                timeout = min(timeout, left)
             started, t0 = now_iso(), time.monotonic()
             try:
                 result = adapter.call(_repair(prompt, errors), run_id=run_id, step=target.name,

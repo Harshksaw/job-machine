@@ -27,7 +27,7 @@ def isolated(monkeypatch, tmp_path):
     monkeypatch.setattr(store, "_JSON_BACKENDS", {})
     monkeypatch.setattr(adapters, "LOG_DIR", tmp_path / "logs")
     config.save_config(PipelineConfig.model_validate({"adapters": {
-        name: {"type": "cli", "command": ["t", "{prompt}"], "capabilities": ["cheap", "reason"]}
+        name: {"type": "cli", "command": ["t", "{prompt}"], "capabilities": ["cheap", "reason", "web"]}
         for name in ("alpha", "beta")
     }}))
 
@@ -180,3 +180,51 @@ def test_enqueue_and_status_helpers():
     assert run.id in text and "queued" in text and "fit_score" in text
     with pytest.raises(KeyError):
         evaluate.enqueue("no-such-job")
+
+
+# Codex review fixes.
+
+
+def test_an_adapter_without_the_step_capability_is_refused():
+    cfg = config.load_config()
+    cfg.adapters["beta"].capabilities = ["cheap"]
+    config.save_config(cfg)
+    with pytest.raises(ValueError, match="beta lacks capability reason"):
+        evaluate.run_eval(_jobs(1), ["fit_score"], ["beta"], build=lambda spec: Fake("beta", []))
+
+
+def test_a_disabled_adapter_can_be_evaluated_before_it_goes_live():
+    cfg = config.load_config()
+    cfg.adapters["beta"].enabled = False
+    config.save_config(cfg)
+    rows = evaluate.run_eval(_jobs(1), ["fit_score"], ["beta"],
+                             build=lambda spec: Fake("beta", [{"score": 7, "reason": "ok"}]))
+    assert rows[0]["ok"] is True
+
+
+def test_sdk_adapters_run_without_their_mcp_servers_in_eval():
+    cfg = PipelineConfig.model_validate({
+        "adapters": {"or": {"type": "sdk", "model": "openrouter:x", "key_env": "K", "capabilities": ["reason"],
+                            "mcp": ["jm"], "tools": ["dossier_read"]}},
+        "mcp_servers": {"jm": {"url": "http://127.0.0.1:9000/mcp"}},
+    })
+    config.save_config(cfg)
+    seen = []
+    evaluate.run_eval(_jobs(1), ["fit_score"], ["or"],
+                      build=lambda spec: seen.append(spec) or Fake("or", [{"score": 7, "reason": "ok"}]))
+    assert seen[0].mcp == [] and seen[0].tools == ["dossier_read"]
+
+
+def test_a_dossier_changed_during_a_try_fails_that_row():
+    [job_id] = _jobs(1)
+
+    class Writer(Fake):
+        def invoke(self, step, ctx, errors):
+            job_store.patch_job(job_id, {"notes": "agent wrote this"}, reason="t", session="t")
+            return super().invoke(step, ctx, errors)
+
+    rows = evaluate.run_eval([job_id], ["fit_score"], ["alpha"],
+                             build=lambda spec: Writer("alpha", [{"score": 7, "reason": "ok"}]))
+
+    assert rows[0]["ok"] is False
+    assert "dossier changed during the eval" in rows[0]["error"]
