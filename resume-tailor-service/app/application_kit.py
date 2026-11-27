@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app import traceability
 from app.bank import ResumeBank
-from app.claude_cli import schema_completer
+from app import llm
 from app.errors import JobGenerationError
 from app.house_style import strip_dashes, unhyphenate, voice_errors
 from app.models import (
@@ -446,7 +446,7 @@ def generate_kit(
     job: JobWorkspace,
     bank: ResumeBank,
     *,
-    complete: Callable[[str], str] = schema_completer(_kit_schema()),
+    complete: Callable[[str], str] = llm.completer("reason", _kit_schema(), step="kit"),
     # Validation failures are one-off word choices, not systematic: the
     # correction loop feeds the exact errors back and the next draft almost
     # always clears them. Two attempts left honest kits failing on a single
@@ -598,7 +598,7 @@ def generate_answer(
     question: str,
     constraints: str = "",
     *,
-    complete: Callable[[str], str] = schema_completer(_answer_schema()),
+    complete: Callable[[str], str] = llm.completer("reason", _answer_schema(), step="answers"),
     max_retries: int = 1,
     previous_errors: list[str] | None = None,
 ) -> GeneratedAnswer:

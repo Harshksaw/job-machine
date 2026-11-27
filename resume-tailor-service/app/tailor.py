@@ -2,7 +2,7 @@ import json
 from typing import Callable
 from pydantic import ValidationError
 from app.bank import ResumeBank
-from app.claude_cli import MODEL_NAME, schema_completer
+from app import llm
 from app.errors import TailorValidationError
 from app.models import Manifest
 from app.validate import validate_manifest
@@ -93,7 +93,7 @@ def get_manifest(
     company: str,
     role: str,
     bank: ResumeBank,
-    complete: Callable[[str], str] = schema_completer(Manifest),
+    complete: Callable[[str], str] = llm.completer("reason", Manifest.model_json_schema(), step="tailor"),
     # Two retries, not one. Each retry feeds the exact validator errors back,
     # and in the 2026-08-16 batch several dossiers were one correction short of
     # a valid manifest when attempts ran out.

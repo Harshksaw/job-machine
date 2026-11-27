@@ -164,11 +164,14 @@ def _never_over_budget(family: str) -> bool:
 
 
 def resolve_chain(step, config: PipelineConfig, *, health: Health, ledger_stats: dict[str, Stats],
-                  rng, over_budget: Callable[[str], bool] = _never_over_budget) -> list[AdapterSpec]:
+                  rng, over_budget: Callable[[str], bool] = _never_over_budget,
+                  exclude: tuple[str, ...] = ()) -> list[AdapterSpec]:
+    """`exclude` names adapters that must not take this step, such as the author of the
+    work a review step checks."""
     blocked = health.blocked_families()
     capable = [
         spec for spec in config.adapters.values()
-        if spec.enabled and step.capability in spec.capabilities
+        if spec.enabled and step.capability in spec.capabilities and spec.name not in exclude
         and health.status(spec, blocked)["healthy"]
     ]
     prefs = config.steps.get(step.name)
@@ -189,6 +192,11 @@ def resolve_chain(step, config: PipelineConfig, *, health: Health, ledger_stats:
         canary = [spec for spec in chain if spec.name == prefs.canary.adapter]
         chain = canary + [spec for spec in chain if spec.name != prefs.canary.adapter]
     return chain
+
+
+# One health view per process: the settings API, llm.complete and (from M6) the worker
+# pool all cool down and read the same adapters.
+HEALTH = Health()
 
 
 class TrackedAdapter:

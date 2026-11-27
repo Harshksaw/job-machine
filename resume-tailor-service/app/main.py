@@ -50,7 +50,7 @@ def tailor_resume(req: TailorRequest):
     except TailorValidationError as e:
         raise HTTPException(status_code=502, detail=f"model produced an invalid manifest: {e}")
     except ClaudeCliError as e:
-        raise HTTPException(status_code=502, detail=f"claude CLI invocation failed: {e}")
+        raise HTTPException(status_code=502, detail=f"model call failed: {e}")
 
     slug = safe_slug(req.company, req.role)
     work_dir = OUTPUT_DIR / f"{slug}-{uuid.uuid4().hex[:8]}"

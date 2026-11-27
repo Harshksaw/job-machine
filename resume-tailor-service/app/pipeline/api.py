@@ -18,13 +18,14 @@ from app.pipeline import config, store
 from app.pipeline.adapters import build_adapter
 from app.pipeline.config import PipelineConfig
 from app.pipeline.models import Attempt, now_iso
-from app.pipeline.router import Health, TrackedAdapter
+from app.pipeline import router as router_module
+from app.pipeline.router import TrackedAdapter
 from app.search import _require_dashboard
 
 router = APIRouter(prefix="/api/pipeline")
 
-# One health view per process, shared with the worker pool once it lands (M6).
-HEALTH = Health()
+# The process wide health view, shared with llm.complete and the worker pool (M6).
+HEALTH = router_module.HEALTH
 
 # The capability each step needs (spec section 4), used to check step preferences
 # until the step registry (steps.py, M3 and M4) owns this.
