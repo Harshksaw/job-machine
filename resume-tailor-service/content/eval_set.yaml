@@ -1,0 +1,10 @@
+# Eval set for `scripts/pipeline.py eval` (spec 6.5). This committed copy is an EXAMPLE:
+# the ids are placeholders, because this repo is public. Put real dossier ids in a local
+# copy and pass it with --set, for example data/eval_set.yaml (data/ is gitignored).
+dossiers:
+  - example-dossier-id-1
+  - example-dossier-id-2
+# Agent steps to rerun: eligibility, fit_score, company_context, form_fields, people, review.
+steps: [eligibility, fit_score, review]
+# Adapters to compare (names from the agent config). --adapter overrides this list.
+adapters: []
