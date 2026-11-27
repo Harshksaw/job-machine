@@ -66,6 +66,10 @@ export default function JobOverview({ jobId, draft, onChange, onPeopleChanged }:
           </button>
         </div>
         {researchMessage && <p className="text-xs text-zinc-400">{researchMessage}</p>}
+        <p className="text-xs text-zinc-500">
+          The research CLI is superseded by the packet pipeline. With "Use the pipeline for research" on in Settings,
+          this button queues a pipeline run instead; off, it starts the CLI as before.
+        </p>
         <label className={label}>
           Apply at
           <div className="flex gap-2">

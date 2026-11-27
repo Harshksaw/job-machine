@@ -179,12 +179,20 @@ export default function Search({ onJobsChanged, onOpenDossier }: Props) {
                 disabled={busy !== null}
                 onClick={() => void agent(tool, task.id)}
                 className="jm-btn-secondary h-9 px-3 text-sm disabled:opacity-50"
+                title={task.superseded_by ? `Superseded by ${task.superseded_by}` : undefined}
               >
                 {task.label} · {tool}
+                {task.superseded_by && <span className="ml-1 text-xs text-amber-300">(superseded)</span>}
               </button>
             ))
           )}
         </div>
+        {options?.tasks.some((task) => task.superseded_by) && (
+          <p className="text-xs text-amber-300">
+            Tasks marked superseded are now done by the pipeline (Pipeline tab). They still work and stay until the
+            pipeline has run cleanly for a week.
+          </p>
+        )}
         {runs.length > 0 && (
           <div className="space-y-2">
             {runs.map((run) => (

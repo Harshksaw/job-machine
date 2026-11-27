@@ -364,7 +364,8 @@ export function decideJob(
 // Search tab. POSTs carry X-Job-Machine so a cross site page cannot trigger them.
 export interface SearchOptions {
   presets: { id: string; label: string; stage: string; default_limit: number }[];
-  tasks: { id: string; label: string }[];
+  // superseded_by is set when the orchestrator pipeline replaced the task (M7).
+  tasks: { id: string; label: string; superseded_by?: string }[];
   tools: string[];
 }
 

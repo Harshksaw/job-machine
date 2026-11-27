@@ -26,9 +26,15 @@ _PREAMBLE = (
     "Do not submit applications, send outreach, or drive any browser in this task. "
     "Never write to, regenerate or delete resume.pdf in the repo root. "
 )
+# SUPERSEDED (M7, spec section 9): score-new, triage-filter and research-job are now
+# pipeline steps (eligibility, fit_score and the packet pipeline in app/pipeline/). They
+# stay here, marked with `superseded_by`, until the pipeline has run cleanly for a week;
+# then they are removed and agent_runs keeps only liveness and ad hoc tasks.
+_SUPERSEDED = "the packet pipeline (Pipeline tab, POST /api/pipeline/runs or the job-machine MCP server)"
 TASKS: dict[str, dict] = {
     "score-new": {
         "label": "Score new discoveries",
+        "superseded_by": f"eligibility and fit_score steps of {_SUPERSEDED}",
         "prompt": _PREAMBLE + (
             "GET /api/jobs and take every dossier with status discovered and no fit_score. "
             "For each, read its jd_text with GET /api/jobs/<id>, score fit 1 to 10 against "
@@ -55,6 +61,7 @@ TASKS: dict[str, dict] = {
     },
     "triage-filter": {
         "label": "Filter research finds (dismiss only)",
+        "superseded_by": f"the eligibility step of {_SUPERSEDED}",
         "prompt": _PREAMBLE + (
             "GET /api/research?status=new and skip items with tracked_dossier set. Decide only whether "
             "each item is clearly ineligible for Harsh: needs more than 3 years or is senior, staff, "
@@ -85,6 +92,7 @@ _JOB_ID = re.compile(r"[0-9a-f]{32}")
 JOB_TASKS: dict[str, dict] = {
     "research-job": {
         "label": "Research this job",
+        "superseded_by": _SUPERSEDED,
         "prompt": (
             "You are working in the job machine repo. Read AGENTS.md and docs/AGENT-PLAYBOOK.md "
             "first and follow every hard rule, above all: never fabricate; every claim traces to "

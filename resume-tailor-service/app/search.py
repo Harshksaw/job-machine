@@ -40,7 +40,9 @@ def presets() -> dict:
              "default_limit": p.get("default_limit", 20)}
             for key, p in fantastic.PRESETS.items()
         ],
-        "tasks": [{"id": key, "label": t["label"]} for key, t in agent_runs.TASKS.items()],
+        # superseded_by: the pipeline replaced this task (M7); the UI shows a hint.
+        "tasks": [{"id": key, "label": t["label"], "superseded_by": t.get("superseded_by", "")}
+                  for key, t in agent_runs.TASKS.items()],
         "tools": list(agent_runs.TOOLS),
     }
 

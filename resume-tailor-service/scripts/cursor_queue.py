@@ -50,10 +50,18 @@ _OFF_ROLE = re.compile(r"support|sales|customer|solutions|gtm|\bqa\b|test|consul
 _NOT_REMOTE = re.compile(r"hybrid|on.?site|onsite|in.person|office", re.I)
 
 LANES = {
+    # SUPERSEDED (M7, spec section 9): see SUPERSEDED below. Kept until the pipeline has
+    # run cleanly for a week.
     "score": {"batch": 8, "browser": False},
     "apply": {"batch": 3, "browser": True},
     "outreach": {"batch": 4, "browser": True},
     "review": {"batch": 2, "browser": False},
+}
+# Lanes the agent orchestrator replaced (M7). `apply` and `outreach` stay: the pipeline
+# stops at the apply packet and never drives a browser to submit or contact anyone.
+SUPERSEDED = {
+    "score": "the eligibility and fit_score steps of the packet pipeline (Pipeline tab, "
+             "POST /api/pipeline/runs or the job-machine MCP server)",
 }
 
 _COMMON = """You are a Cursor agent for Harsh Saw's Job Machine. Read AGENTS.md and docs/AGENT-PLAYBOOK.md
@@ -305,6 +313,8 @@ def cmd_cleanup(args: argparse.Namespace) -> None:
 
 def cmd_run(args: argparse.Namespace) -> None:
     lane = args.lane
+    if lane in SUPERSEDED:
+        print(f"NOTE: the {lane} lane is superseded by {SUPERSEDED[lane]}. It still runs for now.", file=sys.stderr)
     argv = TOOLS[args.tool]
     if args.model:
         # Same flag on both CLIs: cursor-agent --model, opencode run -m.

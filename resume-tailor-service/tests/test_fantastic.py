@@ -207,3 +207,24 @@ def test_india_based_roles_are_dropped():
     india = {**_job(12, "Desi"), "locations_derived": ["Bengaluru, Karnataka, India"]}
     result = fantastic.run_search("remote-ca", 2, fetch=lambda _: [india, _job(13, "Kept")])
     assert [n["company"] for n in result["new"]] == ["Kept"]
+
+
+def test_old_prompts_are_marked_superseded_by_the_pipeline_but_kept():
+    from app import search
+
+    # M7 (spec section 9): kept until the pipeline has run cleanly for a week.
+    for key in ("score-new", "triage-filter"):
+        assert "pipeline" in agent_runs.TASKS[key]["superseded_by"]
+        assert agent_runs.TASKS[key]["prompt"]
+    assert "pipeline" in agent_runs.JOB_TASKS["research-job"]["superseded_by"]
+    assert "superseded_by" not in agent_runs.TASKS["liveness"]
+    tasks = {task["id"]: task for task in search.presets()["tasks"]}
+    assert tasks["score-new"]["superseded_by"] and tasks["liveness"]["superseded_by"] == ""
+
+
+def test_cursor_queue_score_lane_is_marked_superseded():
+    from app.pipeline.tasks import load_script
+
+    queue = load_script("cursor_queue")
+    assert "pipeline" in queue.SUPERSEDED["score"]
+    assert "score" in queue.LANES and "apply" not in queue.SUPERSEDED
