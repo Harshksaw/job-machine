@@ -36,6 +36,9 @@ SDK_PROVIDERS = ("openrouter", "openai", "anthropic", "google", "google-gla", "o
 SDK_KEYLESS = ("ollama",)
 # Built in tools an sdk agent may be given (app/pipeline/sdk.py).
 SDK_TOOLS = ("web_fetch", "dossier_read")
+# Task pipelines (app/pipeline/tasks.py) the worker may enqueue on a timer. Kept here as
+# names so the config does not import the task code; a test keeps the two in step.
+SCHEDULABLE_TASKS = ("mail_sync", "liveness_sweep", "remote_boards", "ats_watchlist")
 # Step timeouts per capability (spec 5.3), overridable per adapter.
 DEFAULT_TIMEOUTS: dict[str, int] = {"cheap": 180, "reason": 480, "web": 600, "browser_read": 600}
 
@@ -138,6 +141,12 @@ class Canary(BaseModel):
     share: float = Field(ge=0, le=1)
 
 
+class TaskSchedule(BaseModel):
+    """Run a task pipeline every `every_minutes` (M6 worker). Absent means off."""
+    every_minutes: int = Field(ge=5, le=7 * 24 * 60)
+    enabled: bool = True
+
+
 class StepPrefs(BaseModel):
     prefer: list[str] = Field(default_factory=list)
     canary: Canary | None = None
@@ -153,6 +162,8 @@ class PipelineConfig(BaseModel):
     # spend across its whole adapter chain before it gives up. Pipeline steps use their
     # per step timeouts instead.
     direct_call_budget: int = Field(default=180, ge=10, le=3600)
+    # Task pipelines the worker enqueues on a timer; none by default.
+    schedules: dict[str, TaskSchedule] = Field(default_factory=dict)
     version: int = 0
     updated_at: str = ""
 
@@ -165,6 +176,11 @@ class PipelineConfig(BaseModel):
             for step, prefs in self.steps.items()
             for name in prefs.prefer + ([prefs.canary.adapter] if prefs.canary else [])
             if name not in self.adapters
+        ]
+        unknown += [
+            f"schedule names unknown task {name!r}; one of {', '.join(SCHEDULABLE_TASKS)}"
+            for name in self.schedules
+            if name not in SCHEDULABLE_TASKS
         ]
         unknown += [
             f"adapter {name} names unknown mcp server {server!r}"

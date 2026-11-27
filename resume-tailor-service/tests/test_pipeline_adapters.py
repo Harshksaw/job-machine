@@ -272,3 +272,27 @@ def test_build_adapter_picks_the_type():
     assert isinstance(build_adapter(_cli().spec), CliAdapter)
     assert isinstance(build_adapter(_api().spec), ApiAdapter)
     assert build_adapter(_api().spec).name == "gem"
+
+
+def test_kill_run_stops_the_running_process_group_of_that_run(bin_dir, tmp_path):
+    import threading
+
+    started = tmp_path / "started"
+    _tool(bin_dir, "faketool", f"""
+        open({str(started)!r}, "w").write("1")
+        time.sleep(30)
+    """)
+    results = []
+    thread = threading.Thread(target=lambda: results.append(_call(_cli(), timeout=30)))
+    t0 = time.monotonic()
+    thread.start()
+    while not started.exists() and time.monotonic() - t0 < 10:
+        time.sleep(0.05)
+
+    assert adapters.kill_run("other-run") == 0
+    assert adapters.kill_run("run1") == 1
+    thread.join(timeout=10)
+
+    assert not thread.is_alive() and time.monotonic() - t0 < 10
+    assert results[0].outcome != "ok"
+    assert adapters.kill_run("run1") == 0  # unregistered once it ended

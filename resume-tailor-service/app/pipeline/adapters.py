@@ -23,6 +23,7 @@ import re
 import shutil
 import signal
 import subprocess
+import threading
 import time
 from pathlib import Path
 
@@ -40,6 +41,9 @@ _SAFE = re.compile(r"^[\w.-]+$")
 # prompts/<step>.md template (a template picks its own inputs).
 _JOB_FIELDS = ("company", "role", "job_url", "location", "work_mode", "fit_score", "jd_text")
 _JD_LIMIT = 20000
+# CLI processes running now, by run id, so a cancel can kill them (spec 7).
+_RUNNING: dict[str, set[subprocess.Popen]] = {}
+_RUNNING_LOCK = threading.Lock()
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
@@ -220,18 +224,27 @@ class CliAdapter(_Base):
             command, cwd=REPO, env=env, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
         )
+        with _RUNNING_LOCK:
+            _RUNNING.setdefault(run_id, set()).add(proc)
         timed_out = False
         try:
-            stdout, stderr = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            _kill_group(proc)
             try:
-                stdout, stderr = proc.communicate(timeout=5)
+                stdout, stderr = proc.communicate(timeout=timeout)
             except subprocess.TimeoutExpired:
-                # A child that left the group still holds the pipes; stop waiting.
-                proc.kill()
-                stdout, stderr = "", "output lost: a child process outlived the group kill"
+                timed_out = True
+                _kill_group(proc)
+                try:
+                    stdout, stderr = proc.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    # A child that left the group still holds the pipes; stop waiting.
+                    proc.kill()
+                    stdout, stderr = "", "output lost: a child process outlived the group kill"
+        finally:
+            with _RUNNING_LOCK:
+                procs = _RUNNING.get(run_id, set())
+                procs.discard(proc)
+                if not procs:
+                    _RUNNING.pop(run_id, None)
         log_path.write_text(f"$ exit {proc.returncode}\n--- stdout\n{stdout}\n--- stderr\n{stderr}\n", encoding="utf-8")
         if timed_out:
             return self._result("timeout", f"killed after {timeout}s", **ref)
@@ -256,6 +269,17 @@ class CliAdapter(_Base):
         if not text.strip():
             return self._result("invalid_output", "no output written" if to_file else "empty output", **ref)
         return self._result("invalid_output", "output was not a JSON object", **ref)
+
+
+def kill_run(run_id: str) -> int:
+    """Kill the process group of every CLI adapter call running for this run (a cancel).
+    Returns how many were killed. In process (sdk, api) calls cannot be killed; the
+    runner drops their result when it sees the run cancelled."""
+    with _RUNNING_LOCK:
+        procs = list(_RUNNING.get(run_id, ()))
+    for proc in procs:
+        _kill_group(proc)
+    return len(procs)
 
 
 def _kill_group(proc: subprocess.Popen) -> None:

@@ -1,5 +1,6 @@
 import json
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ from app import (
 )
 from app.bank import load_bank
 from app.pipeline import api as pipeline_api
+from app.pipeline import worker as pipeline_worker
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
 from app.slug import safe_slug
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
@@ -24,7 +26,19 @@ CLS_PATH = TEMPLATE_DIR / "resume.cls"
 OUTPUT_DIR = BASE_DIR / "output"
 STATIC_DIR = BASE_DIR / "app" / "static"
 
-app = FastAPI(title="resume-tailor-service")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # The pipeline worker pool starts only when PIPELINE_WORKERS > 0 (default 0), so
+    # the dashboard runs exactly as before until it is turned on (spec section 8).
+    pool = pipeline_worker.start_from_env()
+    try:
+        yield
+    finally:
+        if pool is not None:
+            pool.stop()
+
+
+app = FastAPI(title="resume-tailor-service", lifespan=lifespan)
 
 
 @app.get("/health")
@@ -98,7 +112,8 @@ app.include_router(jobs.router)
 app.include_router(sessions.router)
 app.include_router(search.router)
 app.include_router(system.router)
-# Agents and models settings (spec 13.5). Routes only: no pipeline worker starts here.
+# Agents and models settings (spec 13.5) and pipeline runs. The worker pool is started
+# by the lifespan above, only when PIPELINE_WORKERS > 0.
 app.include_router(pipeline_api.router)
 
 # Traces every request; exports only when OTEL_EXPORTER_OTLP_ENDPOINT is set.

@@ -21,6 +21,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import threading
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -411,6 +412,20 @@ def active_run(name: str) -> Run | None:
 def enqueue(name: str) -> Run:
     pipeline = task_pipeline(name)
     return store.create_run(task_job_id(name), name, pipeline.order)
+
+
+_ENQUEUE_LOCK = threading.Lock()
+
+
+def enqueue_if_idle(name: str) -> tuple[Run | None, Run | None]:
+    """Queue a run unless one is queued or running: (new run, None) or (None, active).
+    The API and the worker's schedules both go through here, so in one service process
+    they cannot queue the same task twice."""
+    with _ENQUEUE_LOCK:
+        active = active_run(name)
+        if active is not None:
+            return None, active
+        return enqueue(name), None
 
 
 def _default_chain():

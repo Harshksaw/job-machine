@@ -23,6 +23,9 @@ _EXPORTER_VARS = (
 def pytest_configure(config):
     for name in _DATABASE_VARS:
         os.environ.pop(name, None)
+    # A PIPELINE_WORKERS in .env would start the worker pool in any test that enters
+    # the app lifespan.
+    os.environ.pop("PIPELINE_WORKERS", None)
     for name in _EXPORTER_VARS:
         os.environ[name] = ""
 
@@ -31,3 +34,4 @@ def pytest_configure(config):
 def no_database_url(monkeypatch):
     for name in _DATABASE_VARS:
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("PIPELINE_WORKERS", raising=False)

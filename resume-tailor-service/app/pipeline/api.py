@@ -155,10 +155,10 @@ def post_runs(data: RunRequest, x_job_machine: str | None = Header(default=None)
     `packet` gets one run per dossier id, skipping a dossier that already has one."""
     _require_dashboard(x_job_machine)
     if data.pipeline in tasks.TASK_BUILDERS:
-        active = tasks.active_run(data.pipeline)
+        queued, active = tasks.enqueue_if_idle(data.pipeline)
         if active is not None:
             raise HTTPException(status_code=409, detail=f"{data.pipeline} already has run {active.id} ({active.status})")
-        return {"queued": [tasks.enqueue(data.pipeline).model_dump(mode="json")], "skipped": []}
+        return {"queued": [queued.model_dump(mode="json")], "skipped": []}
     if data.pipeline != "packet":
         names = ", ".join(["packet", *tasks.TASK_BUILDERS])
         raise HTTPException(status_code=422, detail=f"unknown pipeline {data.pipeline!r}; one of {names}")
