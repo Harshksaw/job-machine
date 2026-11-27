@@ -298,3 +298,34 @@ def test_registry_and_active_run():
     assert tasks.active_run("liveness_sweep") is None
     queued = tasks.enqueue("liveness_sweep")
     assert queued.job_id == "task:liveness_sweep" and tasks.active_run("liveness_sweep").id == queued.id
+
+
+def test_a_crash_between_activity_and_status_writes_neither(monkeypatch):
+    """Codex review: the activity and the status move are one transaction, so a crash
+    cannot leave the email logged and the status unmoved forever."""
+    acme = _job("Acme", "Backend Engineer")
+    real_patch = job_store.patch_job
+
+    def crash(*args, **kwargs):
+        raise RuntimeError("power cut")
+
+    monkeypatch.setattr(job_store, "patch_job", crash)
+    _, chain = _chain(_classified())
+    first = tasks.run_task("mail_sync", pipeline=_mail_pipeline(FakeTransport(_inbox())), resolve_chain=chain)
+    assert first.status == "failed"
+    saved = job_store.get_job(acme.id)
+    assert "gmail:m1" not in [a.external_id for a in saved.activities] and saved.status == "applied"
+
+    monkeypatch.setattr(job_store, "patch_job", real_patch)
+    _, chain = _chain(_classified())
+    second = tasks.run_task("mail_sync", pipeline=_mail_pipeline(FakeTransport(_inbox())), resolve_chain=chain)
+    assert second.status == "completed"
+    saved = job_store.get_job(acme.id)
+    assert saved.status == "rejected" and [a.external_id for a in saved.activities].count("gmail:m1") == 1
+
+
+def test_crash_rolls_back_on_the_sql_backend_too(monkeypatch, tmp_path):
+    from app import doc_store
+
+    monkeypatch.setattr(job_store, "_BACKEND_OVERRIDE", doc_store.SqlBackend(f"sqlite:///{tmp_path / 'jobs.db'}"))
+    test_a_crash_between_activity_and_status_writes_neither(monkeypatch)

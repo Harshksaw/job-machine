@@ -176,25 +176,27 @@ def _mirror(job_id: str, data: JobActivityInput) -> None:
 
 
 def _write(event: dict, decision: dict, session: str, run_id: str) -> tuple[str, str]:
-    """Write one matched event. Returns (status, status change). The activity check and
-    write are one transaction, and the dossier status moves only when the activity is
-    new, so a rerun or a second run cannot apply the same email twice."""
+    """Write one matched event. Returns (status, status change). The activity check, the
+    activity and the status move are one dossier transaction: a rerun or a second run
+    cannot apply the same email twice, and a crash cannot keep the activity and lose the
+    status move (the next run would then see a duplicate and never move it)."""
     outcomes = load_script("mail_outcomes")
     job_id = decision["job"]["id"]
     data = JobActivityInput(**outcomes.activity(event, session))
-    updated, refused = job_store.add_activity_unless(
-        job_id, data,
-        lambda current: "duplicate" if any(a.external_id == data.external_id for a in current.activities) else "",
-    )
-    if updated is None:
-        return "unmatched", ""
-    if refused:
-        return "duplicate", ""
-    _mirror(job_id, data)
     change = decision["set_status"] or ""
-    if change:
-        job_store.patch_job(job_id, {"status": change},
-                            reason=f"Mail sync {run_id}: {event['outcome']} email", session=session)
+    with job_store._transaction():
+        updated, refused = job_store.add_activity_unless(
+            job_id, data,
+            lambda current: "duplicate" if any(a.external_id == data.external_id for a in current.activities) else "",
+        )
+        if updated is None:
+            return "unmatched", ""
+        if refused:
+            return "duplicate", ""
+        if change:
+            job_store.patch_job(job_id, {"status": change},
+                                reason=f"Mail sync {run_id}: {event['outcome']} email", session=session)
+    _mirror(job_id, data)
     return "written", change
 
 
