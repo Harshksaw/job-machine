@@ -132,3 +132,18 @@ def test_finish_raising_fails_the_step_instead_of_crashing():
 
     assert result.status == "failed"
     assert "KeyError" in result.terminal_reason
+
+
+def test_adapter_that_raises_is_recorded_and_falls_back():
+    class Broken:
+        name = "broken"
+
+        def invoke(self, step, ctx, errors):
+            raise OSError("binary missing")
+
+    job, result = _go(Broken(), FakeAdapter("pricey", [GOOD]))
+
+    assert result.status == "packet_ready"
+    assert [(a.adapter, a.outcome) for a in store.list_attempts(result.id)] == [
+        ("broken", "error"), ("pricey", "ok"),
+    ]

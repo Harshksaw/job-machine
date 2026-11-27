@@ -134,16 +134,33 @@ def finish_run(run_id: str, status: str, reason: str = "") -> Run:
     if status not in TERMINAL_STATUSES:
         raise ValueError(f"{status!r} is not a terminal run status")
 
+    return _mutate(run_id, lambda run: _finish(run, status, reason))
+
+
+def complete_step(run_id: str, step: str, *, output: dict, stop: str = "", reason: str = "") -> Run:
+    """Mark a step done and, when it stops the run, end the run in the same write, so a
+    crash between the two cannot keep the step and lose the stop."""
+    if stop and stop not in TERMINAL_STATUSES:
+        raise ValueError(f"{stop!r} is not a terminal run status")
+
     def change(run: Run) -> None:
-        if run.status in TERMINAL_STATUSES:
-            return
-        run.status = status
-        run.terminal_reason = reason
-        for name, state in run.steps.items():
-            if state.status == "pending":
-                run.steps[name] = state.model_copy(update={"status": "skipped"})
+        run.steps[step] = run.steps[step].model_copy(
+            update={"status": "done", "output": output, "finished_at": now_iso()}
+        )
+        if stop:
+            _finish(run, stop, reason)
 
     return _mutate(run_id, change)
+
+
+def _finish(run: Run, status: str, reason: str) -> None:
+    if run.status in TERMINAL_STATUSES:
+        return
+    run.status = status
+    run.terminal_reason = reason
+    for name, state in run.steps.items():
+        if state.status == "pending":
+            run.steps[name] = state.model_copy(update={"status": "skipped"})
 
 
 def acquire_lease(run_id: str, owner: str, seconds: int = LEASE_SECONDS) -> bool:

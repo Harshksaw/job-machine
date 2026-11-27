@@ -247,5 +247,42 @@ def test_run_refuses_a_pipeline_that_does_not_match_the_run():
     pipeline = Pipeline("p", (StepSpec("a", "code", run=_ok),))
     other = Pipeline("p", (StepSpec("z", "code", run=_ok),))
 
+    run_id = _start(job, pipeline).id
     with pytest.raises(ValueError, match="does not match"):
-        runner.run(_start(job, pipeline).id, other, owner="w1")
+        runner.run(run_id, other, owner="w1")
+    assert store.get_run(run_id).status == "queued"
+
+
+def test_when_raising_fails_the_step_instead_of_leaving_the_run_running():
+    job = _job()
+    pipeline = Pipeline("p", (StepSpec("a", "code", when=lambda ctx: 1 / 0, run=_ok),))
+
+    result = runner.run(_start(job, pipeline).id, pipeline, owner="w1")
+
+    assert result.status == "failed"
+    assert "ZeroDivisionError" in result.terminal_reason
+
+
+def test_stop_is_saved_with_the_step_so_a_crash_cannot_lose_it(monkeypatch):
+    job = _job()
+    later = []
+
+    def crash(*args, **kwargs):
+        raise _Crash()
+
+    monkeypatch.setattr(store, "finish_run", crash)
+
+    def kit(ctx):
+        later.append(1)
+        return StepResult()
+
+    pipeline = Pipeline("p", (
+        StepSpec("eligibility", "code", run=lambda ctx: StepResult(stop="ineligible", reason="senior")),
+        StepSpec("kit", "code", deps=("eligibility",), run=kit),
+    ))
+
+    result = runner.run(_start(job, pipeline).id, pipeline, owner="w1")
+
+    assert result.status == "ineligible"
+    assert result.terminal_reason == "senior"
+    assert later == []

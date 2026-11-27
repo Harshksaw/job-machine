@@ -119,9 +119,10 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
     if not store.acquire_lease(run_id, owner):
         raise LeaseHeld(f"run {run_id} is leased by another worker")
     try:
-        current = store.start_run(run_id)
+        current = store.get_run(run_id)
         if current.pipeline != pipeline.name or current.order != pipeline.order:
             raise ValueError(f"run {run_id} does not match pipeline {pipeline.name}")
+        current = store.start_run(run_id)
         specs = {step.name: step for step in pipeline.steps}
         while current.status not in TERMINAL_STATUSES:
             ready = [
@@ -159,14 +160,15 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain) -> None:
         else:
             result = _run_local(step, ctx)
         _apply(step, ctx, result)
-    except StepFailed as exc:
-        store.update_step(run_id, step.name, status="failed", error=str(exc), finished_at=now_iso())
-        if exc.policy:
-            store.finish_run(run_id, "failed", f"{step.name}: {exc}")
+    except Exception as exc:
+        # Anything a step, adapter or store raises fails this step; only a crash
+        # (BaseException) escapes, and resume handles that.
+        failure = exc if isinstance(exc, StepFailed) else StepFailed(_short(exc))
+        store.update_step(run_id, step.name, status="failed", error=str(failure), finished_at=now_iso())
+        if failure.policy:
+            store.finish_run(run_id, "failed", f"{step.name}: {failure}")
         return
-    store.update_step(run_id, step.name, status="done", output=result.output, finished_at=now_iso())
-    if result.stop:
-        store.finish_run(run_id, result.stop, result.reason)
+    store.complete_step(run_id, step.name, output=result.output, stop=result.stop, reason=result.reason)
 
 
 def _context(run_id: str) -> StepContext:
@@ -232,7 +234,10 @@ def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain) -> StepRe
         errors: list[str] = []
         for _ in range(2):
             started, t0 = now_iso(), time.monotonic()
-            result = adapter.invoke(step, ctx, errors)
+            try:
+                result = adapter.invoke(step, ctx, errors)
+            except Exception as exc:
+                result = AdapterResult(outcome="error", error=_short(exc))
             parsed = None
             if result.outcome == "ok":
                 try:
