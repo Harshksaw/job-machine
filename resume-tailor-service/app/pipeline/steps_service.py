@@ -78,10 +78,18 @@ def kit_step(complete: Complete | None = None, *, bank_path: Path | None = None,
     def kit(ctx: StepContext) -> StepResult:
         generated = _draft_kit(ctx, _bank(bank_path), complete)
         analysis = _pinned(generated.analysis, ctx)
+        writes: dict = {"fit_analysis": analysis.model_dump()}
+        # Owner ruling: a letter already on the dossier may be hand edited, so it
+        # survives; only the analysis is refreshed.
+        keep = bool((ctx.job.cover_letter or "").strip())
+        if not keep:
+            writes["cover_letter"] = generated.cover_letter
         return StepResult(
             output={"kit_score": generated.analysis.score, "score": analysis.score,
-                    "words": len(generated.cover_letter.split())},
-            writes={"fit_analysis": analysis.model_dump(), "cover_letter": generated.cover_letter},
+                    "cover_letter": "kept existing cover letter" if keep else "generated",
+                    "wrote_letter": not keep,
+                    "words": len((ctx.job.cover_letter if keep else generated.cover_letter).split())},
+            writes=writes,
         )
 
     return StepSpec("kit", "service", deps=deps, owns=("fit_analysis", "cover_letter"),
@@ -216,7 +224,12 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
         answers = list(ctx.job.application_answers)
         for field, issues in by_field.items():
             try:
-                if field == "cover_letter" and ctx.job.cover_letter.strip():
+                if field == "cover_letter":
+                    # Only a letter the kit step wrote in this run; never a letter that
+                    # was already on the dossier (it may be hand edited).
+                    if not (ctx.outputs.get("kit") or {}).get("wrote_letter"):
+                        unrepaired.append(field)
+                        continue
                     generated = _draft_kit(ctx, bank, complete_kit, issues)
                     writes["fit_analysis"] = _pinned(generated.analysis, ctx).model_dump()
                     writes["cover_letter"] = generated.cover_letter

@@ -87,7 +87,8 @@ def test_kit_score_is_pinned_to_the_fit_score_step():
     saved = job_store.get_job(job.id)
     assert saved.fit_score == 6 and saved.fit_analysis.score == 6
     assert saved.fit_analysis.recommendation == "apply"
-    assert result.steps["kit"].output == {"kit_score": 8, "score": 6, "words": result.steps["kit"].output["words"]}
+    output = result.steps["kit"].output
+    assert (output["kit_score"], output["score"]) == (8, 6)
 
 
 def test_kit_repairs_once_with_the_validation_errors():
@@ -253,6 +254,11 @@ def _review(passed, issues):
     return StepSpec("review", "code", run=lambda ctx: StepResult(output={"pass": passed, "issues": issues}))
 
 
+def _kit_wrote():
+    """Stands in for a kit step that wrote the dossier's letter in this run."""
+    return StepSpec("kit", "code", run=lambda ctx: StepResult(output={"wrote_letter": True}))
+
+
 LETTER_ISSUE = {"field": "cover_letter", "problem": "Opens with a vague line.", "fix": "Start with the product."}
 
 
@@ -274,8 +280,8 @@ def test_repair_does_nothing_after_a_passing_review():
 def test_repair_regenerates_the_letter_with_the_review_issues():
     job = _job(cover_letter="Old letter for Acme Cloud.")
     model = Script(_valid_kit_payload())
-    result = _run(job, _fit(7), _review(False, [LETTER_ISSUE]),
-                  steps_service.repair_step(complete_kit=model, deps=("fit_score", "review")))
+    result = _run(job, _fit(7), _kit_wrote(), _review(False, [LETTER_ISSUE]),
+                  steps_service.repair_step(complete_kit=model, deps=("fit_score", "kit", "review")))
     assert result.status == "packet_ready", result.terminal_reason
     assert "Opens with a vague line." in model.prompts[0] and "Start with the product." in model.prompts[0]
     saved = job_store.get_job(job.id)
@@ -305,8 +311,51 @@ def test_a_repair_that_still_fails_keeps_the_old_text_and_the_run_goes_on():
     job = _job(cover_letter="Old letter for Acme Cloud.")
     bad = _valid_kit_payload()
     bad["cover_letter"] = "Too short for Acme Cloud."
-    result = _run(job, _review(False, [LETTER_ISSUE]),
-                  steps_service.repair_step(complete_kit=Script(bad), deps=("review",)))
+    result = _run(job, _kit_wrote(), _review(False, [LETTER_ISSUE]),
+                  steps_service.repair_step(complete_kit=Script(bad), deps=("kit", "review")))
     assert result.status == "packet_ready"
     assert job_store.get_job(job.id).cover_letter == "Old letter for Acme Cloud."
     assert result.steps["repair"].output == {"repaired": [], "unrepaired": ["cover_letter"]}
+
+
+# Owner ruling: hand edited cover letters survive the pipeline.
+
+
+def test_kit_keeps_an_existing_cover_letter_but_writes_the_analysis():
+    job = _job(cover_letter="Harsh's own letter to Acme Cloud.")
+    result = _run(job, _fit(7), steps_service.kit_step(complete=Script(_valid_kit_payload()),
+                                                       deps=("fit_score",)))
+    assert result.status == "packet_ready", result.terminal_reason
+    saved = job_store.get_job(job.id)
+    assert saved.cover_letter == "Harsh's own letter to Acme Cloud."
+    assert saved.fit_analysis.score == 7 and saved.fit_score == 7
+    output = result.steps["kit"].output
+    assert output["cover_letter"] == "kept existing cover letter" and output["wrote_letter"] is False
+
+
+def test_kit_generates_a_letter_when_none_exists():
+    job = _job()
+    result = _run(job, steps_service.kit_step(complete=Script(_valid_kit_payload())))
+    assert result.steps["kit"].output["wrote_letter"] is True
+    assert result.steps["kit"].output["cover_letter"] == "generated"
+    assert job_store.get_job(job.id).cover_letter.startswith("Acme Cloud needs")
+
+
+def test_repair_does_not_touch_a_letter_the_kit_did_not_write_this_run():
+    job = _job(cover_letter="Harsh's own letter to Acme Cloud.")
+    kit_model = Script(_valid_kit_payload())
+    result = _run(job, steps_service.kit_step(complete=kit_model), _review(False, [LETTER_ISSUE]),
+                  steps_service.repair_step(complete_kit=kit_model, deps=("kit", "review")))
+    assert result.status == "packet_ready", result.terminal_reason
+    assert job_store.get_job(job.id).cover_letter == "Harsh's own letter to Acme Cloud."
+    assert len(kit_model.prompts) == 1  # the kit's own draft; repair never called the model
+    assert result.steps["repair"].output == {"repaired": [], "unrepaired": ["cover_letter"]}
+
+
+def test_repair_rewrites_a_letter_the_kit_wrote_this_run():
+    job = _job()
+    kit_model = Script(_valid_kit_payload())
+    result = _run(job, steps_service.kit_step(complete=kit_model), _review(False, [LETTER_ISSUE]),
+                  steps_service.repair_step(complete_kit=kit_model, deps=("kit", "review")))
+    assert result.steps["repair"].output == {"repaired": ["cover_letter"], "unrepaired": []}
+    assert len(kit_model.prompts) == 2
