@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   clampInt,
+  disabledPicks,
   eligibleAdapters,
   formatApiDetail,
   isDirty,
@@ -125,4 +126,20 @@ test("clampInt parses whole numbers inside a range", () => {
   assert.equal(clampInt("99", 1, 32, 2), 32);
   assert.equal(clampInt("0", 1, 32, 2), 1);
   assert.equal(clampInt("", 1, 32, 2), 2);
+});
+
+test("eligibleAdapters leaves out disabled adapters, which the router never uses", () => {
+  const off = updateAdapter(config(), "codex", { enabled: false });
+  assert.deepEqual(eligibleAdapters(off, "reason"), ["claude_haiku"]);
+});
+
+test("disabledPicks names preferred or canary adapters that are switched off", () => {
+  let next = setStepPrefs(config(), "fit_score", {
+    prefer: ["codex", "claude_haiku"],
+    canary: { adapter: "codex", share: 0.2 },
+  });
+  assert.deepEqual(disabledPicks(next, "fit_score"), []);
+  next = updateAdapter(next, "codex", { enabled: false });
+  assert.deepEqual(disabledPicks(next, "fit_score"), ["codex"]);
+  assert.deepEqual(disabledPicks(next, "kit"), []);
 });

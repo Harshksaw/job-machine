@@ -15,6 +15,7 @@ import {
 import {
   CAPABILITIES,
   clampInt,
+  disabledPicks,
   eligibleAdapters,
   isDirty,
   moveItem,
@@ -397,6 +398,10 @@ export default function AgentsSettings() {
               const options = eligibleAdapters(draft, capability);
               const addable = options.filter((name) => !prefs.prefer.includes(name));
               const setPrefs = (next: typeof prefs) => setDraft(setStepPrefs(draft, step, next));
+              const off = disabledPicks(draft, step);
+              // Keep a saved canary visible in the list even after its adapter is turned off.
+              const canaryOptions =
+                prefs.canary && !options.includes(prefs.canary.adapter) ? [...options, prefs.canary.adapter] : options;
               return (
                 <tr key={step} className="align-top">
                   <td className="py-2 pr-2 font-medium text-zinc-100">{step}</td>
@@ -409,6 +414,7 @@ export default function AgentsSettings() {
                           className="inline-flex items-center gap-0.5 rounded border border-zinc-700 py-0.5 pl-1.5 pr-0.5 text-xs"
                         >
                           <span className="text-zinc-500">{index + 1}.</span> {name}
+                          {off.includes(name) && <span className="text-amber-300">(off)</span>}
                           <button
                             type="button"
                             onClick={() => setPrefs({ ...prefs, prefer: moveItem(prefs.prefer, index, -1) })}
@@ -457,9 +463,16 @@ export default function AgentsSettings() {
                         </li>
                       )}
                       {prefs.prefer.length === 0 && addable.length === 0 && (
-                        <li className="text-xs text-zinc-600">no adapter has {capability}</li>
+                        <li className="text-xs text-zinc-600">no enabled adapter has {capability}</li>
                       )}
                     </ol>
+                    {off.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-300">
+                        {off.join(", ")} {off.length === 1 ? "is" : "are"} turned off, so the router skips{" "}
+                        {off.length === 1 ? "it" : "them"} here. Turn {off.length === 1 ? "it" : "them"} on or remove{" "}
+                        {off.length === 1 ? "it" : "them"}.
+                      </p>
+                    )}
                   </td>
                   <td className="py-2">
                     <div className="flex items-center gap-1.5">
@@ -477,9 +490,9 @@ export default function AgentsSettings() {
                         className="jm-input h-7 w-auto py-0 text-xs"
                       >
                         <option value="">None</option>
-                        {options.map((name) => (
+                        {canaryOptions.map((name) => (
                           <option key={name} value={name}>
-                            {name}
+                            {off.includes(name) ? `${name} (off)` : name}
                           </option>
                         ))}
                       </select>

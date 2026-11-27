@@ -53,10 +53,11 @@ export function toggleCapability(
   return CAPABILITIES.filter((item) => next.has(item));
 }
 
-/** Adapters that have a capability, cheapest first, then by name. */
+/** Enabled adapters that have a capability, cheapest first, then by name. Disabled
+ * ones are left out: the router skips them, so picking one would do nothing. */
 export function eligibleAdapters(config: PipelineConfig, capability: PipelineCapability): string[] {
   return Object.entries(config.adapters)
-    .filter(([, spec]) => spec.capabilities.includes(capability))
+    .filter(([, spec]) => spec.enabled && spec.capabilities.includes(capability))
     .sort(([a, x], [b, y]) => x.cost_tier - y.cost_tier || a.localeCompare(b))
     .map(([name]) => name);
 }
@@ -72,6 +73,14 @@ export function setStepPrefs(config: PipelineConfig, step: string, prefs: StepPr
 
 export function stepPrefs(config: PipelineConfig, step: string): StepPrefs {
   return config.steps[step] ?? { prefer: [], canary: null };
+}
+
+/** Preferred or canary adapters for a step that are switched off, so the page can
+ * warn that the router will skip them. */
+export function disabledPicks(config: PipelineConfig, step: string): string[] {
+  const prefs = stepPrefs(config, step);
+  const picked = [...prefs.prefer, ...(prefs.canary ? [prefs.canary.adapter] : [])];
+  return [...new Set(picked)].filter((name) => config.adapters[name] && !config.adapters[name].enabled);
 }
 
 /** Moves the item at `index` by `delta` places; out of range moves are ignored. */
