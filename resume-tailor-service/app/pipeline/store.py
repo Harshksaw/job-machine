@@ -21,9 +21,10 @@ from app.pipeline.models import TERMINAL_STATUSES, Attempt, Run, StepState, now_
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 RUNS = "pipeline_runs"
 ATTEMPTS = "pipeline_attempts"
-# A worker renews its lease well inside this window (M6); after a crash the run is
-# free again once it lapses.
+# A worker renews its lease every RENEW_SECONDS, well inside this window (M6); after a
+# crash the run is free again once it lapses.
 LEASE_SECONDS = 120
+RENEW_SECONDS = 30
 
 _LOCK = threading.RLock()
 _JSON_BACKENDS: dict[Path, doc_store.JsonFileBackend] = {}
@@ -33,6 +34,14 @@ _BACKEND_OVERRIDE = None
 
 class RunNotFound(KeyError):
     pass
+
+
+class RunFinished(ValueError):
+    """The run already has a terminal status."""
+
+
+class RunActive(ValueError):
+    """The run is still queued or running."""
 
 
 def _read(path: Path) -> list[dict]:
@@ -183,6 +192,113 @@ def acquire_lease(run_id: str, owner: str, seconds: int = LEASE_SECONDS) -> bool
 
     _mutate(run_id, change)
     return acquired
+
+
+def _lease_live(run: Run, now: datetime) -> bool:
+    return bool(run.lease_owner and run.lease_until and datetime.fromisoformat(run.lease_until) > now)
+
+
+def renew_lease(run_id: str, owner: str, seconds: int = LEASE_SECONDS) -> bool:
+    """Extend the lease, only while `owner` still holds it."""
+    now = datetime.now(timezone.utc)
+    renewed = False
+
+    def change(run: Run) -> None:
+        nonlocal renewed
+        if run.lease_owner == owner and owner:
+            run.lease_until = (now + timedelta(seconds=seconds)).isoformat()
+            renewed = True
+
+    _mutate(run_id, change)
+    return renewed
+
+
+def claim(run_id: str, owner: str, seconds: int = LEASE_SECONDS) -> bool:
+    """Take a queued run whose lease is free, in one write (the worker's claim)."""
+    now = datetime.now(timezone.utc)
+    taken = False
+
+    def change(run: Run) -> None:
+        nonlocal taken
+        if run.status != "queued" or (_lease_live(run, now) and run.lease_owner != owner):
+            return
+        run.lease_owner = owner
+        run.lease_until = (now + timedelta(seconds=seconds)).isoformat()
+        taken = True
+
+    _mutate(run_id, change)
+    return taken
+
+
+def reap_expired() -> list[str]:
+    """Put back in the queue every run left `running` with no live lease: its worker
+    crashed, stopped or lost the database. The next claim resumes it (start_run puts
+    half done steps back), so a run that renews its lease is never touched."""
+    reaped = []
+    for candidate in list_runs():
+        if candidate.status != "running" or _lease_live(candidate, datetime.now(timezone.utc)):
+            continue
+
+        def change(run: Run) -> None:
+            if run.status == "running" and not _lease_live(run, datetime.now(timezone.utc)):
+                run.status = "queued"
+                run.lease_owner = ""
+                run.lease_until = ""
+                reaped.append(run.id)
+
+        try:
+            _mutate(candidate.id, change)
+        except RunNotFound:
+            continue
+    return reaped
+
+
+def cancel_run(run_id: str, reason: str) -> Run:
+    """End a queued or running run as cancelled and free its lease whoever holds it. A
+    step still running is marked failed; its worker sees the status and stops."""
+
+    def change(run: Run) -> None:
+        if run.status in TERMINAL_STATUSES:
+            raise RunFinished(f"run {run_id} already ended {run.status}")
+        for name, state in run.steps.items():
+            if state.status == "running":
+                run.steps[name] = state.model_copy(update={"status": "failed", "error": "cancelled",
+                                                           "finished_at": now_iso()})
+        _finish(run, "cancelled", reason)
+        run.lease_owner = ""
+        run.lease_until = ""
+
+    return _mutate(run_id, change)
+
+
+def reset_for_retry(run_id: str, steps: set[str]) -> Run:
+    """Queue a finished run again with `steps` back to pending; other steps keep their
+    state and output, so the run resumes where it stopped."""
+
+    def change(run: Run) -> None:
+        if run.status not in TERMINAL_STATUSES:
+            raise RunActive(f"run {run_id} is still {run.status}")
+        unknown = sorted(set(steps) - set(run.steps))
+        if unknown:
+            raise KeyError(f"run {run_id} has no step {', '.join(unknown)}")
+        for name in steps:
+            run.steps[name] = StepState()
+        run.status = "queued"
+        run.terminal_reason = ""
+        run.lease_owner = ""
+        run.lease_until = ""
+
+    return _mutate(run_id, change)
+
+
+def requeue(run_id: str) -> Run:
+    """Put a run its worker abandoned (shutdown) back in the queue, if it is still running."""
+
+    def change(run: Run) -> None:
+        if run.status == "running":
+            run.status = "queued"
+
+    return _mutate(run_id, change)
 
 
 def release_lease(run_id: str, owner: str) -> None:

@@ -6,6 +6,7 @@ from app import doc_store, job_store
 from app.pipeline import store
 
 from tests import test_pipeline_agents as agents_suite
+from tests import test_pipeline_leases as leases_suite
 from tests import test_pipeline_runner as runner_suite
 
 
@@ -17,7 +18,7 @@ def sql_backend(monkeypatch, tmp_path):
     return backend
 
 
-for _module in (runner_suite, agents_suite):
+for _module in (runner_suite, agents_suite, leases_suite):
     for _name in dir(_module):
         if _name.startswith("test_"):
             globals()[f"{_name}_on_sql"] = getattr(_module, _name)

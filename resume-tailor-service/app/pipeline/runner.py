@@ -15,6 +15,7 @@ Design: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md
 """
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -125,6 +126,11 @@ class LeaseHeld(RuntimeError):
     pass
 
 
+class RunAbandoned(BaseException):
+    """The worker is shutting down. Like a crash, it leaves the run `running` with its
+    current step half done, so the next claim resumes it; never caught by step code."""
+
+
 class StepFailed(Exception):
     def __init__(self, message: str, *, policy: bool = False):
         super().__init__(message)
@@ -138,9 +144,26 @@ def _no_adapters(step: StepSpec) -> list[Adapter]:
     return []
 
 
-def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _no_adapters) -> Run:
-    if not store.acquire_lease(run_id, owner):
+def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _no_adapters,
+        stop: threading.Event | None = None, renew_every: float = store.RENEW_SECONDS,
+        lease_seconds: int = store.LEASE_SECONDS) -> Run:
+    """Run until the run ends. The lease is renewed every `renew_every` seconds while it
+    runs, so the reaper or a second worker can never take over an in flight step. A set
+    `stop` event abandons the run (RunAbandoned) at the next step or adapter boundary."""
+    if not store.acquire_lease(run_id, owner, seconds=lease_seconds):
         raise LeaseHeld(f"run {run_id} is leased by another worker")
+    stop = stop or threading.Event()
+    done_renewing = threading.Event()
+
+    def renew() -> None:
+        while not done_renewing.wait(renew_every):
+            try:
+                store.renew_lease(run_id, owner, seconds=lease_seconds)
+            except Exception:
+                pass  # a database blip; the next tick tries again, well inside the lease
+
+    renewer = threading.Thread(target=renew, name=f"lease-{run_id[:8]}", daemon=True)
+    renewer.start()
     try:
         current = store.get_run(run_id)
         if current.pipeline != pipeline.name or current.order != pipeline.order:
@@ -157,6 +180,8 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
                 if current.steps[name].status == "pending"
                 and all(current.steps[dep].status in ("done", "skipped") for dep in specs[name].deps)
             ]
+            if stop.is_set():
+                raise RunAbandoned(run_id)
             if not ready:
                 failed = [name for name in current.order if current.steps[name].status == "failed"]
                 if failed:
@@ -167,14 +192,25 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
                 break
             with ThreadPoolExecutor(max_workers=len(ready)) as pool:
                 # list() re-raises anything a step thread raised, including a crash.
-                list(pool.map(lambda step: _execute(run_id, step, resolve_chain), ready))
+                list(pool.map(lambda step: _execute(run_id, step, resolve_chain, stop), ready))
             current = store.get_run(run_id)
         return current
     finally:
+        done_renewing.set()
+        renewer.join(timeout=5)
         store.release_lease(run_id, owner)
 
 
-def _execute(run_id: str, step: StepSpec, resolve_chain: Chain) -> None:
+def _check_interrupt(run_id: str, stop: threading.Event) -> None:
+    """Between adapter tries and before a write: stop for a shutdown or a cancel."""
+    if stop.is_set():
+        raise RunAbandoned(run_id)
+    current = store.get_run(run_id)
+    if current is not None and current.status == "cancelled":
+        raise StepFailed("run cancelled")
+
+
+def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.Event) -> None:
     try:
         ctx = _context(run_id)
         if step.when is not None and not step.when(ctx):
@@ -182,9 +218,10 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain) -> None:
             return
         store.update_step(run_id, step.name, status="running", started_at=now_iso(), error="")
         if step.kind == "agent":
-            result = _run_agent(step, ctx, resolve_chain)
+            result = _run_agent(step, ctx, resolve_chain, stop)
         else:
             result = _run_local(step, ctx)
+        _check_interrupt(run_id, stop)
         _apply(step, ctx, result)
     except Exception as exc:
         # Anything a step, adapter or store raises fails this step; only a crash
@@ -252,7 +289,8 @@ def _run_local(step: StepSpec, ctx: StepContext) -> StepResult:
     return result
 
 
-def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain) -> StepResult:
+def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain,
+               stop: threading.Event | None = None) -> StepResult:
     """Try each adapter in the chain. Invalid output gets one more try on the same
     adapter with the error list; unavailable, timeout and error move on at once; a
     policy violation fails the step, which fails the run."""
@@ -269,11 +307,15 @@ def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain) -> StepRe
     for adapter in chain:
         errors: list[str] = []
         for _ in range(2):
+            _check_interrupt(ctx.run.id, stop or threading.Event())
             started, t0 = now_iso(), time.monotonic()
             try:
                 result = adapter.invoke(step, ctx, errors)
             except Exception as exc:
                 result = AdapterResult(outcome="error", error=_short(exc))
+            # A cancel kills the adapter's process; its broken output must not count
+            # as a try or start a second one.
+            _check_interrupt(ctx.run.id, stop or threading.Event())
             parsed = None
             if result.outcome == "ok":
                 try:
