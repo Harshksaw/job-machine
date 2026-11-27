@@ -286,3 +286,26 @@ def test_stop_is_saved_with_the_step_so_a_crash_cannot_lose_it(monkeypatch):
     assert result.status == "ineligible"
     assert result.terminal_reason == "senior"
     assert later == []
+
+
+def test_attempts_record_the_prompt_version(monkeypatch, tmp_path):
+    from app.pipeline.fake import FakeAdapter
+    from app.pipeline.models import AdapterResult
+    from pydantic import BaseModel
+
+    class Fit(BaseModel):
+        score: int
+
+    monkeypatch.setattr(job_store, "STORE_PATH", tmp_path / "jobs.json")
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(store, "_JSON_BACKENDS", {})
+    fake = FakeAdapter("f", [AdapterResult(outcome="ok", output={"score": 7}, prompt_version="abc123def456")])
+    pipeline = Pipeline("p", (StepSpec("fit_score", "agent", capability="reason", schema=Fit,
+                                       finish=lambda parsed, ctx: StepResult(output=parsed.model_dump())),))
+    job = job_store.add_job(JobWorkspaceInput(company="Acme", role="Backend Engineer"))
+    run_id = store.create_run(job.id, "p", pipeline.order).id
+
+    runner.run(run_id, pipeline, owner="w", resolve_chain=lambda step: [fake])
+
+    [attempt] = store.list_attempts(run_id)
+    assert attempt.prompt_version == "abc123def456"

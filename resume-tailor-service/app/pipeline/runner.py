@@ -203,6 +203,7 @@ def _record(ctx: StepContext, step: StepSpec, adapter: str, started: str, t0: fl
             step=step.name,
             adapter=adapter,
             model=result.model,
+            prompt_version=result.prompt_version,
             started_at=started,
             duration_ms=int((time.monotonic() - t0) * 1000),
             outcome=result.outcome,

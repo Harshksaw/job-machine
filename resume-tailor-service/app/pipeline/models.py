@@ -81,3 +81,5 @@ class AdapterResult(BaseModel):
     cost: float | None = None
     # Where the raw agent output was saved on disk, for the attempt ledger.
     output_ref: str = ""
+    # Version of prompts/<step>.md the adapter rendered ("" for the generic prompt).
+    prompt_version: str = ""

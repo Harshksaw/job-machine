@@ -151,23 +151,44 @@ def test_claude_hermetic_reuses_isolation_flags_env_and_reads_stdout(bin_dir, tm
     assert recorded["env"]["TOOL_HOME"] == os.path.expanduser("~/.tool")
 
 
-def test_invoke_renders_the_step_and_repair_errors(bin_dir, tmp_path):
+def _invoke_seen(bin_dir, tmp_path, step, errors):
     seen = tmp_path / "prompt.txt"
     _tool(bin_dir, "faketool", f"""
         open({str(seen)!r}, "w").write(sys.argv[1])
         open(os.environ["PIPELINE_OUTPUT_PATH"], "w").write(json.dumps({{"answer": "x"}}))
     """)
-    job = job_store.add_job(JobWorkspaceInput(company="Acme", role="Backend Engineer"))
-    run = store.create_run(job.id, "p", ["fit_score"])
+    job = job_store.add_job(JobWorkspaceInput(company="Acme", role="Backend Engineer", jd_text="Build APIs."))
+    run = store.create_run(job.id, "p", [step.name])
     ctx = StepContext(run=run, job=job, outputs={"fetch_jd": {"chars": 900}})
+    result = _cli().invoke(step, ctx, errors)
+    return seen.read_text(), result, run, job
 
-    result = _cli().invoke(STEP, ctx, ["answer: field required"])
 
-    prompt = seen.read_text()
+def test_invoke_renders_the_step_template_with_its_version(bin_dir, tmp_path):
+    from app.pipeline import prompts
+
+    prompt, result, run, job = _invoke_seen(bin_dir, tmp_path, STEP, ["answer: field required"])
+
+    template, version = prompts.render("fit_score", StepContext(run=run, job=job, outputs={}))
     assert result.outcome == "ok"
-    assert "fit_score" in prompt and "Acme" in prompt and "fetch_jd" in prompt
+    assert prompt.startswith(template.strip()[:60])
+    assert "Score how well the candidate fits" in prompt and "Acme" in prompt
+    assert job.id in prompt
     assert "answer: field required" in prompt
+    assert result.prompt_version == version
     assert run.id in result.output_ref
+
+
+def test_a_step_without_a_template_gets_the_generic_prompt(bin_dir, tmp_path):
+    custom = StepSpec("custom_check", "agent", capability="reason", schema=Out,
+                      finish=lambda parsed, ctx: StepResult(output=parsed.model_dump()))
+
+    prompt, result, run, job = _invoke_seen(bin_dir, tmp_path, custom, ["answer: field required"])
+
+    assert result.outcome == "ok"
+    assert "custom_check" in prompt and "Acme" in prompt and "fetch_jd" in prompt
+    assert "answer: field required" in prompt
+    assert result.prompt_version == ""
 
 
 def _api(**extra) -> ApiAdapter:

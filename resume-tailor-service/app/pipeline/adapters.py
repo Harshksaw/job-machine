@@ -36,8 +36,8 @@ from app.pipeline.models import AdapterResult
 REPO = Path(__file__).resolve().parents[3]
 LOG_DIR = REPO / "logs" / "pipeline"
 _SAFE = re.compile(r"^[\w.-]+$")
-# Dossier fields a generic prompt shows the agent. M4 replaces the generic prompt with
-# prompts/<step>.md, which picks its own inputs.
+# Dossier fields the generic prompt shows the agent, for a step with no
+# prompts/<step>.md template (a template picks its own inputs).
 _JOB_FIELDS = ("company", "role", "job_url", "location", "work_mode", "fit_score", "jd_text")
 _JD_LIMIT = 20000
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -63,6 +63,21 @@ def render_prompt(step, ctx, errors: list[str]) -> str:
     if errors:
         parts.append("Your last answer was rejected. Fix these problems:\n" + "\n".join(f"- {e}" for e in errors))
     return "\n\n".join(parts)
+
+
+def render_step(step, ctx, errors: list[str]) -> tuple[str, str]:
+    """The step's prompt and its version: prompts/<step>.md rendered with the dossier
+    (spec 5.1), or the generic prompt with version "" for a step with no template."""
+    from app.pipeline import prompts
+
+    try:
+        text, version = prompts.render(step.name, ctx)
+    except FileNotFoundError:
+        return render_prompt(step, ctx, errors), ""
+    parts = [text.strip(), f"(Pipeline step {step.name}, run {ctx.run.id}, dossier id {ctx.run.job_id}.)"]
+    if errors:
+        parts.append("Your last answer was rejected. Fix these problems:\n" + "\n".join(f"- {e}" for e in errors))
+    return "\n\n".join(parts), version
 
 
 def _footer(schema: dict, output_path: Path | None) -> str:
@@ -165,13 +180,15 @@ class _Base:
         self.name = spec.name
 
     def invoke(self, step, ctx, errors: list[str]) -> AdapterResult:
-        return self.call(
-            render_prompt(step, ctx, errors),
+        prompt, version = render_step(step, ctx, errors)
+        result = self.call(
+            prompt,
             run_id=ctx.run.id,
             step=step.name,
             schema=step.schema.model_json_schema() if step.schema else {"type": "object"},
             timeout=self.spec.timeout_for(step.capability),
         )
+        return result.model_copy(update={"prompt_version": version})
 
     def call(self, prompt: str, *, run_id: str, step: str, schema: dict, timeout: int) -> AdapterResult:
         raise NotImplementedError
@@ -307,8 +324,10 @@ class SdkAdapter(_Base):
     schema class as the structured output type; a plain call gets the JSON schema."""
 
     def invoke(self, step, ctx, errors: list[str]) -> AdapterResult:
-        return self._run(render_prompt(step, ctx, errors), run_id=ctx.run.id, step=step.name,
-                         output=step.schema or {"type": "object"}, timeout=self.spec.timeout_for(step.capability))
+        prompt, version = render_step(step, ctx, errors)
+        result = self._run(prompt, run_id=ctx.run.id, step=step.name,
+                           output=step.schema or {"type": "object"}, timeout=self.spec.timeout_for(step.capability))
+        return result.model_copy(update={"prompt_version": version})
 
     def call(self, prompt: str, *, run_id: str, step: str, schema: dict, timeout: int) -> AdapterResult:
         return self._run(prompt, run_id=run_id, step=step, output=schema, timeout=timeout)
