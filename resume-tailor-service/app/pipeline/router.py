@@ -38,6 +38,7 @@ from app.pipeline.models import AdapterResult, Attempt
 COOLDOWN_SECONDS = 30 * 60
 STATS_WINDOW = 30
 NO_HISTORY_PASS_RATE = 0.5
+AGENT_HEALTH_MAX_AGE = 6 * 3600
 METER_DIR = Path(__file__).resolve().parents[3] / "tools" / "ai-meter"
 METER_POLICY = METER_DIR / "policy.json"
 METER_STATE = METER_DIR.parent.parent / "logs" / "ai-usage.json"
@@ -70,11 +71,25 @@ def step_stats(step: str, attempts: list[Attempt], window: int = STATS_WINDOW) -
 
 
 def _agent_health_blocked() -> set[str]:
+    """Tool families whose newest dashboard run log shows a block. Pipeline runs do not
+    write those logs, so a block would never clear on its own; one older than
+    AGENT_HEALTH_MAX_AGE is ignored and the in process cooldown takes over."""
     try:
         rows = agent_health.agent_health(agent_runs.LOG_DIR)
     except OSError:
         return set()
-    return {row["tool"] for row in rows if row["status"] == "blocked"}
+    cutoff = datetime.now(timezone.utc).timestamp() - AGENT_HEALTH_MAX_AGE
+    blocked = set()
+    for row in rows:
+        if row["status"] != "blocked" or not row.get("at"):
+            continue
+        try:
+            at = datetime.fromisoformat(row["at"]).timestamp()
+        except ValueError:
+            continue
+        if at >= cutoff:
+            blocked.add(row["tool"])
+    return blocked
 
 
 class Health:

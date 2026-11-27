@@ -185,3 +185,17 @@ def test_make_chain_feeds_the_runner_and_cools_down_unavailable(monkeypatch, tmp
     assert [a.adapter for a in store.list_attempts(run_id)] == ["dead", "live"]
     assert health.status(cfg.adapters["dead"])["healthy"] is False
     assert [a.name for a in chain(pipeline.steps[0])] == ["live"]
+
+
+def test_agent_health_blocks_expire_since_pipeline_runs_never_refresh_them(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    rows = [
+        {"tool": "codex", "status": "blocked", "at": (now - timedelta(minutes=20)).isoformat()},
+        {"tool": "cursor", "status": "blocked", "at": (now - timedelta(days=2)).isoformat()},
+        {"tool": "gemini", "status": "ok", "at": now.isoformat()},
+    ]
+    monkeypatch.setattr(router.agent_health, "agent_health", lambda log_dir: rows)
+
+    assert router._agent_health_blocked() == {"codex"}
