@@ -44,6 +44,12 @@ def test_unknown_capability_is_rejected():
         AdapterSpec.model_validate(_cli(capabilities=["telepathy"]))
 
 
+def test_env_block_refuses_secret_looking_variables():
+    with pytest.raises(ValidationError, match="key_env"):
+        AdapterSpec.model_validate(_cli(env={"OPENAI_API_KEY": "sk-123"}))
+    AdapterSpec.model_validate(_cli(env={"GEMINI_CLI_HOME": "~/.gem"}))
+
+
 def test_adapter_names_come_from_the_dict_keys():
     cfg = _config({"one": _cli()})
     assert cfg.adapters["one"].name == "one"

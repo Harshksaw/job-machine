@@ -10,6 +10,7 @@ key, and callers only ever learn whether that variable is set.
 from __future__ import annotations
 
 import os
+import re
 import threading
 from pathlib import Path
 from typing import Literal
@@ -31,6 +32,9 @@ Capability = Literal["cheap", "reason", "web", "browser_read"]
 API_PROVIDERS = ("gemini",)
 # Step timeouts per capability (spec 5.3), overridable per adapter.
 DEFAULT_TIMEOUTS: dict[str, int] = {"cheap": 180, "reason": 480, "web": 600, "browser_read": 600}
+
+# An env block is for paths and switches; a variable named like a secret belongs in .env.
+_SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL", re.I)
 
 _LOCK = threading.RLock()
 _JSON_BACKENDS: dict[Path, doc_store.JsonFileBackend] = {}
@@ -70,6 +74,9 @@ class AdapterSpec(BaseModel):
             raise ValueError(f"an {self.type} adapter needs a model")
         if self.type == "api" and self.provider not in API_PROVIDERS:
             raise ValueError(f"api provider must be one of {', '.join(API_PROVIDERS)}")
+        secret = [name for name in self.env if _SECRET_NAME.search(name)]
+        if secret:
+            raise ValueError(f"env must not carry secrets ({', '.join(secret)}); name the variable in key_env and keep it in .env")
         if any(seconds <= 0 for seconds in self.timeouts.values()):
             raise ValueError("timeouts must be positive seconds")
         return self
