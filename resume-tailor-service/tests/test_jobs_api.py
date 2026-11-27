@@ -614,3 +614,26 @@ def test_patch_job_rejects_bad_bodies(monkeypatch, tmp_path):
     assert client.patch(f"/api/jobs/{job['id']}", json={"status": "bogus"}).status_code == 422
     assert client.patch(f"/api/jobs/{job['id']}", json={}).status_code == 422
     assert client.patch(f"/api/jobs/{'0' * 32}", json={"notes": "x"}).status_code == 404
+
+
+def test_put_without_pipeline_fields_keeps_them(monkeypatch, tmp_path):
+    """The dashboard bundle builds its PUT body from a fixed field list that predates
+    form_fields and review, so a save from it must not wipe what the pipeline wrote."""
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    patched = client.patch(f"/api/jobs/{job['id']}", json={
+        "form_fields": [{"label": "Why us?", "kind": "textarea", "required": True}],
+        "review": {"pass": True, "issues": []},
+    })
+    assert patched.status_code == 200
+    payload = {key: job[key] for key in JobWorkspaceInput.model_fields}
+    payload.pop("form_fields")
+    payload.pop("review")
+    payload["notes"] = "edited on the dashboard"
+    saved = client.put(f"/api/jobs/{job['id']}", json=payload).json()
+    assert saved["notes"] == "edited on the dashboard"
+    assert saved["form_fields"][0]["label"] == "Why us?"
+    assert saved["review"]["passed"] is True
+    # Sent explicitly, they still replace.
+    payload["form_fields"] = []
+    assert client.put(f"/api/jobs/{job['id']}", json=payload).json()["form_fields"] == []
