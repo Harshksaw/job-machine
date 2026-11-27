@@ -1,0 +1,17 @@
+{
+ "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+ "text": "Backend Engineer",
+ "descriptionPlain": "Acme builds tools that help small teams ship reliable software.\nYou will design, build and operate backend services in Python and Go that power our scheduling product.\n",
+ "lists": [
+  {
+   "text": "What you will do",
+   "content": "<li>You will work closely with product and design to turn customer problems into simple, well tested features.</li><li>We care about clear code reviews, careful on call habits and writing things down so the next person can follow.</li>"
+  },
+  {
+   "text": "Requirements",
+   "content": "<li>Requirements: two or more years building web services, comfort with SQL databases, and experience with cloud deployments.</li><li>Nice to have: experience with queues, observability tooling, and helping a small team grow its engineering practice.</li>"
+  }
+ ],
+ "additionalPlain": "This role is remote within Canada. We offer flexible hours, a learning budget and a home office stipend.\nOur interview process has three short conversations: a chat about your past work, a practical exercise on a small codebase, and a meeting with the team you would join.\n",
+ "hostedUrl": "https://jobs.lever.co/acme/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+}

@@ -12,9 +12,12 @@ from datetime import datetime, timedelta, timezone
 
 from app import job_store
 from app.models import JobActivity, JobActivityInput
+from app.pipeline import ats
 from app.pipeline.runner import StepContext, StepFailed, StepResult, StepSpec
 
 CLAIM_WINDOW = timedelta(hours=2)
+# Below this a JD is too thin to score or tailor against; the agent fallback takes over.
+JD_MIN_CHARS = 800
 # Statuses that mean the application already went out.
 _SUBMITTED_STATUSES = frozenset({"applied", "interview", "offer", "rejected"})
 
@@ -68,3 +71,33 @@ def _claim(ctx: StepContext) -> StepResult:
 
 def claim_step() -> StepSpec:
     return StepSpec("claim", "code", run=_claim)
+
+
+def _urls(ctx: StepContext) -> list[str]:
+    seen: list[str] = []
+    for url in (ctx.job.apply_url, ctx.job.job_url):
+        url = (url or "").strip()
+        if url and url not in seen:
+            seen.append(url)
+    return seen
+
+
+def fetch_jd_step(http: ats.Http | None = None) -> StepSpec:
+    def fetch(ctx: StepContext) -> StepResult:
+        existing = (ctx.job.jd_text or "").strip()
+        if len(existing) >= JD_MIN_CHARS:
+            return StepResult(output={"source": "existing"})
+        best_kind, best = "", ""
+        for url in _urls(ctx):
+            kind, text = ats.fetch_description(url, ats.http if http is None else http)
+            if len(text) > len(best):
+                best_kind, best = kind, text
+        writes = {"jd_text": best} if len(best) > len(existing) else {}
+        chars = len(best) if writes else len(existing)
+        output: dict = {"source": best_kind if writes else "existing", "chars": chars}
+        if chars < JD_MIN_CHARS:
+            # The agent fallback (M4) picks this up; the step itself does not fail.
+            output["needs_agent"] = True
+        return StepResult(output=output, writes=writes)
+
+    return StepSpec("fetch_jd", "code", owns=("jd_text",), run=fetch)

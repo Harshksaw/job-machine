@@ -1,0 +1,19 @@
+{
+ "apiVersion": "1",
+ "jobs": [
+  {
+   "id": "11111111-2222-3333-4444-555555555555",
+   "title": "Backend Engineer",
+   "descriptionPlain": "Acme builds tools that help small teams ship reliable software.\n\nYou will design, build and operate backend services in Python and Go that power our scheduling product.\n\nYou will work closely with product and design to turn customer problems into simple, well tested features.\n\nWe care about clear code reviews, careful on call habits and writing things down so the next person can follow.\n\nRequirements: two or more years building web services, comfort with SQL databases, and experience with cloud deployments.\n\nNice to have: experience with queues, observability tooling, and helping a small team grow its engineering practice.\n\nThis role is remote within Canada. We offer flexible hours, a learning budget and a home office stipend.\n\nOur interview process has three short conversations: a chat about your past work, a practical exercise on a small codebase, and a meeting with the team you would join.",
+   "descriptionHtml": "<p>Acme builds tools that help small teams ship reliable software.</p><p>You will design, build and operate backend services in Python and Go that power our scheduling product.</p><p>You will work closely with product and design to turn customer problems into simple, well tested features.</p><ul><li>We care about clear code reviews, careful on call habits and writing things down so the next person can follow.</li><li>Requirements: two or more years building web services, comfort with SQL databases, and experience with cloud deployments.</li><li>Nice to have: experience with queues, observability tooling, and helping a small team grow its engineering practice.</li></ul><p>This role is remote within Canada. We offer flexible hours, a learning budget and a home office stipend.</p><p>Our interview process has three short conversations: a chat about your past work, a practical exercise on a small codebase, and a meeting with the team you would join.</p>",
+   "jobUrl": "https://jobs.ashbyhq.com/acme/11111111-2222-3333-4444-555555555555"
+  },
+  {
+   "id": "99999999-2222-3333-4444-555555555555",
+   "title": "Designer",
+   "descriptionPlain": "Design things at Acme.",
+   "descriptionHtml": "<p>Design things at Acme.</p>",
+   "jobUrl": "https://jobs.ashbyhq.com/acme/99999999-2222-3333-4444-555555555555"
+  }
+ ]
+}
