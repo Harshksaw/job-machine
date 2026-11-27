@@ -167,6 +167,7 @@ def test_answers_drafts_free_text_and_flags_judgment_fields_for_harsh():
         "Tell us about a project you built (GitHub link optional)",
         "What is your expected salary?",
         "Do you require visa sponsorship?",
+        "How did you hear about us?",
     }
     project = answers["Tell us about a project you built (GitHub link optional)"]
     assert project.answer.startswith("I built a RAG platform") and not project.needs_user_input
@@ -178,9 +179,13 @@ def test_answers_drafts_free_text_and_flags_judgment_fields_for_harsh():
     assert "Under 120 words" in model.prompts[0]
     output = result.steps["answers"].output
     assert output["answered"] == 1
-    assert sorted(output["needs_user_input"]) == ["Do you require visa sponsorship?", "What is your expected salary?"]
+    assert sorted(output["needs_user_input"]) == [
+        "Do you require visa sponsorship?", "How did you hear about us?", "What is your expected salary?"]
+    # A choice field is never skipped silently (rule 5): it waits for Harsh with its options.
+    heard = answers["How did you hear about us?"]
+    assert heard.needs_user_input and heard.answer == "" and "LinkedIn, Other" in heard.clarification
     skipped = {item["label"] for item in output["skipped"]}
-    assert {"First name", "Email", "Resume", "How did you hear about us?"} == skipped
+    assert {"First name", "Email", "Resume"} == skipped
 
 
 def test_answers_keeps_an_existing_answer_for_the_same_question():
@@ -228,3 +233,14 @@ def test_answers_feeds_shared_rule_errors_back(monkeypatch):
     result = _run(job, steps_service.answers_step(complete=model))
     assert result.status == "packet_ready", result.terminal_reason
     assert len(model.prompts) == 2 and "got 130" in model.prompts[1]
+
+
+def test_a_required_choice_question_is_flagged_for_harsh_not_skipped():
+    job = _job(form_fields=[FormField(label="Can you commit to an on call rotation?", kind="radio",
+                                      required=True, options=["Yes", "No"])])
+    model = Script(GOOD_ANSWER)
+    result = _run(job, steps_service.answers_step(complete=model))
+    assert result.status == "packet_ready"
+    [answer] = job_store.get_job(job.id).application_answers
+    assert answer.needs_user_input and "Yes, No" in answer.clarification
+    assert model.prompts == []

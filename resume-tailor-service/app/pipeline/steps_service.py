@@ -20,7 +20,7 @@ from typing import Callable
 from app.application_kit import _judgment_clarification, generate_answer, generate_kit
 from app.bank import load_bank
 from app.errors import JobGenerationError
-from app.models import ApplicationAnswer, FormField
+from app.models import ApplicationAnswer, FormField, GeneratedAnswer
 from app.pipeline.models import now_iso
 from app.pipeline import rules
 from app.pipeline.runner import StepContext, StepFailed, StepResult, StepSpec
@@ -106,6 +106,12 @@ def _personal(field: FormField) -> bool:
     return len(field.label.split()) <= _PERSONAL_MAX_WORDS and bool(_PERSONAL_LABEL.search(field.label))
 
 
+def _choice_note(field: FormField) -> str:
+    options = f" Options: {', '.join(field.options)}." if field.options else ""
+    required = " Required." if field.required else ""
+    return f"Pick the {field.kind} value yourself from PERSONAL-ANSWERS.md or your own call.{options}{required}"
+
+
 def _key(question: str) -> str:
     return " ".join(question.lower().split())
 
@@ -143,10 +149,12 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
                 skipped.append({"label": field.label, "why": "personal value, from PERSONAL-ANSWERS.md"})
                 continue
             if not judgment and field.kind not in _FREE_TEXT:
-                skipped.append({"label": field.label, "why": f"{field.kind} field, not free text"})
-                continue
-            bank = bank or _bank(bank_path)
-            draft = _answer(ctx, bank, field, complete)
+                # A choice, date or number field is a decision, not something to draft.
+                # Never skip it silently (rule 5): it waits for Harsh with its options.
+                draft = GeneratedAnswer(needs_user_input=True, clarification=_choice_note(field))
+            else:
+                bank = bank or _bank(bank_path)
+                draft = _answer(ctx, bank, field, complete)
             if draft.needs_user_input:
                 needs.append(field.label)
             stamp = now_iso()
