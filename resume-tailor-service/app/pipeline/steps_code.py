@@ -140,3 +140,46 @@ def liveness_step(check: Check | None = None) -> StepSpec:
         )
 
     return StepSpec("liveness", "code", owns=("notes",), run=live)
+
+
+def _follow(url: str, get: ats.Http) -> tuple[str, str]:
+    """Final URL after redirects, trying HEAD then GET; ("", why) when neither answers."""
+    why = "no answer"
+    for method in ("HEAD", "GET"):
+        try:
+            status, final, _ = get(method, url)
+        except Exception as exc:
+            why = f"{method} failed: {type(exc).__name__}"
+            continue
+        if 200 <= status < 400 and final:
+            if ats.is_ats_posting(final) or ats.is_careers_page(final):
+                return final, ""
+            why = f"redirect ended at {final}, not an employer posting"
+        else:
+            why = f"{method} http {status}"
+    return "", why
+
+
+def resolve_apply_url_step(http: ats.Http | None = None) -> StepSpec:
+    def resolve(ctx: StepContext) -> StepResult:
+        current = (ctx.job.apply_url or "").strip()
+        if current:
+            return StepResult(output={"apply_url": current, "source": "existing"})
+        job_url = (ctx.job.job_url or "").strip()
+        if ats.is_ats_posting(job_url):
+            return StepResult(output={"apply_url": job_url, "source": "job_url"},
+                              writes={"apply_url": job_url})
+        if ats.is_board(job_url):
+            final, why = _follow(job_url, ats.http if http is None else http)
+            if final:
+                return StepResult(output={"apply_url": final, "source": "redirect"},
+                                  writes={"apply_url": final})
+            reason = f"board listing did not lead to the employer: {why}"
+        elif job_url:
+            reason = "job_url is not an ATS posting or a known board"
+        else:
+            reason = "dossier has no job_url"
+        # Left empty for the agent fallback (M4); an unconfirmed URL is never written.
+        return StepResult(output={"needs_agent": True, "reason": reason[:300]})
+
+    return StepSpec("resolve_apply_url", "code", owns=("apply_url",), run=resolve)

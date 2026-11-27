@@ -20,7 +20,9 @@ def stores(monkeypatch, tmp_path):
 
 def _job(**extra):
     extra.setdefault("notes", "keep")
-    return job_store.add_job(JobWorkspaceInput(company="Acme", role="Backend Engineer", **extra))
+    extra.setdefault("company", "Acme")
+    extra.setdefault("role", "Backend Engineer")
+    return job_store.add_job(JobWorkspaceInput(**extra))
 
 
 def _run(job, *steps):
@@ -241,3 +243,86 @@ def test_liveness_default_checker_is_the_liveness_script():
 
     check = _default_check()
     assert check.__module__ == "check_liveness" and check.__name__ == "check"
+
+
+# resolve_apply_url
+
+GH_POSTING = "https://job-boards.greenhouse.io/acme/jobs/4012345"
+
+
+def test_resolve_keeps_an_existing_apply_url():
+    job = _job(apply_url="https://acme.example/apply", job_url="https://himalayas.app/companies/acme/jobs/x")
+    http = FakeHttp()
+    result = _run(job, steps_code.resolve_apply_url_step(http=http))
+    assert result.steps["resolve_apply_url"].output == {
+        "apply_url": "https://acme.example/apply", "source": "existing"}
+    assert http.calls == [] and len(job_store.get_job(job.id).revisions) == 1
+
+
+@pytest.mark.parametrize("url", [
+    f"https://jobs.ashbyhq.com/acme/{ASHBY_ID}",
+    GH_POSTING,
+    f"https://jobs.lever.co/acme/{LEVER_ID}",
+    "https://apply.workable.com/acme/j/ABC123DEF/",
+])
+def test_resolve_takes_an_ats_job_url_as_the_apply_url(url):
+    job = _job(job_url=url)
+    http = FakeHttp()
+    result = _run(job, steps_code.resolve_apply_url_step(http=http))
+    assert result.steps["resolve_apply_url"].output == {"apply_url": url, "source": "job_url"}
+    assert job_store.get_job(job.id).apply_url == url
+    assert http.calls == []
+
+
+def test_resolve_follows_a_board_redirect_to_an_ats_posting():
+    board = "https://remotive.com/remote-jobs/software-dev/backend-engineer-123"
+    job = _job(job_url=board)
+    http = FakeHttp({("HEAD", board): (200, GH_POSTING, "")})
+    result = _run(job, steps_code.resolve_apply_url_step(http=http))
+    assert result.steps["resolve_apply_url"].output == {"apply_url": GH_POSTING, "source": "redirect"}
+    assert job_store.get_job(job.id).apply_url == GH_POSTING
+
+
+def test_resolve_falls_back_to_get_and_accepts_a_careers_page():
+    board = "https://jobicy.com/jobs/123-backend-engineer"
+    careers = "https://www.acme.example/careers/backend-engineer"
+    job = _job(job_url=board)
+    http = FakeHttp({("HEAD", board): (405, board, ""), ("GET", board): (200, careers, "<html></html>")})
+    result = _run(job, steps_code.resolve_apply_url_step(http=http))
+    assert result.steps["resolve_apply_url"].output["apply_url"] == careers
+    assert [method for method, _ in http.calls] == ["HEAD", "GET"]
+
+
+@pytest.mark.parametrize("final", [
+    "https://himalayas.app/companies/acme/jobs/backend-engineer",  # stayed on the board
+    "https://www.linkedin.com/jobs/view/4123456789",  # another aggregator
+    "https://boards.greenhouse.io/acme",  # Greenhouse board index: the expired job trap
+    "https://ats.rippling.com/acme/jobs?rr_message=job_not_found",  # Rippling dead link
+    "https://www.acme.example/",  # employer home page, not a careers page
+])
+def test_resolve_rejects_unconfirmed_redirects(final):
+    board = "https://himalayas.app/companies/acme/jobs/backend-engineer"
+    job = _job(job_url=board)
+    http = FakeHttp(default=(200, final, ""))
+    result = _run(job, steps_code.resolve_apply_url_step(http=http))
+    out = result.steps["resolve_apply_url"].output
+    assert result.status == "packet_ready"
+    assert out["needs_agent"] is True and out["reason"]
+    assert job_store.get_job(job.id).apply_url == ""
+
+
+def test_resolve_rejects_a_redirect_that_errors():
+    board = "https://remoteok.com/remote-jobs/123"
+    job = _job(job_url=board)
+    http = FakeHttp(default=(404, GH_POSTING, ""))
+    result = _run(job, steps_code.resolve_apply_url_step(http=http))
+    assert result.steps["resolve_apply_url"].output["needs_agent"] is True
+
+
+def test_resolve_leaves_linkedin_and_unknown_hosts_to_the_agent_without_fetching():
+    for url in ("https://www.linkedin.com/jobs/view/4123456789", "https://acme.example/careers/x", ""):
+        job = _job(job_url=url, role=f"Role {url}")
+        http = FakeHttp()
+        result = _run(job, steps_code.resolve_apply_url_step(http=http))
+        assert result.steps["resolve_apply_url"].output["needs_agent"] is True
+        assert http.calls == []
