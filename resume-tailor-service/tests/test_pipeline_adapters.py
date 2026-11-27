@@ -230,6 +230,12 @@ def test_api_adapter_failures(monkeypatch):
     assert _call(_api()).outcome == "error"
 
 
+def test_api_adapter_without_key_env_is_unavailable_not_a_crash(monkeypatch):
+    spec = _api().spec.model_copy(update={"key_env": ""})
+    monkeypatch.setattr(adapters, "_post_json", lambda *a: pytest.fail("no key, no call"))
+    assert _call(ApiAdapter(spec)).outcome == "unavailable"
+
+
 def test_sdk_adapter_is_unavailable_until_m2b():
     spec = AdapterSpec.model_validate({"name": "or", "type": "sdk", "model": "openrouter:x", "capabilities": ["reason"]})
     adapter = build_adapter(spec)

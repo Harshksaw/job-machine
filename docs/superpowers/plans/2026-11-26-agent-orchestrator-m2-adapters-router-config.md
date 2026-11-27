@@ -56,8 +56,8 @@ first, then code, then the full suite. One commit per task.
 - `step_stats(step, attempts)`: pass rate and median duration per adapter over the last
   30 attempts of that step.
 - `resolve_chain(step, config, *, health, ledger_stats, rng, over_budget)`: enabled
-  adapters with the capability, minus unhealthy, minus over budget (kept as a last resort
-  only when nothing else is left), ordered by prefer list, cost tier, pass rate, median
+  adapters with the capability, minus unhealthy, minus over budget (dropped, per spec
+  5.2), ordered by prefer list, cost tier, pass rate, median
   duration; canary first with probability `share`.
 - `make_chain(...)` returns the runner's `Chain` callable, building adapters and marking
   unavailable outcomes on the shared `Health`.

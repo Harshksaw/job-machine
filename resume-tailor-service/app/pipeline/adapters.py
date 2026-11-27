@@ -262,8 +262,8 @@ class ApiAdapter(_Base):
     """A plain HTTP model call in JSON response mode. Gemini only in M2."""
 
     def call(self, prompt: str, *, run_id: str, step: str, schema: dict, timeout: int) -> AdapterResult:
-        if not key_set(self.spec):
-            return self._result("unavailable", f"{self.spec.key_env} is not set")
+        if not self.spec.key_env or not key_set(self.spec):
+            return self._result("unavailable", f"{self.spec.key_env or 'key_env'} is not set")
         output_path, log_path = _paths(run_id, step)
         ref = {"output_ref": str(output_path)}
         body = {

@@ -35,6 +35,8 @@ def test_api_and_sdk_adapters_need_a_model():
         AdapterSpec.model_validate({"type": "api", "provider": "gemini", "capabilities": ["cheap"]})
     with pytest.raises(ValidationError, match="model"):
         AdapterSpec.model_validate({"type": "sdk", "capabilities": ["cheap"]})
+    with pytest.raises(ValidationError, match="key_env"):
+        AdapterSpec.model_validate({"type": "api", "provider": "gemini", "model": "m", "capabilities": ["cheap"]})
     with pytest.raises(ValidationError, match="provider"):
         AdapterSpec.model_validate({"type": "api", "provider": "nope", "model": "m", "capabilities": ["cheap"]})
 
@@ -47,6 +49,9 @@ def test_unknown_capability_is_rejected():
 def test_env_block_refuses_secret_looking_variables():
     with pytest.raises(ValidationError, match="key_env"):
         AdapterSpec.model_validate(_cli(env={"OPENAI_API_KEY": "sk-123"}))
+    for value in ("sk-or-v1-abcdef0123456789", "AIzaSyA1234567890abcdefghij", "ghp_abcdefghijklmnop1234"):
+        with pytest.raises(ValidationError, match="key_env"):
+            AdapterSpec.model_validate(_cli(env={"AUTH": value}))
     AdapterSpec.model_validate(_cli(env={"GEMINI_CLI_HOME": "~/.gem"}))
 
 

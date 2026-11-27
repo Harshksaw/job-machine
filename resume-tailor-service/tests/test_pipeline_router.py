@@ -97,10 +97,11 @@ def test_agent_health_blocks_a_whole_family():
     assert health.status(cfg.adapters["a"])["healthy"] is False
 
 
-def test_over_budget_is_dropped_but_kept_as_last_resort():
+def test_over_budget_adapters_are_dropped():
     cfg = _cfg({"a": {"cost_tier": 1, "family": "claude"}, "b": {"cost_tier": 2, "family": "cursor"}})
     assert _resolve(cfg, over_budget=lambda family: family == "claude") == ["b"]
-    assert _resolve(cfg, over_budget=lambda family: True) == ["a", "b"]
+    # Spec 5.2: over budget means out of the chain, even when nothing is left.
+    assert _resolve(cfg, over_budget=lambda family: True) == []
 
 
 def test_canary_takes_the_front_for_its_share():

@@ -1,7 +1,8 @@
 """Picks which adapters may run a step, and in what order (spec 5.2).
 
 The chain is every enabled adapter with the step's capability, minus the ones that
-cannot run now (unhealthy) and the ones over their spend budget, ordered by:
+cannot run now (unhealthy) and the ones over their spend budget (dropped outright, per spec 5.2: an empty chain
+fails the step rather than overspend), ordered by:
 
 1. the step's `prefer` list from the config, in its order;
 2. `cost_tier`, cheapest first;
@@ -183,9 +184,7 @@ def resolve_chain(step, config: PipelineConfig, *, health: Health, ledger_stats:
             spec.name,
         )
 
-    in_budget = [spec for spec in capable if not over_budget(spec.family)]
-    # Over budget adapters stay as a last resort, like the meter's own routes.
-    chain = sorted(in_budget or capable, key=rank)
+    chain = sorted((spec for spec in capable if not over_budget(spec.family)), key=rank)
     if prefs and prefs.canary and rng.random() < prefs.canary.share:
         canary = [spec for spec in chain if spec.name == prefs.canary.adapter]
         chain = canary + [spec for spec in chain if spec.name != prefs.canary.adapter]
