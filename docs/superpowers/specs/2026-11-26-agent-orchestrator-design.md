@@ -323,3 +323,70 @@ different agent. An agent claims a milestone by noting it in the newest
    tab?
 2. Cost data: Claude and Gemini report tokens; Codex, Cursor, OpenCode and agy may not.
    The ledger records null rather than estimating. Acceptable?
+
+## 13. Vendor independence (added 2026-11-26)
+
+Harsh's direction: Claude's login or terms may change, and that must not break the
+software. Third party services are fine. Models must be configurable and changeable over
+time without code changes.
+
+### 13.1 In process agents on API keys (`type: sdk`)
+
+A third adapter type runs the agent loop inside the service with **Pydantic AI**: tool
+calling, typed output against the step schema, and an MCP client built in. LangGraph
+was considered and rejected: its graph state and checkpoints duplicate the M1 runner.
+Claude Agent SDK was rejected because it is still tied to Anthropic auth.
+
+```yaml
+adapters:
+  router_reason:
+    type: sdk
+    model: "openrouter:anthropic/claude-haiku-4.5"   # any provider:model string
+    key_env: OPENROUTER_API_KEY
+    tools: [web_fetch, dossier_read]
+    mcp: [fetch]
+    capabilities: [reason, web]
+    cost_tier: 2
+```
+
+- **OpenRouter** is the default third party gateway: one key, many vendors, so losing
+  one vendor is a model string change. Direct keys (Gemini, Anthropic, OpenAI) and local
+  Ollama work through the same adapter type.
+- `claude -p` stays as one optional adapter. If its auth breaks, the router marks it
+  unhealthy (5.2) and the chain moves on; nothing else changes.
+- The service's own LLM calls (`generate_kit`, `/tailor`, `generate_answer`) move behind
+  one function, `llm.complete(capability, prompt, schema)`, which uses the same router
+  instead of calling `claude_cli.run_claude` directly.
+
+### 13.2 Models configurable over time
+
+- `agents.yaml` is reloaded when its file changes; no restart.
+- Per step model choice: `steps: {kit: {prefer: [router_reason]}}`, plus an optional
+  `canary: {adapter: new_model, share: 0.2}` that sends a share of runs to a new model.
+- The ledger records `adapter` and `model` per attempt, and `GET /api/pipeline/stats`
+  compares pass rate, review pass rate, time and cost per model, so a model is promoted
+  or dropped on evidence. `scripts/pipeline.py eval` (6.5) checks a new model on the
+  eval set before it gets live traffic.
+
+### 13.3 Mail and update checks in code, plus MCP
+
+- **Gmail in code:** the Gmail API with Harsh's own OAuth client (read only scope, token
+  stored locally, gitignored). A scheduled code pipeline fetches new mail from ATS
+  senders; only classification (rejection, interview, assessment, other) is an agent
+  step with capability `cheap`. Replaces the Claude Gmail connector dependency in
+  `prompts/mail-sync.md`.
+- **Update checks in code:** liveness, board polling and the ATS watchlist become
+  scheduled code pipelines in the same worker, with no LLM.
+- **`job-machine` MCP server:** exposes `get_dossier`, `patch_dossier`, `enqueue_run`,
+  `run_status`, `search_mail` over the service API, so Claude Code, Cursor, Codex,
+  Antigravity and the sdk agents all use the same tools instead of curl instructions.
+
+### 13.4 Build order additions
+
+| # | Milestone | Done when |
+|---|---|---|
+| M2b | `sdk` adapter (Pydantic AI), OpenRouter and Gemini entries, `llm.complete` replacing direct `claude -p` calls, `agents.yaml` hot reload | Kit, tailor and answers pass their suites with `claude` absent from PATH |
+| M8 | Gmail API mail pipeline, scheduled update pipelines, `job-machine` MCP server, canary routing | Mail sync runs on a schedule with no Claude session; an agent other than Claude uses the MCP tools |
+
+Needs from Harsh: an OpenRouter key (or other provider keys) in `.env`, and a Google
+Cloud OAuth client for read only Gmail.
