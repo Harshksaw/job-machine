@@ -588,3 +588,29 @@ def test_person_creation_reports_unreadable_store_during_rollback(
     assert [person.name for person in people_store.load_people()] == [
         "Alex Recruiter"
     ]
+
+
+def test_patch_job_changes_only_sent_fields(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+
+    response = client.patch(
+        f"/api/jobs/{job['id']}?session=pipeline%20r1",
+        json={"company_context": "They build search."},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["company_context"] == "They build search."
+    assert body["jd_text"] == job["jd_text"]
+    assert body["activities"][-1]["session"] == "pipeline r1"
+
+
+def test_patch_job_rejects_bad_bodies(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+
+    assert client.patch(f"/api/jobs/{job['id']}", json={"nope": 1}).status_code == 422
+    assert client.patch(f"/api/jobs/{job['id']}", json={"status": "bogus"}).status_code == 422
+    assert client.patch(f"/api/jobs/{job['id']}", json={}).status_code == 422
+    assert client.patch(f"/api/jobs/{'0' * 32}", json={"notes": "x"}).status_code == 404

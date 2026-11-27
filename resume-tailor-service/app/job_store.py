@@ -412,6 +412,31 @@ def update_job(
         return updated
 
 
+
+def patch_job(
+    job_id: str,
+    fields: dict,
+    *,
+    reason: str = "Dossier patched",
+    activity_kind: str = "updated",
+    session: str = "",
+) -> JobWorkspace | None:
+    """Change only the named fields. A full PUT saves a left out field as blank, which
+    is how agents have wiped cover letters; a patch cannot. Unknown names raise."""
+    unknown = sorted(set(fields) - set(JobWorkspaceInput.model_fields))
+    if unknown:
+        raise ValueError(f"unknown dossier fields: {', '.join(unknown)}")
+    with _transaction():
+        current = get_job(job_id)
+        if current is None:
+            return None
+        merged = JobWorkspaceInput.model_validate(
+            {**_input_from_job(current).model_dump(), **fields}
+        )
+        return update_job(
+            job_id, merged, reason=reason, activity_kind=activity_kind, session=session
+        )
+
 def apply_decision(
     job_id: str,
     decision: str,

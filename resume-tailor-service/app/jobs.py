@@ -6,7 +6,7 @@ import logging
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
 from app import application_kit, job_store, people_store, session_store, sheets
 from app.bank import load_bank
@@ -333,6 +333,24 @@ def replace_job(
         raise HTTPException(status_code=404, detail="job dossier not found")
     return updated
 
+
+
+@router.patch("/api/jobs/{job_id}", response_model=JobWorkspace)
+def patch_job(
+    job_id: str,
+    fields: dict = Body(...),
+    session: str = Query(default=""),
+) -> JobWorkspace:
+    _get_job_or_404(job_id)
+    if not fields:
+        raise HTTPException(status_code=422, detail="no fields to change")
+    try:
+        updated = job_store.patch_job(job_id, fields, session=session)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if updated is None:
+        raise HTTPException(status_code=404, detail="job dossier not found")
+    return updated
 
 @router.post("/api/jobs/{job_id}/decision", response_model=JobWorkspace)
 def decide_job(job_id: str, data: JobDecisionInput) -> JobWorkspace:

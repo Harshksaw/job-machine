@@ -341,3 +341,47 @@ def test_malformed_store_is_never_overwritten(monkeypatch, tmp_path):
     with pytest.raises(JobStoreError, match="refusing to overwrite"):
         job_store.add_job(JobWorkspaceInput(company="Acme", role="SWE"))
     assert job_store.STORE_PATH.read_text(encoding="utf-8") == "{broken"
+
+
+def test_patch_changes_only_named_fields(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    created = job_store.add_job(
+        JobWorkspaceInput(
+            company="Acme",
+            role="Backend Engineer",
+            notes="keep me",
+            cover_letter="Dear Acme",
+        )
+    )
+
+    patched = job_store.patch_job(
+        created.id,
+        {"apply_url": "https://jobs.ashbyhq.com/acme/1"},
+        reason="Pipeline run r1 step resolve_apply_url",
+        session="pipeline r1",
+    )
+
+    assert patched.apply_url == "https://jobs.ashbyhq.com/acme/1"
+    assert patched.notes == "keep me"
+    assert patched.cover_letter == "Dear Acme"
+    assert patched.revisions[-1].reason == "Pipeline run r1 step resolve_apply_url"
+    assert patched.revisions[-1].changed_fields == ["apply_url"]
+
+
+def test_patch_rejects_unknown_fields_and_bad_values(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    created = job_store.add_job(JobWorkspaceInput(company="Acme", role="Backend Engineer"))
+
+    with pytest.raises(ValueError, match="unknown dossier fields: nope"):
+        job_store.patch_job(created.id, {"nope": 1})
+    with pytest.raises(ValueError):
+        job_store.patch_job(created.id, {"status": "not-a-status"})
+    with pytest.raises(ValueError):
+        job_store.patch_job(created.id, {"company": "  "})
+
+    assert job_store.get_job(created.id).revisions == created.revisions
+
+
+def test_patch_missing_dossier_returns_none(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    assert job_store.patch_job("0" * 32, {"notes": "x"}) is None
