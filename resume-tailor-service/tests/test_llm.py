@@ -271,3 +271,83 @@ def test_each_generator_call_starts_a_fresh_session(monkeypatch):
     for _ in range(3):
         application_kit.generate_answer(_job(), bank, "Are you willing to relocate?", max_retries=0)
     assert len(a.prompts) == 3
+
+
+# Time budget for direct calls (kit, answers and tailor from the dashboard).
+
+
+class Clock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+
+class Slow(Scripted):
+    def __init__(self, name, results, clock, seconds):
+        super().__init__(name, results)
+        self.clock, self.seconds, self.timeouts = clock, seconds, []
+
+    def call(self, prompt, *, run_id, step, schema, timeout):
+        self.timeouts.append(timeout)
+        self.clock.now += self.seconds
+        return super().call(prompt, run_id=run_id, step=step, schema=schema, timeout=timeout)
+
+
+def _budget(seconds):
+    cfg = config.load_config()
+    cfg.direct_call_budget = seconds
+    config.save_config(cfg)
+
+
+def test_direct_calls_stop_after_the_time_budget(monkeypatch):
+    clock = Clock()
+    monkeypatch.setattr(llm, "_clock", clock)
+    _save({"a": {"cost_tier": 1}, "b": {"cost_tier": 2}, "c": {"cost_tier": 3}})
+    _budget(100)
+    a = Slow("a", [AdapterResult(outcome="unavailable", error="down")], clock, 70)
+    b = Slow("b", [AdapterResult(outcome="timeout", error="slow")], clock, 40)
+    c = Slow("c", [AdapterResult(outcome="ok", output={"answer": "late"})], clock, 1)
+    _script(monkeypatch, {"a": a, "b": b, "c": c})
+
+    with pytest.raises(llm.LlmUnavailableError, match="time budget of 100s") as caught:
+        llm.complete("reason", "p", Out)
+
+    assert "b: timeout" in str(caught.value)
+    assert b.timeouts == [30]  # capped to what was left
+    assert c.prompts == []
+
+
+def test_the_default_budget_is_three_minutes():
+    assert config.PipelineConfig().direct_call_budget == 180
+
+
+def test_pipeline_steps_keep_their_own_timeouts(monkeypatch):
+    clock = Clock()
+    monkeypatch.setattr(llm, "_clock", clock)
+    _save({"a": {"cost_tier": 1}, "b": {"cost_tier": 2}})
+    _budget(100)
+    a = Slow("a", [AdapterResult(outcome="unavailable", error="down")], clock, 500)
+    b = Slow("b", [AdapterResult(outcome="ok", output={"answer": "fine"})], clock, 1)
+    _script(monkeypatch, {"a": a, "b": b})
+
+    _, meta = llm.complete("reason", "p", Out, run_id="run-123")
+
+    assert meta["adapter"] == "b"
+    assert b.timeouts == [config.DEFAULT_TIMEOUTS["reason"]]
+
+
+def test_the_budget_covers_a_whole_generator_draft(monkeypatch):
+    clock = Clock()
+    monkeypatch.setattr(llm, "_clock", clock)
+    _save({"a": {}})
+    _budget(100)
+    bad = AdapterResult(outcome="ok", output=_untraceable_kit())
+    a = Slow("a", [bad, bad, bad], clock, 60)
+    _script(monkeypatch, {"a": a})
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+
+    with pytest.raises(llm.LlmUnavailableError, match="time budget"):
+        application_kit.generate_kit(_job(), bank, max_retries=2)
+    assert len(a.prompts) == 2

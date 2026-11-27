@@ -149,6 +149,10 @@ class PipelineConfig(BaseModel):
     capability_caps: dict[Capability, int] = Field(default_factory=dict)
     steps: dict[str, StepPrefs] = Field(default_factory=dict)
     mcp_servers: dict[str, McpServer] = Field(default_factory=dict)
+    # Seconds a direct model call (the dashboard's kit, answer and tailor routes) may
+    # spend across its whole adapter chain before it gives up. Pipeline steps use their
+    # per step timeouts instead.
+    direct_call_budget: int = Field(default=180, ge=10, le=3600)
     version: int = 0
     updated_at: str = ""
 
