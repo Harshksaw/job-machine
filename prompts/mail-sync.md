@@ -4,8 +4,17 @@ Goal: every rejection, interview invite, assessment and recruiter reply in Harsh
 ends up on the right dossier. Read `AGENTS.md` first. This run reads mail and writes
 dossier events. It never sends, labels, archives or deletes mail.
 
-Needs an agent with Gmail access (Claude Code has the Gmail connector). The service has
-no mail access of its own.
+**The service now does this itself (orchestrator M8).** Once Harsh has a Gmail token
+(`docs/MCP-AND-MAIL-SYNC.md`), run `cd resume-tailor-service && uv run python
+scripts/run_task.py mail_sync` (or queue `mail_sync` with the `enqueue_run` MCP tool).
+It runs steps 1 to 4 below in code, with only the classification on a model, and keys
+every write on the Gmail message id, so it never double writes with this manual lane.
+Then do step 5 from its report (`GET /api/pipeline/mail/status`): `waiting_on_harsh`,
+`interviews`, `held` (open those threads), `unmatched`, and log every `sheet_log` entry
+to the Sheet through the browser, since the Sheet needs the browser's Google session.
+
+Use the manual lane below only while there is no token. It needs an agent with Gmail
+access (Claude Code has the Gmail connector).
 
 ## 1. Find the window
 

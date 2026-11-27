@@ -17,6 +17,9 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.66b2",
     "opentelemetry-exporter-otlp-proto-http>=1.45.2",
     "pydantic-ai-slim[anthropic,google,mcp,openai]==2.76.0",
+    "google-auth==2.63.1",
+    "google-auth-oauthlib==1.5.0",
+    "mcp==2.3.0",
 ]
 
 [dependency-groups]

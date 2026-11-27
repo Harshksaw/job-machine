@@ -50,6 +50,12 @@ def _or_none(text: object) -> str:
 
 def _values(ctx: StepContext) -> dict[str, object]:
     job = ctx.job
+    if job is None:
+        # A task run (mail sync) has no dossier: only the run and step outputs.
+        return {
+            "run_id": ctx.run.id,
+            "outputs": json.dumps(ctx.outputs, indent=2, sort_keys=True, default=str),
+        }
     fields = [
         f"- {field.label} [{field.kind}{', required' if field.required else ''}]"
         + (f" options: {', '.join(field.options)}" if field.options else "")

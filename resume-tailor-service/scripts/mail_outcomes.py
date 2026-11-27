@@ -87,6 +87,37 @@ def match(event: dict, jobs: list[dict]) -> tuple[dict | None, str]:
     return None, "ambiguous: " + "; ".join(f"{j['role']} [{j['status']}]" for j in hits)
 
 
+def plan(event: dict, jobs: list[dict], by_id: dict[str, dict], *,
+         include_uncertain: bool = False) -> dict:
+    """What to do with one event: `action` is `unmatched`, `held` or `write`, plus the
+    dossier, the match reason, the activity kind and the status to set (or None).
+    Shared by this script and the mail sync pipeline, so both decide the same way."""
+    kind, new_status, outranked_by = _OUTCOMES[event["outcome"]]
+    job, reason = match(event, jobs)
+    decision = {"action": "unmatched", "job": job, "reason": reason, "kind": kind, "set_status": None}
+    if job is None:
+        return decision
+    if not event.get("confident", True) and not include_uncertain:
+        return {**decision, "action": "held"}
+    current = by_id[job["id"]]
+    set_status = new_status if new_status and current["status"] not in outranked_by else None
+    if set_status == current["status"]:
+        set_status = None
+    return {**decision, "action": "write", "set_status": set_status, "status": current["status"]}
+
+
+def activity(event: dict, session: str) -> dict:
+    """The dossier activity for an event, keyed on the Gmail message id."""
+    return {
+        "kind": _OUTCOMES[event["outcome"]][0],
+        "title": f"Email: {event['outcome']}",
+        "detail": event.get("note", ""),
+        "session": session,
+        "occurred_at": f"{event['date']}T00:00:00+00:00",
+        "external_id": f"gmail:{event['id']}",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("events")
@@ -101,33 +132,24 @@ def main() -> int:
     written = held = unmatched = 0
 
     for event in events:
-        kind, new_status, outranked_by = _OUTCOMES[event["outcome"]]
         label = f"{event['date']} {event['outcome']:<10} {event['company']}"
-        job, reason = match(event, jobs)
-        if job is None:
+        decision = plan(event, jobs, by_id, include_uncertain=args.include_uncertain)
+        job = decision["job"]
+        if decision["action"] == "unmatched":
             unmatched += 1
-            print(f"UNMATCHED  {label}  ({reason})")
+            print(f"UNMATCHED  {label}  ({decision['reason']})")
             continue
-        if not event.get("confident", True) and not args.include_uncertain:
+        if decision["action"] == "held":
             held += 1
             print(f"HELD       {label}  -> {job['company']} / {job['role']} (uncertain)")
             continue
         current = by_id[job["id"]]
-        set_status = new_status if new_status and current["status"] not in outranked_by else None
-        if set_status == current["status"]:
-            set_status = None
+        set_status = decision["set_status"]
         change = f"{current['status']} -> {set_status}" if set_status else current["status"]
         print(f"{'WRITE' if args.apply else 'WOULD'}      {label}  -> {job['role']} [{change}]")
         if not args.apply:
             continue
-        _call("POST", f"/api/jobs/{job['id']}/activity", {
-            "kind": kind,
-            "title": f"Email: {event['outcome']}",
-            "detail": event.get("note", ""),
-            "session": session,
-            "occurred_at": f"{event['date']}T00:00:00+00:00",
-            "external_id": f"gmail:{event['id']}",
-        })
+        _call("POST", f"/api/jobs/{job['id']}/activity", activity(event, session))
         if set_status:
             # capture upserts on company + role + URL and patches only what is sent.
             _call("POST", "/api/jobs/capture", {

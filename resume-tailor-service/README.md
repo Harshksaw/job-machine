@@ -173,6 +173,15 @@ Run `./scripts/backup-job-data.sh` from this directory. It copies the complete
 `output/` when present into a timestamped ignored directory under `backups/`.
 Pass a destination path as the first argument to store the backup elsewhere.
 
+## MCP server and mail sync
+
+`uv run python -m app.mcp_server` starts the `job-machine` MCP server (stdio) with
+`get_dossier`, `list_dossiers`, `patch_dossier`, `enqueue_run`, `run_status` and
+`search_mail_events`, over the service API at `JOB_MACHINE_API` (default
+`http://127.0.0.1:8420`). Task pipelines (`mail_sync`, `liveness_sweep`, `remote_boards`,
+`ats_watchlist`) run with `uv run python scripts/run_task.py <name>`. Gmail setup, config
+snippets for Claude Code, Cursor and Codex: `../docs/MCP-AND-MAIL-SYNC.md`.
+
 ## How it works
 
 The one LLM call — selecting which bank IDs to use for a given job

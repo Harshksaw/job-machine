@@ -17,6 +17,8 @@ RUN_STATUSES = (
     "closed_posting",
     "failed",
     "cancelled",
+    # A task run (not per dossier, such as mail sync) that finished every step.
+    "completed",
 )
 TERMINAL_STATUSES = frozenset(RUN_STATUSES[2:])
 
