@@ -57,9 +57,9 @@ def test_fetch_unions_queries_skips_known_and_receipts_and_sorts_oldest_first():
     }
     transport = FakeTransport(messages, {'"unfortunately"': ["a1", "a2", "a3"], "from:(ashbyhq.com": ["a2", "a4"]})
     client = gmail.GmailClient(transport)
-    found, known = client.fetch(date(2026, 1, 30), skip={"a4"})
+    found, known, receipts = client.fetch(date(2026, 1, 30), skip={"a4"})
     assert [m.id for m in found] == ["a2", "a1"]
-    assert known == 1
+    assert known == 1 and [m.id for m in receipts] == ["a3"]
     # The known message is never opened.
     assert ("messages/a4", {"format": "full"}) not in transport.calls
 
@@ -68,7 +68,7 @@ def test_fetch_pages_and_limits():
     messages = {f"m{i}": raw_message(f"m{i}", subject="Acme next step", day=f"2026-02-{i + 1:02d}", body="x")
                 for i in range(5)}
     transport = FakeTransport(messages, {'"unfortunately"': list(messages)}, page_size=2)
-    found, _ = gmail.GmailClient(transport).fetch(date(2026, 1, 1), limit=3)
+    found, _, _ = gmail.GmailClient(transport).fetch(date(2026, 1, 1), limit=3)
     assert [m.id for m in found] == ["m0", "m1", "m2"]
     assert sum(1 for path, _ in transport.calls if path == "messages") >= 3
 

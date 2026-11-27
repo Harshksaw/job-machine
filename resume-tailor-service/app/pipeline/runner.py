@@ -6,6 +6,11 @@ a crash or restart `run()` resumes at the first step that did not finish. A step
 write only the dossier fields it owns, and only through `job_store.patch_job`. Agent
 steps go through an adapter chain (see `_run_agent`).
 
+A pipeline with `scope="task"` (mail sync, update checks) belongs to no dossier: its
+run carries the sentinel job id `task:<pipeline>`, its steps see `ctx.job = None`, and it
+may own no dossier fields, so any `writes` it returns fail the run as a policy breach.
+Everything else (store, leases, resume, ledger, adapter chain) is the same.
+
 Design: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md
 """
 from __future__ import annotations
@@ -24,12 +29,20 @@ from app.pipeline import store
 from app.pipeline.models import TERMINAL_STATUSES, AdapterResult, Attempt, Run, now_iso
 
 STEP_KINDS = ("code", "service", "agent")
+SCOPES = ("dossier", "task")
+TASK_PREFIX = "task:"
+
+
+def task_job_id(pipeline: str) -> str:
+    """The sentinel job id of a task run."""
+    return f"{TASK_PREFIX}{pipeline}"
 
 
 @dataclass
 class StepContext:
     run: Run
-    job: JobWorkspace
+    # None in a task run, which belongs to no dossier.
+    job: JobWorkspace | None
     outputs: dict[str, dict]
 
 
@@ -75,8 +88,15 @@ class Pipeline:
     name: str
     steps: tuple[StepSpec, ...]
     done_status: str = "packet_ready"
+    scope: str = "dossier"
 
     def __post_init__(self) -> None:
+        if self.scope not in SCOPES:
+            raise ValueError(f"pipeline {self.name}: scope must be one of {SCOPES}")
+        if self.scope == "task":
+            owning = [step.name for step in self.steps if step.owns]
+            if owning:
+                raise ValueError(f"task pipeline {self.name} may not own dossier fields ({', '.join(owning)})")
         names = [step.name for step in self.steps]
         if len(set(names)) != len(names):
             raise ValueError(f"pipeline {self.name} has duplicate step names")
@@ -122,6 +142,9 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
         current = store.get_run(run_id)
         if current.pipeline != pipeline.name or current.order != pipeline.order:
             raise ValueError(f"run {run_id} does not match pipeline {pipeline.name}")
+        task = pipeline.scope == "task"
+        if task != current.job_id.startswith(TASK_PREFIX):
+            raise ValueError(f"run {run_id} job id {current.job_id!r} does not fit a {pipeline.scope} pipeline")
         current = store.start_run(run_id)
         specs = {step.name: step for step in pipeline.steps}
         while current.status not in TERMINAL_STATUSES:
@@ -173,8 +196,10 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain) -> None:
 
 def _context(run_id: str) -> StepContext:
     current = store.get_run(run_id)
-    job = job_store.get_job(current.job_id)
-    if job is None:
+    # run() has already checked that the job id fits the pipeline scope.
+    task = current.job_id.startswith(TASK_PREFIX)
+    job = None if task else job_store.get_job(current.job_id)
+    if job is None and not task:
         raise StepFailed(f"dossier {current.job_id} no longer exists")
     outputs = {
         name: state.output or {}

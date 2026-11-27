@@ -206,27 +206,34 @@ def keep(row: dict, since: str) -> str:
     return ""
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", default="remote_candidates.json")
-    parser.add_argument("--days", type=int, default=21, help="drop postings older than this")
-    args = parser.parse_args()
-    since = (datetime.now(timezone.utc) - timedelta(days=args.days)).date().isoformat()
+BOARDS = (("Himalayas", "himalayas"), ("Remotive", "remotive"), ("Jobicy", "jobicy"),
+          ("Working Nomads", "working_nomads"), ("Remote OK", "remote_ok"))
+
+
+def harvest(days: int = 21, *, boards=None, jobs=None) -> dict:
+    """Fetch every board, filter and dedupe. Returns the kept rows, how many were
+    fetched, drop reasons, and per board counts or failures. Shared by main() and the
+    `remote_boards` task pipeline."""
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+    if boards is None:
+        boards = [(name, globals()[func]) for name, func in BOARDS]
 
     rows: list[dict] = []
-    for name, harvest in (("Himalayas", himalayas), ("Remotive", remotive), ("Jobicy", jobicy),
-                          ("Working Nomads", working_nomads), ("Remote OK", remote_ok)):
+    per_board: dict[str, object] = {}
+    for name, fetch in boards:
         try:
-            got = harvest()
+            got = fetch()
             print(f"{name}: {len(got)} listings", file=sys.stderr)
+            per_board[name] = len(got)
             rows.extend(got)
         except Exception as exc:  # one dead board must not sink the run
             print(f"{name}: FAILED {exc}", file=sys.stderr)
+            per_board[name] = f"failed: {exc}"[:200]
 
     known_urls = set()
     known_keys = set()
     touched = {}  # company -> statuses, so a new role at a company he already applied to is visible
-    for job in load_jobs():
+    for job in (load_jobs() if jobs is None else jobs):
         known_urls.add(canonical_job_url(job.job_url))
         known_keys.add((_company_key(job.company), _role_key(job.role)))
         touched.setdefault(_company_key(job.company), set()).add(job.status)
@@ -247,9 +254,19 @@ def main() -> None:
             continue
         seen.update({url, key})
         kept.append(row)
+    return {"kept": kept, "fetched": len(rows), "dropped": dropped, "boards": per_board}
 
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--out", default="remote_candidates.json")
+    parser.add_argument("--days", type=int, default=21, help="drop postings older than this")
+    args = parser.parse_args()
+
+    result = harvest(args.days)
+    kept = result["kept"]
     Path(args.out).write_text(json.dumps(kept, indent=1))
-    print(f"kept {len(kept)} of {len(rows)}; dropped {dropped}", file=sys.stderr)
+    print(f"kept {len(kept)} of {result['fetched']}; dropped {result['dropped']}", file=sys.stderr)
     print(f"wrote {args.out}", file=sys.stderr)
 
 

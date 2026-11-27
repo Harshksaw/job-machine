@@ -2,6 +2,10 @@
 the config, its version history and rollback, the adapter list with key and health
 state, and a one call test per adapter.
 
+Also (M8): enqueue and read pipeline runs, and the stored mail sync results, which the
+MCP server and later the dashboard read. Runs only queue here; the M6 worker or
+`scripts/run_task.py` executes them.
+
 Mounted in app/main.py so the dashboard's "Agents and models" settings can use it. No
 worker starts from here; the worker pool is wired in M6. Mutating routes
 require the `X-Job-Machine: dashboard` header, like the other dashboard writes. Keys
@@ -12,9 +16,12 @@ from __future__ import annotations
 import time
 import uuid
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Query
+from pydantic import BaseModel, Field
 
-from app.pipeline import config, store
+from app import job_store
+from app.mail import store as mail_store
+from app.pipeline import config, store, tasks
 from app.pipeline.adapters import build_adapter
 from app.pipeline.config import PipelineConfig
 from app.pipeline.models import Attempt, now_iso
@@ -128,3 +135,94 @@ def post_adapter_test(name: str, x_job_machine: str | None = Header(default=None
     store.add_attempt(attempt)
     return {"adapter": name, "outcome": result.outcome, "error": result.error, "model": result.model,
             "duration_ms": attempt.duration_ms, "attempt_id": attempt.id}
+
+
+# --- runs (M8) -------------------------------------------------------------------------
+
+MAX_ENQUEUE = 50
+
+
+class RunRequest(BaseModel):
+    pipeline: str
+    job_ids: list[str] = Field(default_factory=list, max_length=MAX_ENQUEUE)
+
+
+def _packet_order() -> list[str]:
+    from app.pipeline.pipelines import PACKET_PIPELINE
+
+    return PACKET_PIPELINE.order
+
+
+@router.post("/runs", status_code=201)
+def post_runs(data: RunRequest, x_job_machine: str | None = Header(default=None)) -> dict:
+    """Queue runs. A task pipeline (mail_sync, liveness_sweep, remote_boards,
+    ats_watchlist) gets one run and refuses a second while one is queued or running;
+    `packet` gets one run per dossier id, skipping a dossier that already has one."""
+    _require_dashboard(x_job_machine)
+    if data.pipeline in tasks.TASK_BUILDERS:
+        active = tasks.active_run(data.pipeline)
+        if active is not None:
+            raise HTTPException(status_code=409, detail=f"{data.pipeline} already has run {active.id} ({active.status})")
+        return {"queued": [tasks.enqueue(data.pipeline).model_dump(mode="json")], "skipped": []}
+    if data.pipeline != "packet":
+        names = ", ".join(["packet", *tasks.TASK_BUILDERS])
+        raise HTTPException(status_code=422, detail=f"unknown pipeline {data.pipeline!r}; one of {names}")
+    if not data.job_ids:
+        raise HTTPException(status_code=422, detail="packet runs need job_ids")
+    missing = [job_id for job_id in data.job_ids if job_store.get_job(job_id) is None]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"no dossier {', '.join(missing)}")
+    queued, skipped = [], []
+    for job_id in dict.fromkeys(data.job_ids):
+        if any(run.pipeline == "packet" and run.status in ("queued", "running") for run in store.list_runs(job_id)):
+            skipped.append(job_id)
+            continue
+        queued.append(store.create_run(job_id, "packet", _packet_order()).model_dump(mode="json"))
+    return {"queued": queued, "skipped": skipped}
+
+
+@router.get("/runs")
+def get_runs(job_id: str | None = None, pipeline: str | None = None, status: str | None = None,
+             limit: int = Query(default=50, ge=1, le=500)) -> list[dict]:
+    runs = store.list_runs(job_id)
+    if pipeline:
+        runs = [run for run in runs if run.pipeline == pipeline]
+    if status:
+        runs = [run for run in runs if run.status == status]
+    return [
+        {"id": run.id, "job_id": run.job_id, "pipeline": run.pipeline, "status": run.status,
+         "terminal_reason": run.terminal_reason, "created_at": run.created_at, "updated_at": run.updated_at,
+         "steps": {name: run.steps[name].status for name in run.order}}
+        for run in runs[:limit]
+    ]
+
+
+@router.get("/runs/{run_id}")
+def get_run(run_id: str) -> dict:
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"no run {run_id}")
+    attempts = [attempt.model_dump(mode="json") for attempt in store.list_attempts(run_id)]
+    return {**run.model_dump(mode="json"), "attempts": attempts}
+
+
+# --- mail sync results (M8) ------------------------------------------------------------
+
+
+@router.get("/mail/status")
+def get_mail_status() -> dict:
+    """The window state and the newest mail sync runs. Never touches Gmail."""
+    runs = [run for run in store.list_runs(tasks.task_job_id(tasks.MAIL_SYNC))][:5]
+    return {
+        "state": mail_store.get_state(),
+        "runs": [{"id": run.id, "status": run.status, "terminal_reason": run.terminal_reason,
+                  "created_at": run.created_at, "report": run.steps.get("mail_report").output
+                  if run.steps.get("mail_report") else None} for run in runs],
+    }
+
+
+@router.get("/mail/events")
+def get_mail_events(company: str = "", outcome: str = "", status: str = "", since: str = "", q: str = "",
+                    limit: int = Query(default=50, ge=1, le=500)) -> list[dict]:
+    """Stored mail sync events, newest first. Reads the store, never Gmail."""
+    return mail_store.list_events(company=company, outcome=outcome, status=status, since=since, q=q, limit=limit)

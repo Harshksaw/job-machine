@@ -181,22 +181,21 @@ class GmailClient:
         return parse_message(self._transport(f"messages/{message_id}", {"format": "full"}))
 
     def fetch(self, after: date, *, skip: set[str] | frozenset = frozenset(),
-              limit: int = 100) -> tuple[list[MailMessage], int]:
+              limit: int = 100) -> tuple[list[MailMessage], int, list[MailMessage]]:
         """New messages from both searches since `after`, oldest first, at most `limit`.
-        Returns the messages and how many matched but were already known."""
+        Returns those messages, how many matched but were already known, and the
+        receipts and sign in codes that were opened and left out, so a caller can mark
+        them seen."""
         seen: list[str] = []
-        known = 0
         for query in queries(after):
             for message_id in self.search(query):
-                if message_id in seen:
-                    continue
-                seen.append(message_id)
+                if message_id not in seen:
+                    seen.append(message_id)
         fresh = [message_id for message_id in seen if message_id not in skip]
-        known = len(seen) - len(fresh)
-        messages = [self.message(message_id) for message_id in fresh]
-        messages = [m for m in messages if not is_skippable(m.subject)]
-        messages.sort(key=lambda m: (m.date, m.id))
-        return messages[:limit], known
+        opened = [self.message(message_id) for message_id in fresh]
+        receipts = [m for m in opened if is_skippable(m.subject)]
+        messages = sorted((m for m in opened if not is_skippable(m.subject)), key=lambda m: (m.date, m.id))
+        return messages[:limit], len(seen) - len(fresh), receipts
 
 
 # --- the real transport ----------------------------------------------------------------
