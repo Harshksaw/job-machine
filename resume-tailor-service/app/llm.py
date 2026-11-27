@@ -39,6 +39,10 @@ class LlmUnavailableError(ClaudeCliError):
     502 for a failed model call keep doing so."""
 
 
+class NoAdapterError(LlmUnavailableError):
+    """No adapter is left to try (none enabled, healthy or not excluded)."""
+
+
 @dataclass(frozen=True)
 class _Target:
     name: str
@@ -80,24 +84,35 @@ def _repair(prompt: str, errors: list[str]) -> str:
     return prompt + "\n\nYour last answer was rejected. Fix these problems:\n" + "\n".join(f"- {e}" for e in errors)
 
 
+def _specs(target: _Target, exclude) -> list:
+    from app.pipeline import config, router, store
+
+    return router.resolve_chain(
+        target, config.load_config(), health=router.HEALTH,
+        ledger_stats=router.step_stats(target.name, store.list_attempts()),
+        rng=_RNG, over_budget=router.meter_over_budget, exclude=tuple(exclude),
+    )
+
+
+def chain_names(capability: str, step: str = "", exclude=()) -> list[str]:
+    """The adapters `complete` would try now, in order."""
+    return [spec.name for spec in _specs(_Target(step or capability, capability), exclude)]
+
+
 def complete(capability: str, prompt: str, schema, *, step: str = "", exclude_adapters=(),
              run_id: str = LLM_RUN_ID, job_id: str = "") -> tuple[Any, dict]:
     """One structured model call through the router. Returns the parsed value (a model
     instance for a Pydantic class, else a dict) and meta: the adapter and model that
     answered, tokens, cost, and what failed before it. Raises LlmUnavailableError when
-    the whole chain fails."""
-    from app.pipeline import config, router, store
+    the whole chain fails (NoAdapterError when there was nothing to try)."""
+    from app.pipeline import router, store
     from app.pipeline.models import AdapterResult, Attempt, now_iso
 
     target = _Target(step or capability, capability)
-    specs = router.resolve_chain(
-        target, config.load_config(), health=router.HEALTH,
-        ledger_stats=router.step_stats(target.name, store.list_attempts()),
-        rng=_RNG, over_budget=router.meter_over_budget, exclude=tuple(exclude_adapters),
-    )
+    specs = _specs(target, exclude_adapters)
     if not specs:
         skipped = f" (excluding {', '.join(exclude_adapters)})" if exclude_adapters else ""
-        raise LlmUnavailableError(f"no healthy enabled adapter offers capability {capability!r}{skipped}")
+        raise NoAdapterError(f"no healthy enabled adapter offers capability {capability!r}{skipped}")
     json_schema = _json_schema(schema)
     failed: list[str] = []
     for spec in specs:
@@ -134,17 +149,85 @@ def complete(capability: str, prompt: str, schema, *, step: str = "", exclude_ad
     raise LlmUnavailableError(f"every adapter failed; last: {failed[-1]}")
 
 
-def completer(capability: str, schema, *, step: str = "", on_meta: Callable[[dict], None] | None = None,
-              **options) -> Callable[[str], str]:
-    """A one argument `complete(prompt) -> JSON text` for the generators, routed through
-    `complete`. `on_meta` sees which adapter answered each call."""
+class Session:
+    """The `complete(prompt) -> JSON text` callable the generators take, routed through
+    `complete`.
 
-    def complete_text(prompt: str) -> str:
-        parsed, meta = complete(capability, prompt, schema, step=step, **options)
-        if on_meta is not None:
-            on_meta(meta)
+    The generators run their own validation (facts traced to the bank, word limits,
+    voice) and call again with the errors when a draft fails. A session turns that into
+    the spec 5.3 fallback: an adapter whose answer was sent back twice is skipped on the
+    next call, so the third try goes to the next adapter (or stays on the same one when
+    it is the only one). Generators call `fresh()` once per draft, so one question's
+    repairs never count against the next; a pipeline step keeps one root session and
+    learns every author from it (`authors`), and `drop_last()` excludes the adapter that
+    just failed a whole draft so the step can try another."""
+
+    def __init__(self, capability: str, schema, *, step: str = "", on_meta: Callable[[dict], None] | None = None,
+                 parent: Session | None = None, record: bool = True, **options):
+        self.capability, self.schema, self.step = capability, schema, step
+        self.on_meta, self.options, self.record = on_meta, options, record
+        self.parent = parent
+        self.authors: list[str] = []
+        self.excluded: set[str] = set()
+        self.last = ""
+        self._answers: dict[str, int] = {}
+
+    @property
+    def _root(self) -> Session:
+        return self.parent._root if self.parent is not None else self
+
+    def fresh(self) -> Session:
+        return Session(self.capability, self.schema, step=self.step, on_meta=self.on_meta,
+                       parent=self, record=self.record, **self.options)
+
+    def _seen(self, meta: dict) -> None:
+        root = self._root
+        if not root.record:
+            return
+        adapter = meta.get("adapter") or ""
+        root.last = adapter
+        if adapter and adapter not in root.authors:
+            root.authors.append(adapter)
+
+    def __call__(self, prompt: str) -> str:
+        hard = set(self._root.excluded)
+        sent_back = {name for name, count in self._answers.items() if count >= 2}
+        try:
+            parsed, meta = complete(self.capability, prompt, self.schema, step=self.step,
+                                    exclude_adapters=tuple(sorted(hard | sent_back)), **self.options)
+        except NoAdapterError:
+            if not sent_back - hard:
+                raise
+            parsed, meta = complete(self.capability, prompt, self.schema, step=self.step,
+                                    exclude_adapters=tuple(sorted(hard)), **self.options)
+        adapter = meta.get("adapter") or ""
+        self._answers[adapter] = self._answers.get(adapter, 0) + 1
+        self._seen(meta)
+        if self.on_meta is not None:
+            self.on_meta(meta)
         if isinstance(parsed, BaseModel):
             parsed = parsed.model_dump(mode="json", by_alias=True)
         return json.dumps(parsed)
 
-    return complete_text
+    def drop_last(self) -> bool:
+        """Exclude the adapter that answered last, if another one is left to try."""
+        root = self._root
+        if not root.last or root.last in root.excluded:
+            return False
+        remaining = chain_names(self.capability, self.step, tuple(root.excluded | {root.last}))
+        if not remaining:
+            return False
+        root.excluded.add(root.last)
+        return True
+
+
+def completer(capability: str, schema, *, step: str = "", on_meta: Callable[[dict], None] | None = None,
+              **options) -> Session:
+    """A shareable template session (a generator's default `complete`). It records no
+    authors itself; every generator call works on its own `fresh()` copy."""
+    return Session(capability, schema, step=step, on_meta=on_meta, record=False, **options)
+
+
+def fresh(complete_fn):
+    """A generator's per draft callable: a fresh session for a routed one, else as is."""
+    return complete_fn.fresh() if isinstance(complete_fn, Session) else complete_fn

@@ -220,3 +220,25 @@ def test_a_config_put_changes_the_next_chain(monkeypatch):
     assert client.put("/api/pipeline/config", json=body, headers=HEADERS).status_code == 200
     assert llm.complete("reason", "p", Out, step="kit")[1]["adapter"] == "first"
     assert built == ["first", "second", "first"]
+
+
+def test_kit_step_moves_to_the_next_adapter_after_its_repair_fails(monkeypatch):
+    bad = _valid_kit_payload()
+    bad["analysis"]["evidence"][0]["source_ids"] = ["invented.source"]
+    script = {"a": [bad, bad, bad], "b": [_valid_kit_payload()]}
+    used = []
+
+    def complete(capability, prompt, schema, *, exclude_adapters=(), **options):
+        name = next(n for n in ("a", "b") if n not in exclude_adapters)
+        used.append(name)
+        return script[name].pop(0), {"adapter": name}
+
+    monkeypatch.setattr(llm, "complete", complete)
+    monkeypatch.setattr(llm, "chain_names", lambda capability, step="", exclude=(): [
+        n for n in ("a", "b") if n not in exclude])
+    fit = StepSpec("fit_score", "code", run=lambda ctx: StepResult(output={"score": 8}))
+    result = _run(Pipeline("p", (fit, steps_service.kit_step(deps=("fit_score",)))), lambda step: [])
+
+    assert result.status == "packet_ready", result.terminal_reason
+    assert used == ["a", "a", "b"]
+    assert result.steps["kit"].output["meta"] == {"authors": ["a", "b"]}

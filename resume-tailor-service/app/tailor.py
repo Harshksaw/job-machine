@@ -100,6 +100,7 @@ def get_manifest(
     max_retries: int = 2,
 ) -> Manifest:
     previous_errors: list[str] | None = None
+    complete = llm.fresh(complete)
     attempts = max_retries + 1
     for attempt in range(attempts):
         prompt = build_prompt(jd_text, company, role, bank, previous_errors)

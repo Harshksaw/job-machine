@@ -73,3 +73,13 @@ Then the full backend suite, a Codex review of `6ee33fe..HEAD`, fixes test first
 - `/api/pipeline/steps` lists only steps that use an adapter (agent and service steps),
   so `fetch_jd` and `resolve_apply_url` (code steps today) drop out and `repair` and
   `tailor` appear.
+
+## Codex review (6ee33fe..HEAD) and fixes
+
+- Important, fixed: a draft the generators' own validation sends back twice now moves to
+  the next adapter. `llm.Session` (the generators' `complete`) skips an adapter whose
+  answer came back twice, and a pipeline step drops an adapter that failed a whole draft
+  (`drop_last`) before giving up. With one adapter, retries stay on it as before.
+- Important, fixed: `web_fetch` connects to the address it checked (Host header and TLS
+  SNI keep the name), so a second DNS answer cannot rebind it to localhost.
+- Minor, fixed: an ollama sdk adapter reads `OLLAMA_BASE_URL` from its `env` block.

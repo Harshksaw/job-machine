@@ -68,7 +68,8 @@ def build_model(spec: AdapterSpec):
     if spec.key_env:
         kwargs["api_key"] = os.environ.get(spec.key_env, "").strip()
     if provider == "ollama":
-        kwargs["base_url"] = os.environ.get("OLLAMA_BASE_URL", "").strip() or OLLAMA_URL
+        kwargs["base_url"] = (spec.env.get("OLLAMA_BASE_URL", "").strip()
+                              or os.environ.get("OLLAMA_BASE_URL", "").strip() or OLLAMA_URL)
     return infer_model(f"{provider}:{name}", lambda name: infer_provider_class(name)(**kwargs))
 
 
@@ -79,26 +80,37 @@ def _addresses(host: str) -> list[str]:
     return [info[4][0] for info in socket.getaddrinfo(host, None)]
 
 
-def _not_public(host: str) -> str | None:
-    """Why a host must not be fetched, or None. Every address it resolves to must be
-    public, so an agent cannot reach this machine (the dashboard API) or a private net."""
+def _checked_address(host: str) -> tuple[str | None, str]:
+    """(why the host must not be fetched, or None; the address to connect to). Every
+    address it resolves to must be public, so an agent cannot reach this machine (the
+    dashboard API) or a private network. The request then goes to that exact address,
+    so a second DNS answer (rebinding) cannot point it somewhere else."""
     if not host:
-        return "no host"
+        return "no host", ""
     try:
         addresses = [str(ipaddress.ip_address(host.strip("[]")))]
     except ValueError:
         try:
             addresses = _addresses(host)
         except OSError as exc:
-            return f"cannot resolve {host}: {exc}"
+            return f"cannot resolve {host}: {exc}", ""
     if not addresses:
-        return f"cannot resolve {host}"
+        return f"cannot resolve {host}", ""
     for address in addresses:
         ip = ipaddress.ip_address(address.split("%")[0].strip("[]"))
         mapped = getattr(ip, "ipv4_mapped", None)
         if not ip.is_global or (mapped is not None and not mapped.is_global):
-            return f"{host} is not a public address"
-    return None
+            return f"{host} is not a public address", ""
+    return None, addresses[0].split("%")[0].strip("[]")
+
+
+def _pinned(url: str, address: str) -> tuple[str, str]:
+    """The URL with its host replaced by the checked address, and the Host header."""
+    parts = urlsplit(url)
+    host = f"[{address}]" if ":" in address else address
+    netloc = host + (f":{parts.port}" if parts.port else "")
+    header = parts.hostname + (f":{parts.port}" if parts.port else "")
+    return parts._replace(netloc=netloc).geturl(), header
 
 
 def _http_client() -> httpx.Client:
@@ -126,12 +138,16 @@ def web_fetch(url: str) -> str:
                 parts = urlsplit(url)
                 if parts.scheme not in ("http", "https"):
                     return f"refused: only http and https URLs, got {parts.scheme or 'none'}"
-                reason = _not_public(parts.hostname or "")
+                reason, address = _checked_address(parts.hostname or "")
                 if reason:
                     return f"refused: {reason}"
-                with client.stream("GET", url) as response:
+                target, host_header = _pinned(url, address)
+                request = client.build_request("GET", target, headers={"host": host_header},
+                                               extensions={"sni_hostname": parts.hostname})
+                response = client.send(request, stream=True)
+                try:
                     if response.is_redirect and response.headers.get("location"):
-                        url = str(response.url.join(response.headers["location"]))
+                        url = str(httpx.URL(url).join(response.headers["location"]))
                         continue
                     if response.status_code >= 400:
                         return f"error: HTTP {response.status_code}"
@@ -140,11 +156,13 @@ def web_fetch(url: str) -> str:
                         body.extend(chunk)
                         if len(body) >= WEB_FETCH_MAX_BYTES:
                             break
-                    text = _to_text(bytes(body[:WEB_FETCH_MAX_BYTES]).decode(response.encoding or "utf-8", "replace"),
-                                    response.headers.get("content-type", ""))
-                    if len(text) > WEB_FETCH_MAX_CHARS:
-                        text = text[:WEB_FETCH_MAX_CHARS] + " [truncated]"
-                    return text
+                finally:
+                    response.close()
+                text = _to_text(bytes(body[:WEB_FETCH_MAX_BYTES]).decode(response.encoding or "utf-8", "replace"),
+                                response.headers.get("content-type", ""))
+                if len(text) > WEB_FETCH_MAX_CHARS:
+                    text = text[:WEB_FETCH_MAX_CHARS] + " [truncated]"
+                return text
             return f"refused: more than {WEB_FETCH_MAX_REDIRECTS} redirects"
     except httpx.HTTPError as exc:
         return f"error: {type(exc).__name__}: {exc}"[:300]

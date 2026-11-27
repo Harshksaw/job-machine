@@ -224,3 +224,50 @@ def test_generators_default_to_llm_not_claude_cli():
     for fn in (application_kit.generate_kit, application_kit.generate_answer, tailor.get_manifest):
         default = inspect.signature(fn).parameters["complete"].default
         assert getattr(default, "__module__", "") == "app.llm", fn.__name__
+
+
+# Codex review: a draft the generator's own validation rejects twice moves to the next
+# adapter (spec 5.3 and 6.3), not back to the same cheapest one.
+
+
+def _untraceable_kit():
+    payload = _valid_kit_payload()
+    payload["analysis"]["evidence"][0]["source_ids"] = ["invented.source"]
+    return payload
+
+
+def test_kit_rejected_twice_by_validation_falls_back_to_the_next_adapter(monkeypatch):
+    _save({"a": {"cost_tier": 1}, "b": {"cost_tier": 2}})
+    a = Scripted("a", [AdapterResult(outcome="ok", output=_untraceable_kit())] * 3)
+    b = Scripted("b", [AdapterResult(outcome="ok", output=_valid_kit_payload())])
+    _script(monkeypatch, {"a": a, "b": b})
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+
+    kit = application_kit.generate_kit(_job(), bank, max_retries=2)
+
+    assert kit.analysis.score == 8
+    assert (len(a.prompts), len(b.prompts)) == (2, 1)
+
+
+def test_with_one_adapter_validation_retries_stay_on_it(monkeypatch):
+    _save({"a": {}})
+    a = Scripted("a", [AdapterResult(outcome="ok", output=_untraceable_kit())] * 2
+                 + [AdapterResult(outcome="ok", output=_valid_kit_payload())])
+    _script(monkeypatch, {"a": a})
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+
+    assert application_kit.generate_kit(_job(), bank, max_retries=2).analysis.score == 8
+    assert len(a.prompts) == 3
+
+
+def test_each_generator_call_starts_a_fresh_session(monkeypatch):
+    _save({"a": {"cost_tier": 1}, "b": {"cost_tier": 2}})
+    answer = {"answer": "Yes. I am open to relocation.", "source_ids": ["profile.relocation"],
+              "needs_user_input": False, "clarification": ""}
+    a = Scripted("a", [AdapterResult(outcome="ok", output=answer)] * 3)
+    _script(monkeypatch, {"a": a, "b": Scripted("b", [])})
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+
+    for _ in range(3):
+        application_kit.generate_answer(_job(), bank, "Are you willing to relocate?", max_retries=0)
+    assert len(a.prompts) == 3

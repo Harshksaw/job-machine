@@ -36,25 +36,16 @@ Complete = Callable[[str], str]
 _REPAIRS = 1
 
 
-class _Routed:
-    """The model call for one step of one run: `llm.complete` with the run id, keeping
-    the name of every adapter that answered."""
-
-    def __init__(self, ctx: StepContext, step: str, schema: dict):
-        self.authors: list[str] = []
-        self._complete = llm.completer("reason", schema, step=step, on_meta=self._seen,
-                                       run_id=ctx.run.id, job_id=ctx.run.job_id)
-
-    def _seen(self, meta: dict) -> None:
-        if meta.get("adapter") and meta["adapter"] not in self.authors:
-            self.authors.append(meta["adapter"])
-
-    def __call__(self, prompt: str) -> str:
-        return self._complete(prompt)
-
-
 def _model(ctx: StepContext, complete: Complete | None, step: str, schema: dict) -> Complete:
-    return complete if complete is not None else _Routed(ctx, step, schema)
+    """The caller's `complete`, else one routed session for this step of this run."""
+    if complete is not None:
+        return complete
+    return llm.Session("reason", schema, step=step, run_id=ctx.run.id, job_id=ctx.run.job_id)
+
+
+def _next_adapter(model) -> bool:
+    """After a draft failed on one adapter, move the step to the next one (spec 5.3)."""
+    return isinstance(model, llm.Session) and model.drop_last()
 
 
 def _meta(model) -> dict:
@@ -68,19 +59,26 @@ def _bank(path: Path | None):
 # kit
 
 
-def _draft_kit(ctx: StepContext, bank, complete: Complete | None, issues: list[str] | None = None):
-    """generate_kit with one validation repair, then the shared rules with one more.
-    Raises StepFailed with the errors when the draft still fails."""
-    try:
-        generated = generate_kit(ctx.job, bank, max_retries=_REPAIRS, previous_errors=issues,
-                                 complete=complete)
-        errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
-        if errors:
-            generated = generate_kit(ctx.job, bank, max_retries=0, previous_errors=errors,
+def _draft_kit(ctx: StepContext, bank, complete: Complete, issues: list[str] | None = None):
+    """generate_kit with one validation repair, then the shared rules with one more,
+    on each adapter in turn. Raises StepFailed with the errors when the draft still
+    fails on the last one."""
+    while True:
+        try:
+            generated = generate_kit(ctx.job, bank, max_retries=_REPAIRS, previous_errors=issues,
                                      complete=complete)
             errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
-    except JobGenerationError as exc:
-        raise StepFailed(str(exc)) from exc
+            if errors:
+                generated = generate_kit(ctx.job, bank, max_retries=0, previous_errors=errors,
+                                         complete=complete)
+                errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
+        except JobGenerationError as exc:
+            if _next_adapter(complete):
+                continue
+            raise StepFailed(str(exc)) from exc
+        if errors and _next_adapter(complete):
+            continue
+        break
     if errors:
         raise StepFailed(f"cover letter failed the shared rules after one repair: {errors}")
     return generated
@@ -160,18 +158,26 @@ def _key(question: str) -> str:
     return " ".join(question.lower().split())
 
 
-def _answer(ctx: StepContext, bank, question: str, complete: Complete | None,
+def _answer(ctx: StepContext, bank, question: str, complete: Complete,
             issues: list[str] | None = None):
-    try:
-        draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
-                                max_retries=_REPAIRS, previous_errors=issues, complete=complete)
-        errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
-        if errors:
+    """Like _draft_kit: one repair per adapter, then the next adapter. An adapter that
+    failed a whole answer sits out the rest of this step."""
+    while True:
+        try:
             draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
-                                    max_retries=0, previous_errors=errors, complete=complete)
+                                    max_retries=_REPAIRS, previous_errors=issues, complete=complete)
             errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
-    except JobGenerationError as exc:
-        raise StepFailed(f"answer for {question!r}: {exc}") from exc
+            if errors:
+                draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
+                                        max_retries=0, previous_errors=errors, complete=complete)
+                errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
+        except JobGenerationError as exc:
+            if _next_adapter(complete):
+                continue
+            raise StepFailed(f"answer for {question!r}: {exc}") from exc
+        if errors and _next_adapter(complete):
+            continue
+        break
     if errors:
         raise StepFailed(f"answer for {question!r} failed the shared rules after one repair: {errors}")
     return draft

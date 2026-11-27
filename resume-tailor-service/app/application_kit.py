@@ -462,6 +462,7 @@ def generate_kit(
         )
     sources = build_source_index(bank)
     previous_errors = list(previous_errors) if previous_errors else None
+    complete = llm.fresh(complete)
     attempts = max_retries + 1
     for _ in range(attempts):
         raw_text = complete(_kit_prompt(job, sources, previous_errors))
@@ -611,6 +612,7 @@ def generate_answer(
 
     sources = build_source_index(bank)
     previous_errors = list(previous_errors) if previous_errors else None
+    complete = llm.fresh(complete)
     attempts = max_retries + 1
     for _ in range(attempts):
         raw_text = complete(

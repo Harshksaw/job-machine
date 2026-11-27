@@ -279,7 +279,7 @@ def test_web_fetch_rechecks_every_redirect(monkeypatch):
     monkeypatch.setattr(sdk, "_addresses", lambda host: ["127.0.0.1"] if host == "internal.example" else ["93.184.216.34"])
 
     def handler(request):
-        if request.url.host == "example.com":
+        if request.headers["host"] == "example.com":
             return httpx.Response(302, headers={"location": "http://internal.example/admin"})
         pytest.fail("followed a redirect into a local address")
 
@@ -314,3 +314,26 @@ def test_dossier_read_is_a_fixed_read_only_view():
     assert "revisions" not in data and "activities" not in data
     assert sdk.dossier_read("no-such-id").startswith("error:")
     assert sdk.dossier_read("../etc").startswith("error:")
+
+
+def test_web_fetch_connects_to_the_checked_address_so_dns_cannot_rebind(monkeypatch):
+    answers = iter([["93.184.216.34"], ["127.0.0.1"]])
+    monkeypatch.setattr(sdk, "_addresses", lambda host: next(answers))
+    seen = {}
+
+    def handler(request):
+        seen.update(host=request.url.host, header=request.headers["host"],
+                    sni=request.extensions.get("sni_hostname"))
+        return httpx.Response(200, text="public page")
+
+    monkeypatch.setattr(sdk, "_http_client", _transport(handler))
+
+    assert sdk.web_fetch("https://rebind.example/jobs") == "public page"
+    assert seen == {"host": "93.184.216.34", "header": "rebind.example", "sni": "rebind.example"}
+
+
+def test_ollama_base_url_comes_from_the_adapter_env(monkeypatch):
+    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+    local = AdapterSpec.model_validate({"type": "sdk", "model": "ollama:llama3.2", "capabilities": ["cheap"],
+                                        "env": {"OLLAMA_BASE_URL": "http://gpu-box:11434/v1"}})
+    assert str(sdk.build_model(local).base_url).startswith("http://gpu-box:11434")
