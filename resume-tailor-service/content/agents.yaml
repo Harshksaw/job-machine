@@ -1,0 +1,72 @@
+# Default agent orchestrator config. Committed, so it holds NO secrets: an adapter names
+# the env var that carries its key (`key_env`) and the key itself stays in .env.
+#
+# This file is only the seed. On first start, or on "Reset to defaults", it is copied
+# into the `pipeline_config` store; after that the stored config wins and the service
+# never writes this file. Spec: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md
+# sections 5 and 13.5.
+#
+# Command placeholders: {prompt} (required for cli), {schema} (the step's JSON schema).
+# `family` is the tool name used by app/agent_health.py and tools/ai-meter, so a blocked
+# or over budget tool drops out of every chain that uses it.
+workers: 4
+adapters:
+  gemini_lite:
+    type: api
+    provider: gemini
+    model: gemini-3.5-flash-lite
+    key_env: GEMINI_API_KEY
+    family: gemini
+    capabilities: [cheap]
+    cost_tier: 1
+    max_parallel: 4
+  claude_haiku:
+    type: cli
+    # No tools under isolation, so the answer comes back on stdout, not in a file.
+    command: [claude, -p, "{prompt}", --output-format, json, --model, haiku, --json-schema, "{schema}"]
+    isolation: claude_hermetic
+    output: stdout
+    family: claude
+    capabilities: [cheap, reason]
+    cost_tier: 2
+    max_parallel: 2
+  codex:
+    type: cli
+    command: [codex, exec, -s, workspace-write, -c, sandbox_workspace_write.network_access=true, "{prompt}"]
+    family: codex
+    capabilities: [reason, web, browser_read]
+    cost_tier: 3
+    max_parallel: 2
+  cursor:
+    type: cli
+    command: [cursor-agent, -p, --force, --trust, --model, grok-4.7-medium, --output-format, text, "{prompt}"]
+    family: cursor
+    capabilities: [reason, web, browser_read]
+    cost_tier: 3
+    max_parallel: 2
+  opencode_free:
+    type: cli
+    command: [opencode, run, -m, opencode/big-pickle, "{prompt}"]
+    family: opencode
+    capabilities: [web]
+    cost_tier: 1
+    max_parallel: 1
+  antigravity:
+    type: cli
+    command: [agy, --dangerously-skip-permissions, -p, "{prompt}"]
+    family: antigravity
+    capabilities: [reason, web, browser_read]
+    cost_tier: 3
+    max_parallel: 1
+  openrouter:
+    # In process agent (Pydantic AI) arrives in M2b; off until then.
+    type: sdk
+    model: "openrouter:anthropic/claude-haiku-4.5"
+    key_env: OPENROUTER_API_KEY
+    capabilities: [reason, web]
+    cost_tier: 2
+    max_parallel: 2
+    enabled: false
+capability_caps:
+  browser_read: 2
+steps: {}
