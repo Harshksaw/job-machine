@@ -203,3 +203,41 @@ def test_fetch_jd_survives_network_errors():
     result = _run(job, steps_code.fetch_jd_step(http=broken))
     assert result.status == "packet_ready"
     assert result.steps["fetch_jd"].output["needs_agent"] is True
+
+
+# liveness
+
+
+def test_liveness_closed_stops_the_run_and_appends_one_note_line():
+    job = _job(apply_url="https://boards.greenhouse.io/acme/jobs/1", job_url="https://remotive.com/x/1")
+    seen = []
+
+    def check(url):
+        seen.append(url)
+        return "closed", "greenhouse 404"
+
+    result = _run(job, steps_code.liveness_step(check=check))
+    assert seen == ["https://boards.greenhouse.io/acme/jobs/1"]
+    assert result.status == "closed_posting"
+    assert "greenhouse 404" in result.terminal_reason
+    assert result.steps["liveness"].output == {"state": "closed", "evidence": "greenhouse 404"}
+    notes = job_store.get_job(job.id).notes
+    assert notes.startswith("keep\n") and notes.count("\n") == 1
+    assert "closed" in notes.splitlines()[1] and "greenhouse 404" in notes
+
+
+@pytest.mark.parametrize("state", ["live", "unknown"])
+def test_liveness_live_or_unknown_continues_without_writing(state):
+    job = _job(job_url="https://jobs.lever.co/acme/x")
+    result = _run(job, steps_code.liveness_step(check=lambda url: (state, "evidence")))
+    assert result.status == "packet_ready"
+    assert result.steps["liveness"].output["state"] == state
+    saved = job_store.get_job(job.id)
+    assert saved.notes == "keep" and len(saved.revisions) == 1
+
+
+def test_liveness_default_checker_is_the_liveness_script():
+    from app.pipeline.steps_code import _default_check
+
+    check = _default_check()
+    assert check.__module__ == "check_liveness" and check.__name__ == "check"

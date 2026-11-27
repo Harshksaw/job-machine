@@ -8,7 +8,10 @@ Design: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md section 4
 """
 from __future__ import annotations
 
+import importlib.util
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Callable
 
 from app import job_store
 from app.models import JobActivity, JobActivityInput
@@ -101,3 +104,39 @@ def fetch_jd_step(http: ats.Http | None = None) -> StepSpec:
         return StepResult(output=output, writes=writes)
 
     return StepSpec("fetch_jd", "code", owns=("jd_text",), run=fetch)
+
+
+Check = Callable[[str], tuple[str, str]]
+_LIVENESS_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "check_liveness.py"
+_check: Check | None = None
+
+
+def _default_check() -> Check:
+    """`check(url)` from scripts/check_liveness.py, loaded once by path (scripts/ is not
+    a package), so the nightly sweep and this step share one implementation."""
+    global _check
+    if _check is None:
+        spec = importlib.util.spec_from_file_location("check_liveness", _LIVENESS_SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _check = module.check
+    return _check
+
+
+def liveness_step(check: Check | None = None) -> StepSpec:
+    def live(ctx: StepContext) -> StepResult:
+        url = (ctx.job.apply_url or ctx.job.job_url or "").strip()
+        state, evidence = (check or _default_check())(url)
+        output = {"state": state, "evidence": evidence}
+        if state != "closed":
+            return StepResult(output=output)
+        line = f"Pipeline {ctx.run.id}: posting closed ({evidence}) at {url}"
+        notes = (ctx.job.notes or "").rstrip("\n")
+        return StepResult(
+            output=output,
+            writes={"notes": f"{notes}\n{line}" if notes else line},
+            stop="closed_posting",
+            reason=f"posting closed: {evidence}",
+        )
+
+    return StepSpec("liveness", "code", owns=("notes",), run=live)
