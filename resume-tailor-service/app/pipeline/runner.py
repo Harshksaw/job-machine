@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app import job_store
 from app.models import JobWorkspace
@@ -221,7 +221,44 @@ def _run_local(step: StepSpec, ctx: StepContext) -> StepResult:
 
 
 def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain) -> StepResult:
-    raise StepFailed(f"agent steps are not wired yet ({step.name})")
+    """Try each adapter in the chain. Invalid output gets one more try on the same
+    adapter with the error list; unavailable, timeout and error move on at once; a
+    policy violation fails the step, which fails the run."""
+    chain = resolve_chain(step)
+    if not chain:
+        raise StepFailed(f"no adapter offers capability {step.capability!r}")
+    last = ""
+    for adapter in chain:
+        errors: list[str] = []
+        for _ in range(2):
+            started, t0 = now_iso(), time.monotonic()
+            result = adapter.invoke(step, ctx, errors)
+            parsed = None
+            if result.outcome == "ok":
+                try:
+                    parsed = step.schema.model_validate(result.output or {})
+                except ValidationError as exc:
+                    errors = [
+                        f"{'.'.join(str(part) for part in error['loc']) or 'output'}: {error['msg']}"
+                        for error in exc.errors()
+                    ]
+                    result = result.model_copy(
+                        update={"outcome": "invalid_output", "error": "; ".join(errors)[:300]}
+                    )
+            elif result.outcome == "invalid_output":
+                errors = [result.error or "output was not a JSON object"]
+            _record(ctx, step, adapter.name, started, t0, result)
+            if parsed is not None:
+                try:
+                    return step.finish(parsed, ctx)
+                except Exception as exc:
+                    raise StepFailed(_short(exc)) from exc
+            last = f"{adapter.name}: {result.outcome} {result.error}".strip()
+            if result.outcome == "policy_violation":
+                raise StepFailed(last, policy=True)
+            if result.outcome != "invalid_output":
+                break
+    raise StepFailed(f"every adapter failed; last: {last}")
 
 
 def _apply(step: StepSpec, ctx: StepContext, result: StepResult) -> None:

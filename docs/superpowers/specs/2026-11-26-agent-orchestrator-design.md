@@ -309,7 +309,7 @@ different agent. An agent claims a milestone by noting it in the newest
 
 | # | Milestone | Done when |
 |---|---|---|
-| M1 | Core: `models.py`, `store.py`, `runner.py` with `FakeAdapter`, `PATCH /api/jobs/{id}` | A fake 3 step DAG runs, resumes after a simulated crash, and writes only owned fields |
+| M1 (done) | Core: `models.py`, `store.py`, `runner.py` with `FakeAdapter`, `PATCH /api/jobs/{id}` | A fake 3 step DAG runs, resumes after a simulated crash, and writes only owned fields |
 | M2 | `adapters.py`, `agents.yaml`, `router.py`, health and budget filters | Router picks and falls back correctly in tests; one real smoke call per installed tool |
 | M3 | Code steps: `claim`, `fetch_jd`, `liveness`, `resolve_apply_url`, `brief` | Recorded fixture tests pass; a live run on 3 dossiers fills JD and apply URL with no agent |
 | M4 | Agent and service steps plus prompts: `eligibility`, `fit_score`, `company_context`, `kit` repair, `form_fields`, `people`, `answers` | 10 real dossiers reach `packet_ready` or a correct terminal status |
