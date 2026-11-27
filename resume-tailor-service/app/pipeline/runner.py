@@ -131,6 +131,12 @@ class RunAbandoned(BaseException):
     current step half done, so the next claim resumes it; never caught by step code."""
 
 
+class LeaseLost(BaseException):
+    """This worker no longer holds the run's lease: it was cancelled (and maybe queued
+    again by a retry) or reaped. The worker stops without another write, because the
+    run now belongs to someone else."""
+
+
 class StepFailed(Exception):
     def __init__(self, message: str, *, policy: bool = False):
         super().__init__(message)
@@ -174,6 +180,8 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
         current = store.start_run(run_id)
         specs = {step.name: step for step in pipeline.steps}
         while current.status not in TERMINAL_STATUSES:
+            if current.lease_owner != owner:
+                return current
             ready = [
                 specs[name]
                 for name in current.order
@@ -190,9 +198,12 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
                 else:
                     current = store.finish_run(run_id, pipeline.done_status)
                 break
-            with ThreadPoolExecutor(max_workers=len(ready)) as pool:
-                # list() re-raises anything a step thread raised, including a crash.
-                list(pool.map(lambda step: _execute(run_id, step, resolve_chain, stop), ready))
+            try:
+                with ThreadPoolExecutor(max_workers=len(ready)) as pool:
+                    # list() re-raises anything a step thread raised, including a crash.
+                    list(pool.map(lambda step: _execute(run_id, step, resolve_chain, stop, owner), ready))
+            except LeaseLost:
+                return store.get_run(run_id)
             current = store.get_run(run_id)
         return current
     finally:
@@ -201,16 +212,27 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
         store.release_lease(run_id, owner)
 
 
-def _check_interrupt(run_id: str, stop: threading.Event) -> None:
-    """Between adapter tries and before a write: stop for a shutdown or a cancel."""
+def _check_interrupt(run_id: str, stop: threading.Event, owner: str | None) -> None:
+    """Between adapter tries and before a write: stop for a shutdown, a cancel, or a
+    lease this worker no longer holds (a cancel then retry, or the reaper)."""
     if stop.is_set():
         raise RunAbandoned(run_id)
     current = store.get_run(run_id)
-    if current is not None and current.status == "cancelled":
+    if current is None:
+        return
+    if owner is not None and current.lease_owner != owner:
+        raise LeaseLost(run_id)
+    if current.status == "cancelled":
         raise StepFailed("run cancelled")
 
 
-def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.Event) -> None:
+def _holds(run_id: str, owner: str | None) -> bool:
+    current = store.get_run(run_id)
+    return owner is None or (current is not None and current.lease_owner == owner)
+
+
+def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.Event,
+             owner: str | None = None) -> None:
     try:
         ctx = _context(run_id)
         if step.when is not None and not step.when(ctx):
@@ -218,15 +240,17 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.
             return
         store.update_step(run_id, step.name, status="running", started_at=now_iso(), error="")
         if step.kind == "agent":
-            result = _run_agent(step, ctx, resolve_chain, stop)
+            result = _run_agent(step, ctx, resolve_chain, stop, owner)
         else:
             result = _run_local(step, ctx)
-        _check_interrupt(run_id, stop)
+        _check_interrupt(run_id, stop, owner)
         _apply(step, ctx, result)
     except Exception as exc:
         # Anything a step, adapter or store raises fails this step; only a crash
         # (BaseException) escapes, and resume handles that.
         failure = exc if isinstance(exc, StepFailed) else StepFailed(_short(exc))
+        if not _holds(run_id, owner):
+            raise LeaseLost(run_id) from exc
         store.update_step(run_id, step.name, status="failed", error=str(failure), finished_at=now_iso())
         if failure.policy:
             store.finish_run(run_id, "failed", f"{step.name}: {failure}")
@@ -290,7 +314,7 @@ def _run_local(step: StepSpec, ctx: StepContext) -> StepResult:
 
 
 def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain,
-               stop: threading.Event | None = None) -> StepResult:
+               stop: threading.Event | None = None, owner: str | None = None) -> StepResult:
     """Try each adapter in the chain. Invalid output gets one more try on the same
     adapter with the error list; unavailable, timeout and error move on at once; a
     policy violation fails the step, which fails the run."""
@@ -307,7 +331,7 @@ def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain,
     for adapter in chain:
         errors: list[str] = []
         for _ in range(2):
-            _check_interrupt(ctx.run.id, stop or threading.Event())
+            _check_interrupt(ctx.run.id, stop or threading.Event(), owner)
             started, t0 = now_iso(), time.monotonic()
             try:
                 result = adapter.invoke(step, ctx, errors)
@@ -315,7 +339,7 @@ def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain,
                 result = AdapterResult(outcome="error", error=_short(exc))
             # A cancel kills the adapter's process; its broken output must not count
             # as a try or start a second one.
-            _check_interrupt(ctx.run.id, stop or threading.Event())
+            _check_interrupt(ctx.run.id, stop or threading.Event(), owner)
             parsed = None
             if result.outcome == "ok":
                 try:

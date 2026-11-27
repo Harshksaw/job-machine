@@ -187,3 +187,39 @@ def test_reset_for_retry_requeues_chosen_steps_of_a_finished_run():
     assert reset.steps["c"].status == "pending"
     with pytest.raises(store.RunActive):
         store.reset_for_retry(run.id, {"b"})
+
+
+def test_a_worker_that_lost_its_lease_writes_nothing_after_cancel_and_retry():
+    job = _job()
+    seen = {}
+
+    def slow(ctx):
+        # While this step runs, the run is cancelled and at once retried from this step,
+        # so it is queued again for another worker.
+        store.cancel_run(ctx.run.id, "stop")
+        store.reset_for_retry(ctx.run.id, {"a", "b"})
+        return StepResult(output={"stale": True}, writes={"notes": "stale"})
+
+    def later(ctx):
+        seen["b ran"] = True
+        return StepResult()
+
+    pipeline = Pipeline("p", (StepSpec("a", "code", owns=("notes",), run=slow),
+                              StepSpec("b", "code", deps=("a",), run=later)))
+    run = store.create_run(job.id, "p", pipeline.order)
+
+    returned = runner.run(run.id, pipeline, owner="old")
+
+    assert job_store.get_job(job.id).notes == ""
+    left = store.get_run(run.id)
+    assert returned.status == "queued" and left.status == "queued"
+    assert left.steps["a"].status == "pending" and left.steps["a"].output is None
+    assert seen == {}
+    # The retry then runs normally on a new worker.
+    def fresh(ctx):
+        return StepResult(writes={"notes": "fresh"})
+
+    again = Pipeline("p", (StepSpec("a", "code", owns=("notes",), run=fresh),
+                           StepSpec("b", "code", deps=("a",), run=later)))
+    assert runner.run(run.id, again, owner="new").status == "packet_ready"
+    assert job_store.get_job(job.id).notes == "fresh"
