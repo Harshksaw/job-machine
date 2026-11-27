@@ -452,13 +452,16 @@ def generate_kit(
     # always clears them. Two attempts left honest kits failing on a single
     # stray token; a third costs ~90s only in the rare case it is needed.
     max_retries: int = 2,
+    # Errors from a check made outside this function (the pipeline's shared rules),
+    # fed into the first prompt as a repair. None keeps the plain first draft.
+    previous_errors: list[str] | None = None,
 ) -> GeneratedApplicationKit:
     if len(job.jd_text.strip()) < 80:
         raise JobGenerationError(
             "save a complete job description (at least 80 characters) first"
         )
     sources = build_source_index(bank)
-    previous_errors: list[str] | None = None
+    previous_errors = list(previous_errors) if previous_errors else None
     attempts = max_retries + 1
     for _ in range(attempts):
         raw_text = complete(_kit_prompt(job, sources, previous_errors))
@@ -597,6 +600,7 @@ def generate_answer(
     *,
     complete: Callable[[str], str] = schema_completer(_answer_schema()),
     max_retries: int = 1,
+    previous_errors: list[str] | None = None,
 ) -> GeneratedAnswer:
     clarification = _judgment_clarification(question)
     if clarification is not None:
@@ -606,7 +610,7 @@ def generate_answer(
         )
 
     sources = build_source_index(bank)
-    previous_errors: list[str] | None = None
+    previous_errors = list(previous_errors) if previous_errors else None
     attempts = max_retries + 1
     for _ in range(attempts):
         raw_text = complete(
