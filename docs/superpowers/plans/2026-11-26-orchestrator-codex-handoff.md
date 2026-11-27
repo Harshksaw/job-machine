@@ -129,3 +129,61 @@ the item's plan file.
 All suites green in `job-machine-orchestrator` on `feat/agent-orchestrator` with M2b, M8,
 M5, M6 and M7 merged, each reviewed, and a short summary appended to this file listing
 commits, test counts, review findings fixed or declined, and anything left for Harsh.
+
+## Final summary (2026-11-27)
+
+All work is on `feat/agent-orchestrator` in `/Users/harshsaw/job-machine-orchestrator`.
+Nothing was pushed or merged into `main`, and the live service on :8420 was not touched.
+
+| Item | State | Commits |
+|---|---|---|
+| 1. M2b vendor independence | done | `abbeb7f`, `5eeba97`, `9474c60`, `23361a3`, `2b86b0b` |
+| 2. M8 task runs, mail sync, MCP | done, merged | `476655d`, `dc58695`, `64d3bb8`, `86cd27a`, `1864f4e`, merge `57e8bcf` |
+| 3. M5 eval | done | `2349534`, `5fe3a68`, `2c4d9bf` |
+| 4. M6 worker, routes, Pipeline tab | done | `a61172f`, `b587d14`, `4b4a68a`, `f8ab0cd`, `d60a1ac`, `0192ceb`, `c744586`, `23583dd`, `afbe1b7` |
+| 5. M7 docs and superseded markers | done (nothing deleted) | `a7252fe`, `cb28ff8` |
+
+Tests at `afbe1b7`: backend **881 passed** (811 at `57e8bcf`), dashboard **22 passed**,
+typecheck clean, `app/static` rebuilt and committed.
+
+M6 rulings:
+- `PIPELINE_WORKERS` (default 0) is the switch and the thread ceiling. The stored
+  config's `workers` (Settings) is how many threads claim runs, read every tick, so 0
+  pauses the pool. Schedules and "Use the pipeline for research" are off by default.
+- The runner renews the lease every 30s. A worker that loses its lease (cancel, retry,
+  reaper) stops without another write. On shutdown, CLI process groups are killed and
+  the abandoned runs go back to `queued`.
+- Service steps (kit, answers) make their own model calls through `llm.complete`, so
+  the worker semaphores do not gate them.
+
+Codex review of `57e8bcf..HEAD` (read only):
+- Fixed: a stale write after cancel then retry (`c744586`); `workers` from Settings
+  (`23583dd`); POST /runs `filter` (`afbe1b7`).
+- Declined: the `steps` subset on POST /runs. A partial run has no defined terminal
+  status (brief marks the dossier ready), and `retry` with `{step}` covers rerunning
+  from a step.
+- Declined: a claim at enqueue time. The claim step already refuses a dossier that
+  another session has freshly claimed, and a claim written at enqueue would block a
+  dossier for hours while workers are off. AGENTS.md now tells agents to check for a
+  queued run.
+- Declined (minor): a resized semaphore can exceed the new limit until the calls
+  holding the old one finish.
+
+Smoke on 127.0.0.1:8421 (`PIPELINE_WORKERS=1`, minimal env without DATABASE_URL or
+keys, every adapter disabled): a throwaway dossier with no URL ran through claim,
+resolve_apply_url, fetch_jd and liveness with no network, then failed at eligibility
+("no adapter offers capability 'cheap'"). Retry requeued it and it failed the same way.
+Cancelling a fresh queued run gave `cancelled` with 0 attempts. A cancel of a finished
+run gave 409, and a cancel without the header gave 403. A liveness_sweep task run
+reached `completed`, and stats and the index page answered. Shutdown was clean. The
+smoke data files were moved to the session scratchpad and the worktree config was
+restored.
+
+Left for Harsh:
+- `OPENROUTER_API_KEY` (and any other provider keys) in `resume-tailor-service/.env`.
+- The Gmail OAuth client (Desktop app, `gmail.readonly`) at `GMAIL_CLIENT_SECRET_FILE`,
+  then run `scripts/gmail_auth.py` once.
+- Decide when to set `PIPELINE_WORKERS` (above 0) on the service, and the schedules in
+  Settings.
+- The decision to merge `feat/agent-orchestrator` into `main` and restart the
+  dashboard. Remove the superseded prompts once the pipeline has run cleanly for a week.
