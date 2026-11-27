@@ -48,7 +48,7 @@ def test_templates_name_no_agent_tool_or_vendor(step):
 @pytest.mark.parametrize("step", AGENT_STEPS)
 def test_templates_follow_house_style(step):
     source = prompts.template_source(step)
-    assert "—" not in source
+    assert "\u2014" not in source
 
 
 def test_version_is_the_hash_of_the_template_source_not_the_job():

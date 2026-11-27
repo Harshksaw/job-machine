@@ -9,7 +9,7 @@ from app.pipeline.fake import FakeAdapter
 from app.pipeline.models import AdapterResult
 from app.pipeline.runner import Pipeline, StepResult, StepSpec
 
-EM = "—"
+EM = "\u2014"
 
 
 @pytest.fixture(autouse=True)

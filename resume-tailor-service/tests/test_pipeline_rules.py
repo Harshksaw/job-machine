@@ -4,7 +4,7 @@ import pytest
 from app.models import ApplicationAnswer, JobWorkspace
 from app.pipeline import rules
 
-EM = "—"
+EM = "\u2014"
 
 
 def _words(n, word="word"):

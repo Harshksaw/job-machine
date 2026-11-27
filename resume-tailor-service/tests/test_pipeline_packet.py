@@ -143,7 +143,7 @@ def test_packet_pipeline_end_to_end_reaches_packet_ready_with_a_brief():
     assert "Why Acme Cloud?" in brief["WHAT TO PUT IN"]
     assert "Do you require visa sponsorship?" in brief["NEEDS HARSH"]
     assert "Dana Lee" in brief["PEOPLE"]
-    assert "—" not in saved.research_brief
+    assert "\u2014" not in saved.research_brief
     # Nothing was sent anywhere: people start at to-reach.
     assert all(p.status == "to-reach" for p in people_store.load_people())
 

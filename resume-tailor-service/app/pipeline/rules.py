@@ -15,7 +15,7 @@ from app.application_kit import _BANNED_COVER_PHRASES
 from app.house_style import AI_TELLS
 from app.models import JobWorkspace
 
-EM_DASH = "—"
+EM_DASH = "\u2014"
 ANSWER_MAX_WORDS = 120
 COVER_MIN_WORDS, COVER_MAX_WORDS = 120, 360
 # Same shape as house_style: letters joined by hyphens, skipping identifier chunks
