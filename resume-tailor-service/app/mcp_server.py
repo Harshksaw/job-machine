@@ -9,7 +9,7 @@ instead of curl instructions. It talks HTTP to the service at `JOB_MACHINE_API`
 running and holds no data of its own.
 
 Tools: get_dossier, list_dossiers, patch_dossier, enqueue_run, run_status,
-search_mail_events. `patch_dossier` changes only the fields the caller names and never
+search_mail_events (also as search_mail, the spec name). `patch_dossier` changes only the fields the caller names and never
 sets status `applied` (that is an `applied` activity after a real submission, AGENTS.md
 rule 8). `search_mail_events` reads stored mail sync results, never Gmail.
 """
@@ -137,6 +137,10 @@ def build_server(api: Api | None = None) -> MCPServer:
                                                  ("since", since), ("q", q)) if value}
         params["limit"] = max(1, min(limit, 500))
         return api.request("GET", "/api/pipeline/mail/events", params=params)
+
+    # The name spec 13.3 uses, for clients built against the spec.
+    server.tool(name="search_mail", description="Same as search_mail_events: stored mail sync results, "
+                "never the inbox.")(search_mail_events)
 
     return server
 

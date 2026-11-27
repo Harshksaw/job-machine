@@ -243,7 +243,7 @@ def mail_apply_step() -> StepSpec:
             })
         mail_store.save_events(records)
         keep = ("id", "company", "role", "date", "outcome", "confident", "note", "status",
-                "status_change", "dossier_id", "dossier", "reason")
+                "status_change", "dossier_id", "dossier", "reason", "subject", "sender")
         return StepResult(output={"results": [{k: r.get(k) for k in keep} for r in records]})
 
     return StepSpec("mail_apply", "code", deps=("mail_classify",), run=apply)
@@ -275,8 +275,12 @@ def mail_report_step() -> StepSpec:
             "held": [brief(r) for r in relevant if r["status"] == "held"],
             "unmatched": [brief(r) for r in relevant if r["status"] == "unmatched"],
             # AGENTS.md: interviews and rejections also go to the Sheet; an agent logs these.
+            # AGENTS.md rule 7 also covers replies.
             "sheet_log": [brief(r) for r in relevant
-                          if r["status"] == "written" and r["outcome"] in ("interview", "rejected")],
+                          if r["status"] == "written" and r["outcome"] in ("interview", "rejected", "reply")],
+            # Left out by the model: stored as seen, so listed here for a human glance.
+            "ignored": [{k: r.get(k) for k in ("id", "date", "subject", "sender")} for r in results
+                        if r["status"] == "ignored" and r.get("reason") == "not about an application"],
             "newest_date": newest,
         }
         # The window moves only here, after every step before it finished.

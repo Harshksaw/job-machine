@@ -52,10 +52,10 @@ def _job(**extra):
     return job_store.add_job(JobWorkspaceInput(company="Acme", role="Engineer", **extra))
 
 
-def test_lists_the_six_tools(server):
+def test_lists_the_tools(server):
     names = {tool.name for tool in asyncio.run(server.list_tools())}
     assert names == {"get_dossier", "list_dossiers", "patch_dossier", "enqueue_run", "run_status",
-                     "search_mail_events"}
+                     "search_mail_events", "search_mail"}
 
 
 def test_get_and_list_dossiers(server):
@@ -100,6 +100,7 @@ def test_search_mail_events_reads_the_store(server):
                              "outcome": "interview", "confident": True, "note": "call", "status": "written"}])
     assert [e["id"] for e in call(server, "search_mail_events", company="acme")] == ["m1"]
     assert call(server, "search_mail_events", outcome="rejected") == []
+    assert [e["id"] for e in call(server, "search_mail", company="acme")] == ["m1"]  # spec 13.3 name
 
 
 def test_unreachable_service_is_a_tool_error():

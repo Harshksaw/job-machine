@@ -18,10 +18,11 @@ Point it at a test copy (for example port 8421) by changing that variable.
 | `patch_dossier(job_id, fields, session)` | PATCH only the named fields; refuses `status: applied` and read only fields |
 | `enqueue_run(pipeline, job_ids)` | Queue `packet` runs for dossiers, or a task pipeline (`mail_sync`, `liveness_sweep`, `remote_boards`, `ats_watchlist`) |
 | `run_status(run_id \| job_id \| pipeline)` | One run with steps and attempts, or `{runs: [...]}` |
-| `search_mail_events(company, outcome, status, since, q, limit)` | Stored mail sync results; never reads the inbox |
+| `search_mail_events(company, outcome, status, since, q, limit)` | Stored mail sync results; never reads the inbox. Also registered as `search_mail`, the spec name |
 
 Runs only queue until the M6 worker exists; `uv run python scripts/run_task.py --queued`
-executes queued task runs.
+executes queued task runs. Until then, schedule `scripts/run_task.py mail_sync` yourself
+(launchd or cron) if you want it unattended.
 
 Replace `/ABSOLUTE/PATH/TO/job-machine` below with the checkout path.
 

@@ -155,6 +155,8 @@ def test_mail_sync_end_to_end_writes_holds_reports_and_moves_the_window():
     assert [r["id"] for r in report["interviews"]] == ["m2"]
     assert report["rejections_written"] == 1
     assert [r["id"] for r in report["sheet_log"]] == ["m1"]
+    # What the model left out stays visible, so a missed outcome can be caught.
+    assert [r["id"] for r in report["ignored"]] == ["m4"] and report["ignored"][0]["subject"] == "Weekly job alert"
     assert report["newest_date"] == "2026-02-05"
     assert run.steps["mail_classify"].output["dropped"] == ["zz"]
     assert mail_store.get_state()["newest_date"] == "2026-02-05"
@@ -329,3 +331,13 @@ def test_crash_rolls_back_on_the_sql_backend_too(monkeypatch, tmp_path):
 
     monkeypatch.setattr(job_store, "_BACKEND_OVERRIDE", doc_store.SqlBackend(f"sqlite:///{tmp_path / 'jobs.db'}"))
     test_a_crash_between_activity_and_status_writes_neither(monkeypatch)
+
+
+def test_replies_are_on_the_sheet_log():
+    _job("Acme", "Backend Engineer")
+    reply = AdapterResult(outcome="ok", output={"events": [
+        {"id": "m1", "company": "Acme", "role": "", "date": "", "outcome": "reply", "confident": True,
+         "note": "Recruiter asks for a time"}]})
+    _, chain = _chain(reply)
+    run = tasks.run_task("mail_sync", pipeline=_mail_pipeline(FakeTransport(_inbox())), resolve_chain=chain)
+    assert [r["outcome"] for r in run.steps["mail_report"].output["sheet_log"]] == ["reply"]
