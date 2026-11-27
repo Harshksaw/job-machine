@@ -147,3 +147,12 @@ def test_adapter_that_raises_is_recorded_and_falls_back():
     assert [(a.adapter, a.outcome) for a in store.list_attempts(result.id)] == [
         ("broken", "error"), ("pricey", "ok"),
     ]
+
+
+def test_attempt_ledger_keeps_the_raw_output_reference():
+    first = FakeAdapter("cheap", [GOOD.model_copy(update={"output_ref": "logs/pipeline/r/company_context-1.json"})])
+
+    _, result = _go(first)
+
+    [attempt] = store.list_attempts(result.id)
+    assert attempt.output_ref == "logs/pipeline/r/company_context-1.json"

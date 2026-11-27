@@ -207,6 +207,7 @@ def _record(ctx: StepContext, step: StepSpec, adapter: str, started: str, t0: fl
             tokens_in=result.tokens_in,
             tokens_out=result.tokens_out,
             cost=result.cost,
+            output_ref=result.output_ref,
         )
     )
 

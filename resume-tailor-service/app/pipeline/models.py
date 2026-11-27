@@ -79,3 +79,5 @@ class AdapterResult(BaseModel):
     tokens_in: int | None = None
     tokens_out: int | None = None
     cost: float | None = None
+    # Where the raw agent output was saved on disk, for the attempt ledger.
+    output_ref: str = ""
