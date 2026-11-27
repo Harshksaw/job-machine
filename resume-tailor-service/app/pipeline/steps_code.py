@@ -9,6 +9,7 @@ Design: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md section 4
 from __future__ import annotations
 
 import importlib.util
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
@@ -183,3 +184,120 @@ def resolve_apply_url_step(http: ats.Http | None = None) -> StepSpec:
         return StepResult(output={"needs_agent": True, "reason": reason[:300]})
 
     return StepSpec("resolve_apply_url", "code", owns=("apply_url",), run=resolve)
+
+
+MISSING = "not available yet"
+# A brief may move a dossier to "ready" only from these; anything later is Harsh's call.
+_BRIEF_FROM = frozenset({"discovered", "researching"})
+
+
+def _clean(text: object) -> str:
+    """One line of brief text: no em dashes (AGENTS.md working style), no newlines."""
+    value = re.sub(r"\s*\u2014\s*", ", ", str(text or ""))
+    return " ".join(value.split())
+
+
+def _section(title: str, lines: list[str], empty: str = MISSING) -> str:
+    return "\n".join([title, *(lines or [empty])])
+
+
+def _summary(ctx: StepContext) -> list[str]:
+    job = ctx.job
+    lines = [_clean(f"{job.role} at {job.company}")]
+    where = ", ".join(_clean(v) for v in (job.location, job.work_mode) if (v or "").strip())
+    if where:
+        lines.append(f"Where: {where}")
+    if (job.compensation or "").strip():
+        lines.append(f"Pay: {_clean(job.compensation)}")
+    score = job.fit_analysis.score if job.fit_analysis else job.fit_score
+    if score is not None:
+        verdict = _clean(job.fit_analysis.verdict) if job.fit_analysis else ""
+        lines.append(f"Fit: {score}/10" + (f", {verdict}" if verdict else ""))
+    else:
+        lines.append(f"Fit: {MISSING}")
+    live = ctx.outputs.get("liveness") or {}
+    if live.get("state"):
+        lines.append(_clean(f"Posting check: {live['state']} ({live.get('evidence', '')})"))
+    jd = ctx.outputs.get("fetch_jd") or {}
+    if jd.get("needs_agent"):
+        lines.append(f"Job description: short or missing, full text {MISSING}")
+    return lines
+
+
+def _apply_at(ctx: StepContext) -> list[str]:
+    job = ctx.job
+    apply_url, job_url = (job.apply_url or "").strip(), (job.job_url or "").strip()
+    reason = _clean((ctx.outputs.get("resolve_apply_url") or {}).get("reason", ""))
+    if not (apply_url or job_url or reason):
+        return []
+    lines = [_clean(apply_url) if apply_url else MISSING + (f" ({reason})" if reason else "")]
+    if job_url and job_url != apply_url:
+        lines.append(f"Listing: {_clean(job_url)}")
+    return lines
+
+
+def _gaps(ctx: StepContext) -> list[str]:
+    gaps = ctx.job.fit_analysis.gaps if ctx.job.fit_analysis else []
+    return [f"- {_clean(gap)}" for gap in gaps if str(gap).strip()]
+
+
+def _put_in(ctx: StepContext) -> list[str]:
+    lines = []
+    if (ctx.job.cover_letter or "").strip():
+        lines.append("- Cover letter: ready in the dossier")
+    for answer in ctx.job.application_answers:
+        if answer.needs_user_input:
+            continue
+        lines.append(f"- {_clean(answer.question)}")
+        lines.append(f"  {_clean(answer.answer) or MISSING}")
+    return lines
+
+
+def _needs_harsh(ctx: StepContext) -> list[str]:
+    lines = []
+    for answer in ctx.job.application_answers:
+        if answer.needs_user_input:
+            why = _clean(answer.clarification)
+            lines.append(f"- {_clean(answer.question)}" + (f": {why}" if why else ""))
+    review = ctx.outputs.get("review") or {}
+    if review.get("pass") is False:
+        for issue in review.get("issues") or []:
+            if isinstance(issue, dict):
+                lines.append(_clean(
+                    f"- Review, {issue.get('field', 'packet')}: {issue.get('problem', '')}"
+                    + (f" (fix: {issue['fix']})" if issue.get("fix") else "")
+                ))
+    return lines
+
+
+def _people(ctx: StepContext) -> list[str]:
+    found = (ctx.outputs.get("people") or {}).get("people") or []
+    lines = []
+    for person in found:
+        if isinstance(person, dict) and (person.get("name") or "").strip():
+            bits = [person.get(key) for key in ("name", "title", "url") if (person.get(key) or "").strip()]
+            lines.append("- " + _clean(", ".join(bits)))
+    return lines
+
+
+def _brief_text(ctx: StepContext) -> str:
+    return "\n\n".join([
+        _section("SUMMARY", _summary(ctx)),
+        _section("APPLY AT", _apply_at(ctx)),
+        _section("GAPS", _gaps(ctx)),
+        _section("WHAT TO PUT IN", _put_in(ctx)),
+        _section("NEEDS HARSH", _needs_harsh(ctx),
+                 "nothing flagged" if ctx.job.application_answers or "review" in ctx.outputs else MISSING),
+        _section("PEOPLE", _people(ctx)),
+    ]) + "\n"
+
+
+def brief_step(deps: tuple[str, ...] = ()) -> StepSpec:
+    def brief(ctx: StepContext) -> StepResult:
+        writes: dict = {"research_brief": _brief_text(ctx)}
+        status = ctx.job.status
+        if status in _BRIEF_FROM:
+            status = writes["status"] = "ready"
+        return StepResult(output={"status": status}, writes=writes)
+
+    return StepSpec("brief", "code", deps=deps, owns=("research_brief", "status"), run=brief)

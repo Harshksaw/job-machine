@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from app import job_store
-from app.models import JobActivityInput, JobWorkspaceInput
+from app.models import ApplicationAnswerInput, JobActivityInput, JobWorkspaceInput
 from app.pipeline import runner, store, steps_code
 from app.pipeline.runner import Pipeline
 
@@ -326,3 +326,105 @@ def test_resolve_leaves_linkedin_and_unknown_hosts_to_the_agent_without_fetching
         result = _run(job, steps_code.resolve_apply_url_step(http=http))
         assert result.steps["resolve_apply_url"].output["needs_agent"] is True
         assert http.calls == []
+
+
+# brief
+
+HEADINGS = ["SUMMARY", "APPLY AT", "GAPS", "WHAT TO PUT IN", "NEEDS HARSH", "PEOPLE"]
+
+
+def _sections(text):
+    out, current = {}, None
+    for line in text.splitlines():
+        if line in HEADINGS:
+            current = line
+            out[current] = []
+        elif current and line.strip():
+            out[current].append(line)
+    return {name: "\n".join(lines) for name, lines in out.items()}
+
+
+def _stub(name, output, deps=()):
+    from app.pipeline.runner import StepResult, StepSpec
+
+    return StepSpec(name, "code", deps=deps, run=lambda ctx: StepResult(output=output))
+
+
+def test_brief_assembles_every_section_and_marks_the_dossier_ready():
+    job = _job(
+        status="researching", apply_url=GH_POSTING, location="Remote, Canada",
+        fit_analysis={"score": 7, "recommendation": "apply", "verdict": "Strong backend match — light on Go",
+                      "gaps": ["No production Go"]},
+        cover_letter="Dear Acme team, ...",
+    )
+    job_store.add_answer(job.id, ApplicationAnswerInput(question="Why Acme?", answer="I like the product."))
+    job_store.add_answer(job.id, ApplicationAnswerInput(
+        question="Expected salary?", needs_user_input=True, clarification="Posted band is missing"))
+    people = {"people": [{"name": "Pat Example", "title": "Engineering Manager", "url": "https://example.com/pat"}]}
+    result = _run(
+        job,
+        _stub("liveness", {"state": "live", "evidence": "greenhouse 200"}),
+        _stub("people", people),
+        steps_code.brief_step(deps=("liveness", "people")),
+    )
+    assert result.status == "packet_ready"
+    saved = job_store.get_job(job.id)
+    assert saved.status == "ready"
+    text = saved.research_brief
+    assert [line for line in text.splitlines() if line in HEADINGS] == HEADINGS
+    assert "—" not in text and "not available yet" not in text
+    s = _sections(text)
+    assert "Backend Engineer at Acme" in s["SUMMARY"] and "7/10" in s["SUMMARY"]
+    assert "live" in s["SUMMARY"]
+    assert GH_POSTING in s["APPLY AT"]
+    assert "No production Go" in s["GAPS"]
+    assert "Why Acme?" in s["WHAT TO PUT IN"] and "I like the product." in s["WHAT TO PUT IN"]
+    assert "Cover letter" in s["WHAT TO PUT IN"] and "Expected salary?" not in s["WHAT TO PUT IN"]
+    assert "Expected salary?" in s["NEEDS HARSH"] and "Posted band is missing" in s["NEEDS HARSH"]
+    assert "Pat Example" in s["PEOPLE"] and "Engineering Manager" in s["PEOPLE"]
+    assert result.steps["brief"].output["status"] == "ready"
+
+
+def test_brief_renders_missing_pieces_as_not_available_yet():
+    job = _job()
+    result = _run(job, steps_code.brief_step())
+    saved = job_store.get_job(job.id)
+    assert saved.status == "ready"
+    s = _sections(saved.research_brief)
+    for name in ("APPLY AT", "GAPS", "WHAT TO PUT IN", "NEEDS HARSH", "PEOPLE"):
+        assert s[name] == "not available yet", name
+    assert "Backend Engineer at Acme" in s["SUMMARY"]
+    assert result.status == "packet_ready"
+
+
+def test_brief_explains_an_unresolved_apply_url_and_lists_review_issues():
+    job = _job(job_url="https://himalayas.app/companies/acme/jobs/x")
+    review = {"pass": False, "issues": [{"field": "cover_letter", "problem": "reads stiff", "fix": "shorten"}]}
+    result = _run(
+        job,
+        _stub("resolve_apply_url", {"needs_agent": True, "reason": "board listing did not lead to the employer"}),
+        _stub("review", review),
+        steps_code.brief_step(deps=("resolve_apply_url", "review")),
+    )
+    s = _sections(job_store.get_job(job.id).research_brief)
+    assert "not available yet" in s["APPLY AT"] and "did not lead to the employer" in s["APPLY AT"]
+    assert "https://himalayas.app/companies/acme/jobs/x" in s["APPLY AT"]
+    assert "cover_letter" in s["NEEDS HARSH"] and "reads stiff" in s["NEEDS HARSH"]
+    assert result.status == "packet_ready"
+
+
+@pytest.mark.parametrize("status", ["applying", "ready", "skipped"])
+def test_brief_leaves_other_statuses_alone(status):
+    job = _job(status=status)
+    result = _run(job, steps_code.brief_step())
+    saved = job_store.get_job(job.id)
+    assert saved.status == status and saved.research_brief.startswith("SUMMARY")
+    assert result.steps["brief"].output["status"] == status
+
+
+def test_brief_says_nothing_flagged_once_answers_exist_and_none_need_harsh():
+    job = _job()
+    job_store.add_answer(job.id, ApplicationAnswerInput(question="Why Acme?", answer="I like the product."))
+    _run(job, steps_code.brief_step())
+    s = _sections(job_store.get_job(job.id).research_brief)
+    assert s["NEEDS HARSH"] == "nothing flagged"
