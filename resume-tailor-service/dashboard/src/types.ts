@@ -255,11 +255,20 @@ export interface StepPrefs {
   canary: StepCanary | null;
 }
 
+export interface TaskSchedule {
+  every_minutes: number;
+  enabled: boolean;
+}
+
 export interface PipelineConfig {
   workers: number;
   adapters: Record<string, AdapterSpec>;
   capability_caps: Partial<Record<PipelineCapability, number>>;
   steps: Record<string, StepPrefs>;
+  // Task pipelines the worker enqueues on a timer; absent means off.
+  schedules?: Record<string, TaskSchedule>;
+  // The dossier Research button enqueues a packet run instead of the research CLI.
+  research_via_pipeline?: boolean;
   version: number;
   updated_at: string;
 }
@@ -293,4 +302,88 @@ export interface PipelineVersion {
 export interface PipelineStep {
   step: string;
   capability: PipelineCapability;
+}
+
+// Pipeline runs and the attempt ledger (/api/pipeline/runs, /stats, /worker).
+export type PipelineStepStatus = "pending" | "running" | "done" | "failed" | "skipped";
+
+export interface PipelineRunSummary {
+  id: string;
+  job_id: string;
+  pipeline: string;
+  status: string;
+  terminal_reason: string;
+  created_at: string;
+  updated_at: string;
+  steps: Record<string, PipelineStepStatus>;
+}
+
+export interface PipelineStepState {
+  status: PipelineStepStatus;
+  output: Record<string, unknown> | null;
+  error: string;
+  started_at: string;
+  finished_at: string;
+}
+
+export interface PipelineAttempt {
+  id: string;
+  run_id: string;
+  job_id: string;
+  step: string;
+  adapter: string;
+  model: string;
+  prompt_version: string;
+  started_at: string;
+  duration_ms: number;
+  outcome: string;
+  error: string;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  cost: number | null;
+  output_ref: string;
+}
+
+export interface PipelineRunDetail {
+  id: string;
+  job_id: string;
+  pipeline: string;
+  status: string;
+  order: string[];
+  steps: Record<string, PipelineStepState>;
+  terminal_reason: string;
+  lease_owner: string;
+  lease_until: string;
+  created_at: string;
+  updated_at: string;
+  attempts: PipelineAttempt[];
+}
+
+export interface PipelineStatsRow {
+  attempts: number;
+  ok: number;
+  pass_rate: number;
+  p50_ms: number | null;
+  p90_ms: number | null;
+  cost: number | null;
+  last_error: string;
+  last_error_at: string;
+  last_at: string;
+}
+
+export interface PipelineStats {
+  since: string;
+  steps: (PipelineStatsRow & { step: string; adapter: string })[];
+  models: (PipelineStatsRow & { model: string })[];
+  runs: Record<string, number>;
+}
+
+export interface PipelineWorkerStatus {
+  running: boolean;
+  workers: number;
+}
+
+export interface PipelineEnqueueResult {
+  queued: PipelineRunDetail[];
+  skipped: string[];
 }

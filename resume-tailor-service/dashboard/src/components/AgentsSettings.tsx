@@ -26,6 +26,14 @@ import {
   toggleCapability,
   updateAdapter,
 } from "../lib/agents";
+import {
+  MAX_SCHEDULE_MINUTES,
+  MIN_SCHEDULE_MINUTES,
+  SCHEDULABLE_TASKS,
+  TASK_LABELS,
+  scheduleMinutes,
+  setSchedule,
+} from "../lib/pipeline";
 import type { AdapterStatus, PipelineConfig, PipelineStep, PipelineVersion } from "../types";
 
 const HEADING = "flex items-center gap-2 border-b border-zinc-600 pb-2 text-sm font-semibold text-zinc-100";
@@ -524,6 +532,63 @@ export default function AgentsSettings() {
           </tbody>
         </table>
       </div>
+
+      <h3 className="jm-section-title mt-5">Schedules and research</h3>
+      <p className="-mt-1 mb-2 text-xs text-zinc-500">
+        The worker runs a scheduled task once its interval has passed since the last run, and never while one is
+        queued or running. Schedules only fire when the service runs with PIPELINE_WORKERS above 0. Save to apply.
+      </p>
+      <ul className="divide-y divide-zinc-800">
+        {SCHEDULABLE_TASKS.map((task) => {
+          const minutes = scheduleMinutes(draft, task);
+          return (
+            <li key={task} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <label className="flex w-48 shrink-0 items-center gap-2 text-zinc-100">
+                <input
+                  type="checkbox"
+                  checked={minutes !== null}
+                  onChange={(event) => setDraft(setSchedule(draft, task, event.target.checked ? 60 : null))}
+                  aria-label={`Run ${TASK_LABELS[task]} on a schedule`}
+                />
+                {TASK_LABELS[task]}
+              </label>
+              {minutes !== null ? (
+                <label className="flex items-center gap-1 text-xs text-zinc-400">
+                  every
+                  <input
+                    type="number"
+                    min={MIN_SCHEDULE_MINUTES}
+                    max={MAX_SCHEDULE_MINUTES}
+                    step={5}
+                    value={minutes}
+                    onChange={(event) => setDraft(setSchedule(draft, task, Number(event.target.value)))}
+                    aria-label={`${TASK_LABELS[task]} interval in minutes`}
+                    className="jm-input h-7 w-20 py-0 text-xs"
+                  />
+                  minutes
+                </label>
+              ) : (
+                <span className="text-xs text-zinc-600">off</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <label className="mt-3 flex items-start gap-2 text-sm text-zinc-200">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={Boolean(draft.research_via_pipeline)}
+          onChange={(event) => setDraft({ ...draft, research_via_pipeline: event.target.checked })}
+        />
+        <span>
+          Use the pipeline for research
+          <span className="block text-xs text-zinc-500">
+            When on, a dossier's Research button queues a packet pipeline run instead of starting the old research CLI.
+            Off keeps today's behavior.
+          </span>
+        </span>
+      </label>
 
       <h3 className="jm-section-title mt-5">
         <History className="h-3.5 w-3.5" aria-hidden /> Version history

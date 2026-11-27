@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ExternalLink, Search, Target } from "lucide-react";
-import { startAgent } from "../api";
+import { enqueuePipelineRuns, getPipelineConfig, startAgent } from "../api";
+import { researchQueuedMessage } from "../lib/pipeline";
 import type { JobWorkspaceInput } from "../types";
 import JobPeople from "./JobPeople";
 
@@ -26,6 +27,18 @@ export default function JobOverview({ jobId, draft, onChange, onPeopleChanged }:
     setResearching(true);
     setResearchMessage("");
     try {
+      // Off by default: the old research CLI runs unless "Use the pipeline for research"
+      // is on in Settings. If the setting cannot be read, keep the old behavior.
+      let viaPipeline = false;
+      try {
+        viaPipeline = Boolean((await getPipelineConfig()).research_via_pipeline);
+      } catch {
+        viaPipeline = false;
+      }
+      if (viaPipeline) {
+        setResearchMessage(researchQueuedMessage(await enqueuePipelineRuns("packet", [jobId])));
+        return;
+      }
       const started = await startAgent("cursor", "research-job", jobId);
       setResearchMessage(
         `Cursor is researching this job (pid ${started.pid}). Reload in a few minutes. Log: logs/agents/${started.log}`

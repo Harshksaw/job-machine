@@ -7,6 +7,7 @@ import {
   Search as SearchIcon,
   Settings as SettingsIcon,
   Users,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import type { JobSummary, Person } from "./types";
@@ -18,8 +19,9 @@ import JobWorkspace from "./components/JobWorkspace";
 import Inbox from "./components/Inbox";
 import Search from "./components/Search";
 import Settings from "./components/Settings";
+import Pipeline from "./components/Pipeline";
 
-type View = "inbox" | "workspace" | "board" | "people" | "search" | "settings";
+type View = "inbox" | "workspace" | "board" | "people" | "search" | "pipeline" | "settings";
 
 const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   inbox: { title: "Inbox", subtitle: "Decisions and approvals waiting on you" },
@@ -27,6 +29,7 @@ const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   board: { title: "Board", subtitle: "Pipeline by stage" },
   people: { title: "People", subtitle: "Outreach contacts and drafts" },
   search: { title: "Search", subtitle: "Find new roles and start agents" },
+  pipeline: { title: "Pipeline", subtitle: "Orchestrator runs, step timelines, stats, and adapter health" },
   settings: { title: "Settings", subtitle: "Stats, connections, agents, and telemetry" },
 };
 
@@ -38,6 +41,7 @@ function viewFromHash(): View {
     head === "board" ||
     head === "people" ||
     head === "search" ||
+    head === "pipeline" ||
     head === "settings"
     ? head
     : "inbox";
@@ -124,6 +128,7 @@ export default function App() {
     { id: "board", label: "Board", icon: Columns3, count: counts.board, hint: "applied" },
     { id: "people", label: "People", icon: Users, count: counts.people, hint: "to approve" },
     { id: "search", label: "Search", icon: SearchIcon, count: 0, hint: "find roles" },
+    { id: "pipeline", label: "Pipeline", icon: Workflow, count: 0, hint: "orchestrator runs" },
     { id: "settings", label: "Settings", icon: SettingsIcon, count: 0, hint: "stats and connections" },
   ];
 
@@ -227,6 +232,8 @@ export default function App() {
             />
           ) : view === "search" ? (
             <Search onJobsChanged={() => void loadJobs()} onOpenDossier={openDossier} />
+          ) : view === "pipeline" ? (
+            <Pipeline />
           ) : view === "settings" ? (
             <Settings />
           ) : view === "board" ? (

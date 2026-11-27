@@ -14,8 +14,13 @@ import type {
   Person,
   PersonInput,
   PipelineConfig,
+  PipelineEnqueueResult,
+  PipelineRunDetail,
+  PipelineRunSummary,
+  PipelineStats,
   PipelineStep,
   PipelineVersion,
+  PipelineWorkerStatus,
   ResumeBank,
   TailoredResumeMeta,
   TailorResponse,
@@ -634,4 +639,54 @@ export function testPipelineAdapter(name: string): Promise<AdapterTestResponse> 
     { method: "POST", headers: DASHBOARD_WRITE },
     "Test failed."
   );
+}
+
+// Pipeline runs (M6). Runs only queue here; the worker pool executes them when
+// PIPELINE_WORKERS > 0 on the service.
+export function listPipelineRuns(
+  params: { job_id?: string; pipeline?: string; status?: string; limit?: number } = {}
+): Promise<PipelineRunSummary[]> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") query.set(key, String(value));
+  }
+  const suffix = query.toString() ? `?${query}` : "";
+  return pipelineRequest(`/api/pipeline/runs${suffix}`, {}, "Failed to load pipeline runs.");
+}
+
+export function getPipelineRun(id: string): Promise<PipelineRunDetail> {
+  return pipelineRequest(`/api/pipeline/runs/${encodeURIComponent(id)}`, {}, "Failed to load the run.");
+}
+
+export function enqueuePipelineRuns(pipeline: string, jobIds: string[] = []): Promise<PipelineEnqueueResult> {
+  return pipelineRequest(
+    "/api/pipeline/runs",
+    { method: "POST", headers: DASHBOARD_WRITE, body: JSON.stringify({ pipeline, job_ids: jobIds }) },
+    "Failed to queue the run."
+  );
+}
+
+export function retryPipelineRun(id: string, step?: string): Promise<{ run: PipelineRunDetail; reset: string[] }> {
+  return pipelineRequest(
+    `/api/pipeline/runs/${encodeURIComponent(id)}/retry`,
+    { method: "POST", headers: DASHBOARD_WRITE, body: JSON.stringify(step ? { step } : {}) },
+    "Retry failed."
+  );
+}
+
+export function cancelPipelineRun(id: string): Promise<{ run: PipelineRunDetail; killed: number }> {
+  return pipelineRequest(
+    `/api/pipeline/runs/${encodeURIComponent(id)}/cancel`,
+    { method: "POST", headers: DASHBOARD_WRITE },
+    "Cancel failed."
+  );
+}
+
+export function getPipelineStats(since = ""): Promise<PipelineStats> {
+  const suffix = since ? `?since=${encodeURIComponent(since)}` : "";
+  return pipelineRequest(`/api/pipeline/stats${suffix}`, {}, "Failed to load pipeline stats.");
+}
+
+export function getPipelineWorker(): Promise<PipelineWorkerStatus> {
+  return pipelineRequest("/api/pipeline/worker", {}, "Failed to load worker status.");
 }
