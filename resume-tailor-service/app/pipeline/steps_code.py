@@ -322,16 +322,20 @@ def brief_step(deps: tuple[str, ...] = (), mark_ready: bool = True) -> StepSpec:
 def code_steps(
     http: ats.Http | None = None, check: Check | None = None, *, mark_ready: bool = False
 ) -> tuple[StepSpec, ...]:
-    """The code steps of section 4 as one chain. The agent steps (eligibility, fit_score,
-    company_context, kit, form_fields, people, answers, review) slot in with M4. Until
-    eligibility and fit_score run before it, brief must not mark the dossier ready, so
-    `mark_ready` defaults to False."""
+    """The code steps of section 4 as one chain, without the agent steps (the full
+    chain is `pipelines.PACKET_PIPELINE`). Eligibility and fit_score have not run, so
+    brief must not mark the dossier ready and `mark_ready` defaults to False."""
+    return (*intake_steps(http, check), brief_step(deps=("liveness",), mark_ready=mark_ready))
+
+
+def intake_steps(http: ats.Http | None = None, check: Check | None = None) -> tuple[StepSpec, ...]:
+    """claim -> resolve_apply_url -> fetch_jd -> liveness. Resolving first (owner ruling,
+    M4) means a board listing gets its JD and its liveness check from the employer ATS."""
     return (
         claim_step(),
-        fetch_jd_step(http, deps=("claim",)),
+        resolve_apply_url_step(http, deps=("claim",)),
+        fetch_jd_step(http, deps=("resolve_apply_url",)),
         liveness_step(check, deps=("fetch_jd",)),
-        resolve_apply_url_step(http, deps=("liveness",)),
-        brief_step(deps=("resolve_apply_url",), mark_ready=mark_ready),
     )
 
 
