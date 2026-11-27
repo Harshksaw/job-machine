@@ -482,5 +482,21 @@ def test_code_steps_run_end_to_end_offline():
     assert result.steps["fetch_jd"].output["needs_agent"] is True
     assert saved.apply_url == GH_POSTING
     assert checked == [board]
-    assert saved.status == "ready" and GH_POSTING in saved.research_brief
+    # Eligibility and fit have not run, so the code only pipeline never promotes status.
+    assert saved.status == "discovered" and GH_POSTING in saved.research_brief
+    assert result.steps["brief"].output["status"] == "discovered"
     assert any(a.title == f"Claimed by pipeline {result.id}" for a in saved.activities)
+
+
+def test_code_steps_can_promote_status_once_the_full_pipeline_wires_them():
+    job = _job(job_url=GH_POSTING)
+    pipeline = Pipeline("packet_code", steps_code.code_steps(
+        http=FakeHttp(), check=lambda url: ("live", "stub"), mark_ready=True))
+    created = store.create_run(job.id, pipeline.name, pipeline.order)
+    runner.run(created.id, pipeline, owner="w1")
+    assert job_store.get_job(job.id).status == "ready"
+
+
+def test_packet_code_pipeline_does_not_promote_status():
+    brief = steps_code.PACKET_CODE_PIPELINE.steps[-1]
+    assert brief.owns == ("research_brief",)

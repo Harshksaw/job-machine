@@ -304,28 +304,37 @@ def _brief_text(ctx: StepContext) -> str:
     ]) + "\n"
 
 
-def brief_step(deps: tuple[str, ...] = ()) -> StepSpec:
+def brief_step(deps: tuple[str, ...] = (), mark_ready: bool = True) -> StepSpec:
+    """`mark_ready=False` writes the brief only and leaves status alone, for a pipeline
+    that has not run eligibility and fit_score yet (rule 2: no fit, no ready)."""
+
     def brief(ctx: StepContext) -> StepResult:
         writes: dict = {"research_brief": _brief_text(ctx)}
         status = ctx.job.status
-        if status in _BRIEF_FROM:
+        if mark_ready and status in _BRIEF_FROM:
             status = writes["status"] = "ready"
         return StepResult(output={"status": status}, writes=writes)
 
-    return StepSpec("brief", "code", deps=deps, owns=("research_brief", "status"), run=brief)
+    owns = ("research_brief", "status") if mark_ready else ("research_brief",)
+    return StepSpec("brief", "code", deps=deps, owns=owns, run=brief)
 
 
-def code_steps(http: ats.Http | None = None, check: Check | None = None) -> tuple[StepSpec, ...]:
+def code_steps(
+    http: ats.Http | None = None, check: Check | None = None, *, mark_ready: bool = False
+) -> tuple[StepSpec, ...]:
     """The code steps of section 4 as one chain. The agent steps (eligibility, fit_score,
-    company_context, kit, form_fields, people, answers, review) slot in with M4."""
+    company_context, kit, form_fields, people, answers, review) slot in with M4. Until
+    eligibility and fit_score run before it, brief must not mark the dossier ready, so
+    `mark_ready` defaults to False."""
     return (
         claim_step(),
         fetch_jd_step(http, deps=("claim",)),
         liveness_step(check, deps=("fetch_jd",)),
         resolve_apply_url_step(http, deps=("liveness",)),
-        brief_step(deps=("resolve_apply_url",)),
+        brief_step(deps=("resolve_apply_url",), mark_ready=mark_ready),
     )
 
 
-# Code steps only, with the real network: for a live dry run on one dossier.
+# Code steps only, with the real network: for a live dry run on one dossier. The run
+# ends packet_ready, but the dossier keeps its status and only gains a brief.
 PACKET_CODE_PIPELINE = Pipeline("packet_code", code_steps())
