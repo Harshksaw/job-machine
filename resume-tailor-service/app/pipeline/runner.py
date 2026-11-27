@@ -53,6 +53,9 @@ class StepSpec:
     schema: type[BaseModel] | None = None
     finish: Callable[[BaseModel, StepContext], StepResult] | None = None
     when: Callable[[StepContext], bool] | None = None
+    # Steps whose authors (output meta.authors, the adapters that wrote them) must not
+    # run this one, such as review checking the kit and answers (spec 6.4).
+    independent_of: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.kind not in STEP_KINDS:
@@ -230,6 +233,12 @@ def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain) -> StepRe
     chain = resolve_chain(step)
     if not chain:
         raise StepFailed(f"no adapter offers capability {step.capability!r}")
+    authors = authors_of(ctx, step.independent_of)
+    if authors:
+        chain = [adapter for adapter in chain if adapter.name not in authors]
+        if not chain:
+            raise StepFailed(f"no adapter other than {', '.join(sorted(authors))} offers capability "
+                             f"{step.capability!r}; enable another one so the work is not checked by its author")
     last = ""
     for adapter in chain:
         errors: list[str] = []
@@ -265,6 +274,15 @@ def _run_agent(step: StepSpec, ctx: StepContext, resolve_chain: Chain) -> StepRe
             if result.outcome != "invalid_output":
                 break
     raise StepFailed(f"every adapter failed; last: {last}")
+
+
+def authors_of(ctx: StepContext, steps: tuple[str, ...]) -> set[str]:
+    """The adapters that wrote the outputs of `steps` in this run."""
+    authors: set[str] = set()
+    for name in steps:
+        meta = (ctx.outputs.get(name) or {}).get("meta") or {}
+        authors.update(str(author) for author in meta.get("authors") or [] if author)
+    return authors
 
 
 def _apply(step: StepSpec, ctx: StepContext, result: StepResult) -> None:

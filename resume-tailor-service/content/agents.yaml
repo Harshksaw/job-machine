@@ -73,7 +73,7 @@ adapters:
     capabilities: [cheap, reason, web]
     cost_tier: 2
     max_parallel: 2
-    enabled: false
+    enabled: true
   gemini_flash:
     # The same in process agent on a direct Google AI Studio key.
     type: sdk

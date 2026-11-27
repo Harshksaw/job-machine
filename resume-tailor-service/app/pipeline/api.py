@@ -14,7 +14,9 @@ import uuid
 
 from fastapi import APIRouter, Header, HTTPException
 
+from app.llm import DIRECT_STEPS
 from app.pipeline import config, store
+from app.pipeline.pipelines import PACKET_PIPELINE
 from app.pipeline.adapters import build_adapter
 from app.pipeline.config import PipelineConfig
 from app.pipeline.models import Attempt, now_iso
@@ -27,19 +29,11 @@ router = APIRouter(prefix="/api/pipeline")
 # The process wide health view, shared with llm.complete and the worker pool (M6).
 HEALTH = router_module.HEALTH
 
-# The capability each step needs (spec section 4), used to check step preferences
-# until the step registry (steps.py, M3 and M4) owns this.
+# The capability each step needs, from the step registry (PACKET_PIPELINE) plus the
+# service's direct model calls (llm.DIRECT_STEPS), used to check step preferences.
 STEP_CAPABILITIES = {
-    "fetch_jd": "web",
-    "eligibility": "cheap",
-    "fit_score": "reason",
-    "resolve_apply_url": "web",
-    "company_context": "web",
-    "kit": "reason",
-    "form_fields": "browser_read",
-    "people": "web",
-    "answers": "reason",
-    "review": "cheap",
+    **{step.name: step.capability for step in PACKET_PIPELINE.steps if step.capability},
+    **DIRECT_STEPS,
 }
 TEST_RUN_ID = "adapter-test"
 _TEST_PROMPT = 'This is a connection test. Answer with {"ok": true}.'

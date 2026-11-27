@@ -5,8 +5,10 @@ spec section 6.3: a draft that fails validation is retried once with the errors 
 back, then the step fails with those errors (before, generation failed silently). The
 shared rules in `rules.py` run on top as a safety net and get the same single repair.
 
-The model call is still `claude_cli` through the generators' default `complete`
-(M2b moves it behind the router); tests and callers can pass their own `complete`.
+The model call goes through `llm.complete` (the agent router, spec 13.1) with this
+run's id, and the adapters that wrote the output are kept in `output["meta"]["authors"]`
+so the review step can run on a different one (spec 6.4). Tests and callers can pass
+their own `complete`.
 
 Design: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md sections 4 and 6.
 """
@@ -17,7 +19,8 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from app.application_kit import _judgment_clarification, generate_answer, generate_kit
+from app import llm
+from app.application_kit import _answer_schema, _judgment_clarification, _kit_schema, generate_answer, generate_kit
 from app.bank import load_bank
 from app.errors import JobGenerationError
 from app.models import ApplicationAnswer, FormField, GeneratedAnswer
@@ -33,8 +36,29 @@ Complete = Callable[[str], str]
 _REPAIRS = 1
 
 
-def _kw(complete: Complete | None) -> dict:
-    return {"complete": complete} if complete is not None else {}
+class _Routed:
+    """The model call for one step of one run: `llm.complete` with the run id, keeping
+    the name of every adapter that answered."""
+
+    def __init__(self, ctx: StepContext, step: str, schema: dict):
+        self.authors: list[str] = []
+        self._complete = llm.completer("reason", schema, step=step, on_meta=self._seen,
+                                       run_id=ctx.run.id, job_id=ctx.run.job_id)
+
+    def _seen(self, meta: dict) -> None:
+        if meta.get("adapter") and meta["adapter"] not in self.authors:
+            self.authors.append(meta["adapter"])
+
+    def __call__(self, prompt: str) -> str:
+        return self._complete(prompt)
+
+
+def _model(ctx: StepContext, complete: Complete | None, step: str, schema: dict) -> Complete:
+    return complete if complete is not None else _Routed(ctx, step, schema)
+
+
+def _meta(model) -> dict:
+    return {"authors": list(getattr(model, "authors", []))}
 
 
 def _bank(path: Path | None):
@@ -49,11 +73,11 @@ def _draft_kit(ctx: StepContext, bank, complete: Complete | None, issues: list[s
     Raises StepFailed with the errors when the draft still fails."""
     try:
         generated = generate_kit(ctx.job, bank, max_retries=_REPAIRS, previous_errors=issues,
-                                 **_kw(complete))
+                                 complete=complete)
         errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
         if errors:
             generated = generate_kit(ctx.job, bank, max_retries=0, previous_errors=errors,
-                                     **_kw(complete))
+                                     complete=complete)
             errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
     except JobGenerationError as exc:
         raise StepFailed(str(exc)) from exc
@@ -76,7 +100,8 @@ def _pinned(analysis, ctx: StepContext):
 def kit_step(complete: Complete | None = None, *, bank_path: Path | None = None,
              deps: tuple[str, ...] = ()) -> StepSpec:
     def kit(ctx: StepContext) -> StepResult:
-        generated = _draft_kit(ctx, _bank(bank_path), complete)
+        model = _model(ctx, complete, "kit", _kit_schema())
+        generated = _draft_kit(ctx, _bank(bank_path), model)
         analysis = _pinned(generated.analysis, ctx)
         writes: dict = {"fit_analysis": analysis.model_dump()}
         # Owner ruling: a letter already on the dossier may be hand edited, so it
@@ -88,7 +113,8 @@ def kit_step(complete: Complete | None = None, *, bank_path: Path | None = None,
             output={"kit_score": generated.analysis.score, "score": analysis.score,
                     "cover_letter": "kept existing cover letter" if keep else "generated",
                     "wrote_letter": not keep,
-                    "words": len((ctx.job.cover_letter if keep else generated.cover_letter).split())},
+                    "words": len((ctx.job.cover_letter if keep else generated.cover_letter).split()),
+                    "meta": _meta(model)},
             writes=writes,
         )
 
@@ -138,11 +164,11 @@ def _answer(ctx: StepContext, bank, question: str, complete: Complete | None,
             issues: list[str] | None = None):
     try:
         draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
-                                max_retries=_REPAIRS, previous_errors=issues, **_kw(complete))
+                                max_retries=_REPAIRS, previous_errors=issues, complete=complete)
         errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
         if errors:
             draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
-                                    max_retries=0, previous_errors=errors, **_kw(complete))
+                                    max_retries=0, previous_errors=errors, complete=complete)
             errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
     except JobGenerationError as exc:
         raise StepFailed(f"answer for {question!r}: {exc}") from exc
@@ -159,6 +185,7 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
         skipped: list[dict] = []
         needs: list[str] = []
         bank = None
+        model = _model(ctx, complete, "answers", _answer_schema())
         for field in ctx.job.form_fields:
             if _key(field.label) in existing:
                 skipped.append({"label": field.label, "why": "already answered"})
@@ -173,7 +200,7 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
                 draft = GeneratedAnswer(needs_user_input=True, clarification=_choice_note(field))
             else:
                 bank = bank or _bank(bank_path)
-                draft = _answer(ctx, bank, field.label, complete)
+                draft = _answer(ctx, bank, field.label, model)
             if draft.needs_user_input:
                 needs.append(field.label)
             stamp = now_iso()
@@ -184,7 +211,8 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
                 clarification=draft.clarification,
             ))
             existing.add(_key(field.label))
-        output = {"answered": len(new) - len(needs), "needs_user_input": needs, "skipped": skipped}
+        output = {"answered": len(new) - len(needs), "needs_user_input": needs, "skipped": skipped,
+                  "meta": _meta(model)}
         if not new:
             return StepResult(output=output)
         answers_out = [a.model_dump() for a in (*ctx.job.application_answers, *new)]
@@ -222,6 +250,8 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
         bank = _bank(bank_path)
         writes: dict = {}
         answers = list(ctx.job.application_answers)
+        kit_model = _model(ctx, complete_kit, "repair", _kit_schema())
+        answer_model = _model(ctx, complete_answer, "repair", _answer_schema())
         for field, issues in by_field.items():
             try:
                 if field == "cover_letter":
@@ -230,7 +260,7 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
                     if not (ctx.outputs.get("kit") or {}).get("wrote_letter"):
                         unrepaired.append(field)
                         continue
-                    generated = _draft_kit(ctx, bank, complete_kit, issues)
+                    generated = _draft_kit(ctx, bank, kit_model, issues)
                     writes["fit_analysis"] = _pinned(generated.analysis, ctx).model_dump()
                     writes["cover_letter"] = generated.cover_letter
                     repaired.append(field)
@@ -240,7 +270,7 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
                 if index is None:
                     unrepaired.append(field)
                     continue
-                draft = _answer(ctx, bank, answers[index].question, complete_answer, issues)
+                draft = _answer(ctx, bank, answers[index].question, answer_model, issues)
                 answers[index] = answers[index].model_copy(update={
                     "answer": draft.answer, "source_ids": draft.source_ids,
                     "needs_user_input": draft.needs_user_input,

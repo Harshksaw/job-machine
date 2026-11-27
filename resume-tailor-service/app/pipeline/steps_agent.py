@@ -310,5 +310,6 @@ def _finish_review(out: ReviewOutput, ctx: StepContext) -> StepResult:
 
 
 def review_step(deps: tuple[str, ...] = ()) -> StepSpec:
+    # Spec 6.4: never reviewed by the adapter that wrote the kit or the answers.
     return StepSpec("review", "agent", deps=deps, owns=("review",), capability="cheap",
-                    schema=ReviewOutput, finish=_finish_review)
+                    schema=ReviewOutput, finish=_finish_review, independent_of=("kit", "answers"))

@@ -119,6 +119,8 @@ class Health:
                     "until": datetime.fromtimestamp(until, tz=timezone.utc).isoformat()}
         if blocked is None:
             blocked = self._blocked_families()
+        if not config_module.key_set(spec):
+            return {"healthy": False, "reason": f"{spec.key_env} is not set", "until": None}
         if spec.family and spec.family in blocked:
             return {"healthy": False, "reason": f"{spec.family} is blocked (see agent health)", "until": None}
         return {"healthy": True, "reason": "", "until": None}
