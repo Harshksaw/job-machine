@@ -90,6 +90,12 @@ def _last_tests() -> dict[str, dict]:
     return last
 
 
+@router.get("/steps")
+def get_steps() -> list[dict]:
+    """Each step and the capability its preferred and canary adapters must have."""
+    return [{"step": step, "capability": capability} for step, capability in STEP_CAPABILITIES.items()]
+
+
 @router.get("/adapters")
 def get_adapters() -> list[dict]:
     blocked = HEALTH.blocked_families()

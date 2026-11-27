@@ -120,3 +120,9 @@ def test_adapters_list_carries_the_last_test_result(client, monkeypatch):
     assert (last["outcome"], last["error"], last["model"]) == ("unavailable", "Out of credits", "m")
     assert last["at"] and isinstance(last["duration_ms"], int)
     assert rows["codex"]["last_test"] is None
+
+
+def test_steps_lists_each_step_with_the_capability_it_needs(client):
+    steps = client.get("/api/pipeline/steps").json()
+    assert {"step": "fit_score", "capability": "reason"} in steps
+    assert [row["step"] for row in steps] == list(api.STEP_CAPABILITIES)
