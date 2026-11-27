@@ -325,3 +325,30 @@ def test_start_from_env_records_the_active_pool(monkeypatch):
     assert worker.ACTIVE_POOL is pool
     worker.stop_pool(pool)
     assert pool.stopped and worker.ACTIVE_POOL is None
+
+
+def test_stop_waits_one_deadline_for_the_whole_pool():
+    entered, leave = threading.Event(), threading.Event()
+
+    class Stuck(FakeAdapter):
+        def invoke(self, step, ctx, errors):
+            entered.set()
+            leave.wait(5)  # an in process call that ignores the kill
+            return AdapterResult(outcome="ok", output={"answer": "x"})
+
+    pipeline = Pipeline("p", (_agent_step("s"),))
+    runs = [store.create_run(_job().id, "p", pipeline.order) for _ in range(4)]
+    cfg = config.PipelineConfig.model_validate({"adapters": {"a": {
+        "type": "cli", "command": ["x", "{prompt}"], "capabilities": ["reason"], "max_parallel": 4}}})
+    pool = _pool({"p": pipeline}, chain=lambda step: [Stuck("a", [])], size=4, shutdown_timeout=0.3,
+                 load_config=lambda: cfg)
+    pool.start()
+    assert _wait(lambda: all(store.get_run(r.id).status == "running" for r in runs))
+    t0 = time.monotonic()
+    pool.stop()
+    took = time.monotonic() - t0
+    leave.set()
+    for thread in pool.threads:  # let them finish inside this test's stores
+        thread.join(5)
+    assert took < 0.7
+    assert {store.get_run(r.id).status for r in runs} == {"queued"}

@@ -27,6 +27,7 @@ import logging
 import os
 import socket
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Callable
@@ -207,8 +208,10 @@ class WorkerPool:
                 adapters.kill_run(run_id)
             except Exception:
                 log.exception("could not kill the processes of run %s", run_id)
+        # One deadline for the whole pool, so shutdown never waits longer than that.
+        deadline = time.monotonic() + self._shutdown_timeout
         for thread in self.threads:
-            thread.join(timeout=self._shutdown_timeout)
+            thread.join(timeout=max(0.0, deadline - time.monotonic()))
         log.info("pipeline worker pool stopped")
 
     # -- threads --
