@@ -528,3 +528,35 @@ def test_cover_letter_still_has_to_name_the_company_at_all():
     errors = validate_kit(kit, job, build_source_index(bank))
 
     assert any("must name the company" in error for error in errors)
+
+
+def test_generate_kit_can_start_from_prior_errors():
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    prompts = []
+
+    def complete(prompt):
+        prompts.append(prompt)
+        return json.dumps(_valid_kit_payload())
+
+    generate_kit(_job(), bank, complete=complete, max_retries=0,
+                 previous_errors=["cover letter is too stiff"])
+    assert "The previous draft failed validation" in prompts[0]
+    assert "cover letter is too stiff" in prompts[0]
+    generate_kit(_job(), bank, complete=complete, max_retries=0)
+    assert "previous draft" not in prompts[1]
+
+
+def test_generate_answer_can_start_from_prior_errors():
+    bank = load_bank(BASE_DIR / "content" / "resume_bank.yaml")
+    prompts = []
+
+    def complete(prompt):
+        prompts.append(prompt)
+        return json.dumps({"answer": "", "source_ids": [], "needs_user_input": True,
+                           "clarification": "Confirm it."})
+
+    generate_answer(_job(), bank, "Why this team?", complete=complete, max_retries=0,
+                    previous_errors=["answer is too long"])
+    assert "answer is too long" in prompts[0]
+    generate_answer(_job(), bank, "Why this team?", complete=complete, max_retries=0)
+    assert "previous answer" not in prompts[1]

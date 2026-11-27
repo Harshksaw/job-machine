@@ -456,10 +456,12 @@ def test_brief_says_nothing_flagged_once_answers_exist_and_none_need_harsh():
 
 def test_packet_code_pipeline_wires_the_steps_in_order():
     pipeline = steps_code.PACKET_CODE_PIPELINE
-    assert pipeline.order == ["claim", "fetch_jd", "liveness", "resolve_apply_url", "brief"]
+    # Owner ruling (M4): resolve_apply_url runs first so a board listing gets its JD
+    # and its liveness check from the employer ATS.
+    assert pipeline.order == ["claim", "resolve_apply_url", "fetch_jd", "liveness", "brief"]
     deps = {step.name: step.deps for step in pipeline.steps}
-    assert deps == {"claim": (), "fetch_jd": ("claim",), "liveness": ("fetch_jd",),
-                    "resolve_apply_url": ("liveness",), "brief": ("resolve_apply_url",)}
+    assert deps == {"claim": (), "resolve_apply_url": ("claim",), "fetch_jd": ("resolve_apply_url",),
+                    "liveness": ("fetch_jd",), "brief": ("liveness",)}
     assert all(step.kind == "code" for step in pipeline.steps)
     assert [s.name for s in steps_code.code_steps()] == pipeline.order
 
@@ -478,10 +480,12 @@ def test_code_steps_run_end_to_end_offline():
     result = runner.run(created.id, pipeline, owner="w1")
     assert result.status == "packet_ready", result.terminal_reason
     saved = job_store.get_job(job.id)
-    # fetch_jd runs before resolve, so the board URL had no JD; resolve found the ATS.
-    assert result.steps["fetch_jd"].output["needs_agent"] is True
+    # resolve runs first, so fetch_jd reads the JD from the employer's Greenhouse posting
+    # and liveness checks the apply URL, not the board listing.
     assert saved.apply_url == GH_POSTING
-    assert checked == [board]
+    assert result.steps["fetch_jd"].output["source"] == "greenhouse"
+    assert len(saved.jd_text) >= steps_code.JD_MIN_CHARS
+    assert checked == [GH_POSTING]
     # Eligibility and fit have not run, so the code only pipeline never promotes status.
     assert saved.status == "discovered" and GH_POSTING in saved.research_brief
     assert result.steps["brief"].output["status"] == "discovered"

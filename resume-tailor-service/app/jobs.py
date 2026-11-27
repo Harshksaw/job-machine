@@ -321,13 +321,25 @@ def add_job_person(
     return person
 
 
+_PIPELINE_FIELDS = ("form_fields", "review")
+
+
 @router.put("/api/jobs/{job_id}", response_model=JobWorkspace)
 def replace_job(
     job_id: str,
     data: JobWorkspaceInput,
     session: str = Query(default=""),
 ) -> JobWorkspace:
-    _get_job_or_404(job_id)
+    current = _get_job_or_404(job_id)
+    # The dashboard bundle sends a fixed field list that predates the pipeline fields,
+    # so a field it leaves out keeps its stored value instead of being saved blank.
+    kept = {
+        name: getattr(current, name)
+        for name in _PIPELINE_FIELDS
+        if name not in data.model_fields_set
+    }
+    if kept:
+        data = data.model_copy(update=kept)
     updated = job_store.update_job(job_id, data, session=session)
     if updated is None:
         raise HTTPException(status_code=404, detail="job dossier not found")
