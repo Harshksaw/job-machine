@@ -20,6 +20,7 @@ from app.pipeline import rules
 from app.pipeline.runner import StepContext, StepResult, StepSpec
 
 FIT_FLOOR = 6  # rule 2: below this the run ends "retained_for_review"
+TIER_A2_FIT_FLOOR = 7  # AGENTS.md discovery sources: Tier A2 needs fit 7+
 PEOPLE_FLOOR = 8  # rule 2: 8+ is people mining eligible
 MAX_PEOPLE = 3
 
@@ -58,12 +59,17 @@ def _prefix(ctx: StepContext) -> str:
 class EligibilityOutput(BaseModel):
     eligible: bool
     reason: str
+    # AGENTS.md (2026-11-25): remote limited to US, UK or Australian residents is
+    # eligible as Tier A2, which needs fit 7 or higher.
+    tier_a2: bool = False
 
     _reason = field_validator("reason")(_not_blank)
 
 
 def _finish_eligibility(out: EligibilityOutput, ctx: StepContext) -> StepResult:
     verdict = "eligible" if out.eligible else "ineligible"
+    if out.eligible and out.tier_a2:
+        verdict = "eligible (Tier A2)"
     writes = {"notes": _append_note(ctx, f"{_prefix(ctx)} {verdict}, {out.reason}")}
     output = out.model_dump()
     if out.eligible:
@@ -107,10 +113,13 @@ def _finish_fit_score(out: FitScoreOutput, ctx: StepContext) -> StepResult:
             "recommendation": "apply" if out.score >= FIT_FLOOR else "review",
         }).model_dump()
     output = out.model_dump()
-    if out.score < FIT_FLOOR:
+    tier_a2 = bool((ctx.outputs.get("eligibility") or {}).get("tier_a2"))
+    floor = TIER_A2_FIT_FLOOR if tier_a2 else FIT_FLOOR
+    if out.score < floor:
         # Rule 2: retain for review. The dossier stays active with its reason and gaps.
+        label = f"Tier A2 needs fit {floor}+, " if tier_a2 else ""
         return StepResult(output=output, writes=writes, stop="retained_for_review",
-                          reason=f"fit {out.score}/10: {out.reason}"[:300])
+                          reason=f"{label}fit {out.score}/10: {out.reason}"[:300])
     return StepResult(output=output, writes=writes)
 
 
@@ -130,11 +139,36 @@ def fit_of(ctx: StepContext) -> int:
 # company_context
 
 
+_bank_ids: set[str] | None = None
+
+
+def bank_source_ids() -> set[str]:
+    """Source ids of the committed resume bank, loaded once."""
+    global _bank_ids
+    if _bank_ids is None:
+        from app.application_kit import build_source_index
+        from app.bank import load_bank
+        from app.pipeline.prompts import BANK_PATH
+
+        _bank_ids = set(build_source_index(load_bank(BANK_PATH)))
+    return _bank_ids
+
+
 class CompanyContextOutput(BaseModel):
     company_context: str
     why_this_role: str
-    why_source_ids: list[str] = Field(default_factory=list)
+    # Rule 1: why_this_role must trace to the resume bank.
+    why_source_ids: list[str] = Field(min_length=1)
     sources: list[str] = Field(min_length=1)
+
+    @field_validator("why_source_ids")
+    @classmethod
+    def _known_ids(cls, ids: list[str]) -> list[str]:
+        known = bank_source_ids()
+        unknown = [source_id for source_id in ids if source_id not in known]
+        if unknown:
+            raise ValueError(f"unknown resume bank source ids: {unknown}")
+        return ids
 
     @field_validator("company_context", "why_this_role")
     @classmethod
@@ -156,7 +190,7 @@ def _finish_company_context(out: CompanyContextOutput, ctx: StepContext) -> Step
         output=out.model_dump(),
         writes={
             "company_context": f"{out.company_context}\n\nSources:\n{sources}",
-            "why_this_role": out.why_this_role,
+            "why_this_role": f"{out.why_this_role} (bank: {', '.join(out.why_source_ids)})",
         },
     )
 

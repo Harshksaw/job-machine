@@ -155,7 +155,8 @@ def test_fit_score_out_of_range_or_missing_is_invalid(bad):
 # company_context
 
 
-def test_company_context_writes_context_with_sources_and_why():
+def test_company_context_writes_context_with_sources_and_why(monkeypatch):
+    monkeypatch.setattr(steps_agent, "bank_source_ids", lambda: {"exp.a.1"})
     job = _job()
     out = {
         "company_context": f"Acme builds payroll tools {EM} it raised a seed round.",
@@ -170,7 +171,7 @@ def test_company_context_writes_context_with_sources_and_why():
     saved = job_store.get_job(job.id)
     assert "payroll tools" in saved.company_context and EM not in saved.company_context
     assert "https://acme.example/about" in saved.company_context
-    assert saved.why_this_role == out["why_this_role"]
+    assert saved.why_this_role == out["why_this_role"] + " (bank: exp.a.1)"
     assert result.steps["company_context"].output["sources"] == out["sources"]
 
 
@@ -303,3 +304,68 @@ def test_review_listing_issues_cannot_pass():
     result, _ = _run(job, [steps_agent.review_step()], {"review": [ok({"pass": True, "issues": [issue]})]})
     review = job_store.get_job(job.id).review
     assert review.passed is False and review.issues[0].field == "Why Acme?"
+
+
+# Tier A2 (AGENTS.md, 2026-11-25): remote limited to US, UK or Australian residents is
+# eligible, but needs fit 7 or higher.
+
+
+def test_eligibility_prompt_keeps_us_uk_australia_remote_roles_eligible():
+    from app.pipeline import prompts
+
+    source = prompts.template_source("eligibility")
+    assert "tier_a2" in source and "Australia" in source
+    assert "counts as ineligible unless Canada is named" not in source
+
+
+def _a2_fit(score):
+    return [_stub("eligibility", {"eligible": True, "reason": "US only remote", "tier_a2": True}),
+            steps_agent.fit_score_step(deps=("eligibility",))]
+
+
+def test_tier_a2_fit_six_is_retained_for_review():
+    job = _job()
+    result, _ = _run(job, _a2_fit(6), {"fit_score": [ok({"score": 6, "reason": "Decent match."})]})
+    assert result.status == "retained_for_review"
+    assert "Tier A2" in result.terminal_reason
+
+
+def test_tier_a2_fit_seven_continues():
+    job = _job()
+    result, _ = _run(job, _a2_fit(7), {"fit_score": [ok({"score": 7, "reason": "Good match."})]})
+    assert result.status == "packet_ready"
+
+
+def test_eligibility_output_defaults_tier_a2_false():
+    assert steps_agent.EligibilityOutput(eligible=True, reason="ok").tier_a2 is False
+
+
+# why_this_role traceability
+
+
+def _ctx_out(ids):
+    return {"company_context": "Acme builds payroll tools.", "why_this_role": "The role fits his API work.",
+            "why_source_ids": ids, "sources": ["https://acme.example/about"]}
+
+
+def test_why_this_role_must_cite_real_bank_ids(monkeypatch):
+    monkeypatch.setattr(steps_agent, "bank_source_ids", lambda: {"exp.a.1", "exp.a.2"})
+    job = _job()
+    result, adapters = _run(job, [steps_agent.company_context_step()], {"company_context": [
+        ok(_ctx_out(["invented.id"])), ok(_ctx_out([]))]})
+    assert result.status == "failed"
+    assert any("invented.id" in e for e in adapters["company_context"].calls[1])
+    assert job_store.get_job(job.id).why_this_role == ""
+
+
+def test_why_this_role_keeps_its_bank_ids(monkeypatch):
+    monkeypatch.setattr(steps_agent, "bank_source_ids", lambda: {"exp.a.1", "exp.a.2"})
+    job = _job()
+    result, _ = _run(job, [steps_agent.company_context_step()],
+                     {"company_context": [ok(_ctx_out(["exp.a.1"]))]})
+    assert result.status == "packet_ready"
+    assert job_store.get_job(job.id).why_this_role == "The role fits his API work. (bank: exp.a.1)"
+
+
+def test_default_bank_ids_come_from_the_committed_bank():
+    assert "profile.name" in steps_agent.bank_source_ids()

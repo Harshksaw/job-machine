@@ -36,6 +36,7 @@ FORM = {"url": GH_POSTING, "fields": [
 CONTEXT = {
     "company_context": "Acme builds scheduling tools for small teams.",
     "why_this_role": "Backend services in Python, which matches his FastAPI work.",
+    "why_source_ids": ["project.docintel.bullet.1"],
     "sources": ["https://acme.example/about"],
 }
 PEOPLE = {"people": [{"name": "Dana Lee", "title": "Engineering Manager",
