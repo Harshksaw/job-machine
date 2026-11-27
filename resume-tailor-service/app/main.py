@@ -34,8 +34,7 @@ async def lifespan(_app: FastAPI):
     try:
         yield
     finally:
-        if pool is not None:
-            pool.stop()
+        pipeline_worker.stop_pool(pool)
 
 
 app = FastAPI(title="resume-tailor-service", lifespan=lifespan)

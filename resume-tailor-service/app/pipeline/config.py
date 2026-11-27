@@ -164,6 +164,9 @@ class PipelineConfig(BaseModel):
     direct_call_budget: int = Field(default=180, ge=10, le=3600)
     # Task pipelines the worker enqueues on a timer; none by default.
     schedules: dict[str, TaskSchedule] = Field(default_factory=dict)
+    # The dossier "Research this job" button enqueues a packet run instead of starting
+    # the old research CLI. Off until Harsh switches it on in Settings.
+    research_via_pipeline: bool = False
     version: int = 0
     updated_at: str = ""
 

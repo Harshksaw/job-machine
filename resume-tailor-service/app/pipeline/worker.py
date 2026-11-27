@@ -45,6 +45,8 @@ POLL_SECONDS = 2.0
 TICK_SECONDS = 30.0
 SHUTDOWN_SECONDS = 15.0
 _GATE_WAIT = 0.25
+# The pool the app lifespan started, for GET /api/pipeline/worker; None when off.
+ACTIVE_POOL = None
 
 
 def pipeline_for(name: str) -> Pipeline | None:
@@ -288,9 +290,20 @@ def workers_from_env() -> int:
 
 def start_from_env() -> WorkerPool | None:
     """The lifespan hook: a started pool when PIPELINE_WORKERS > 0, else None."""
+    global ACTIVE_POOL
     size = workers_from_env()
     if size <= 0:
         return None
     pool = WorkerPool(size)
     pool.start()
+    ACTIVE_POOL = pool
     return pool
+
+
+def stop_pool(pool) -> None:
+    global ACTIVE_POOL
+    if pool is None:
+        return
+    pool.stop()
+    if ACTIVE_POOL is pool:
+        ACTIVE_POOL = None

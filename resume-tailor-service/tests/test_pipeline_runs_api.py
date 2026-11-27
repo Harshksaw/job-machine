@@ -178,3 +178,16 @@ def test_stats_per_step_adapter_and_model(client):
     models = {row["model"]: row for row in stats["models"]}
     assert list(models) == ["m-haiku"] and models["m-haiku"]["attempts"] == 11
     assert client.get("/api/pipeline/stats", params={"since": "2026-11-26T10:30:00+00:00"}).json()["steps"][0]["attempts"] == 1
+
+
+def test_worker_route_reports_whether_the_pool_runs(client, monkeypatch):
+    from app.pipeline import worker
+
+    monkeypatch.setattr(worker, "ACTIVE_POOL", None)
+    assert client.get("/api/pipeline/worker").json() == {"running": False, "workers": 0}
+
+    class Pool:
+        size = 3
+
+    monkeypatch.setattr(worker, "ACTIVE_POOL", Pool())
+    assert client.get("/api/pipeline/worker").json() == {"running": True, "workers": 3}

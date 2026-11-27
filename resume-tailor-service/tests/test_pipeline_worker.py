@@ -310,3 +310,18 @@ def test_app_lifespan_starts_and_stops_the_pool_only_when_enabled(monkeypatch):
     with TestClient(main.app):
         assert _FakePool.instances[0].started and not _FakePool.instances[0].stopped
     assert _FakePool.instances[0].stopped
+
+
+def test_research_via_pipeline_is_off_by_default():
+    assert config.load_defaults().research_via_pipeline is False
+    assert config.PipelineConfig.model_validate({"research_via_pipeline": True}).research_via_pipeline
+
+
+def test_start_from_env_records_the_active_pool(monkeypatch):
+    monkeypatch.setattr(worker, "WorkerPool", _FakePool)
+    monkeypatch.setattr(worker, "ACTIVE_POOL", None)
+    monkeypatch.setenv("PIPELINE_WORKERS", "1")
+    pool = worker.start_from_env()
+    assert worker.ACTIVE_POOL is pool
+    worker.stop_pool(pool)
+    assert pool.stopped and worker.ACTIVE_POOL is None

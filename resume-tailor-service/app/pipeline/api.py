@@ -299,6 +299,13 @@ def post_cancel(run_id: str, x_job_machine: str | None = Header(default=None)) -
     return {"run": run.model_dump(mode="json"), "killed": killed}
 
 
+@router.get("/worker")
+def get_worker() -> dict:
+    """Whether this service process runs the worker pool (PIPELINE_WORKERS > 0)."""
+    pool = worker.ACTIVE_POOL
+    return {"running": pool is not None, "workers": pool.size if pool is not None else 0}
+
+
 @router.get("/stats")
 def get_stats(since: str = "") -> dict:
     """The attempt ledger summarised per step and adapter, and per model."""
