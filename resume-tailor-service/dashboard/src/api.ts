@@ -1,7 +1,9 @@
 // Same-origin API client. The service is local-only and unauthenticated, so
 // requests are plain fetch with no Authorization header.
 
+import { formatApiDetail } from "./lib/agents";
 import type {
+  AdapterStatus,
   ApplicationAnswerInput,
   FollowUpNudge,
   JobActivityInput,
@@ -11,6 +13,9 @@ import type {
   JobWorkspaceInput,
   Person,
   PersonInput,
+  PipelineConfig,
+  PipelineStep,
+  PipelineVersion,
   ResumeBank,
   TailoredResumeMeta,
   TailorResponse,
@@ -545,4 +550,88 @@ export function checkConnection(id: string): Promise<ConnectionResult> {
 
 export function getTelemetry(): Promise<TelemetrySummary> {
   return jsonRequest("/api/system/telemetry", {}, "Failed to load telemetry.");
+}
+
+// Agents and models settings (/api/pipeline/*). Writes carry X-Job-Machine like the
+// other dashboard writes. A rejected save keeps every validation line in `lines`.
+export class PipelineError extends ApiError {
+  lines: string[];
+  constructor(lines: string[], status: number) {
+    super(lines.join("; "), status);
+    this.name = "PipelineError";
+    this.lines = lines;
+  }
+}
+
+async function pipelineRequest<T>(path: string, init: RequestInit, fallback: string): Promise<T> {
+  const res = await apiFetch(path, init);
+  if (!res.ok) {
+    let lines: string[] = [];
+    try {
+      lines = formatApiDetail(((await res.json()) as { detail?: unknown }).detail);
+    } catch {
+      // not JSON; fall back below
+    }
+    throw new PipelineError(lines.length ? lines : [`${fallback} (HTTP ${res.status})`], res.status);
+  }
+  return (await res.json()) as T;
+}
+
+const DASHBOARD_WRITE = { "Content-Type": "application/json", "X-Job-Machine": "dashboard" };
+
+export function getPipelineConfig(): Promise<PipelineConfig> {
+  return pipelineRequest("/api/pipeline/config", {}, "Failed to load agent settings.");
+}
+
+export function savePipelineConfig(config: PipelineConfig): Promise<PipelineConfig> {
+  return pipelineRequest(
+    "/api/pipeline/config",
+    { method: "PUT", headers: DASHBOARD_WRITE, body: JSON.stringify(config) },
+    "Failed to save agent settings."
+  );
+}
+
+export function listPipelineVersions(): Promise<PipelineVersion[]> {
+  return pipelineRequest("/api/pipeline/config/versions", {}, "Failed to load version history.");
+}
+
+export function rollbackPipelineConfig(version: number): Promise<PipelineConfig> {
+  return pipelineRequest(
+    `/api/pipeline/config/rollback/${encodeURIComponent(String(version))}`,
+    { method: "POST", headers: DASHBOARD_WRITE },
+    "Rollback failed."
+  );
+}
+
+export function resetPipelineConfig(): Promise<PipelineConfig> {
+  return pipelineRequest(
+    "/api/pipeline/config/reset",
+    { method: "POST", headers: DASHBOARD_WRITE },
+    "Reset failed."
+  );
+}
+
+export function listPipelineAdapters(): Promise<AdapterStatus[]> {
+  return pipelineRequest("/api/pipeline/adapters", {}, "Failed to load adapters.");
+}
+
+export function listPipelineSteps(): Promise<PipelineStep[]> {
+  return pipelineRequest("/api/pipeline/steps", {}, "Failed to load steps.");
+}
+
+export interface AdapterTestResponse {
+  adapter: string;
+  outcome: string;
+  error: string;
+  model: string;
+  duration_ms: number;
+  attempt_id: string;
+}
+
+export function testPipelineAdapter(name: string): Promise<AdapterTestResponse> {
+  return pipelineRequest(
+    `/api/pipeline/adapters/${encodeURIComponent(name)}/test`,
+    { method: "POST", headers: DASHBOARD_WRITE },
+    "Test failed."
+  );
 }

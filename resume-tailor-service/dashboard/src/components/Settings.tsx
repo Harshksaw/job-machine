@@ -10,6 +10,7 @@ import {
   type SystemStats,
   type TelemetrySummary,
 } from "../api";
+import AgentsSettings from "./AgentsSettings";
 
 const STATUS_STYLE: Record<ConnectionResult["status"], { dot: string; text: string; label: string }> = {
   ok: { dot: "bg-teal-400", text: "text-teal-300", label: "OK" },
@@ -286,6 +287,8 @@ export default function Settings() {
           })}
         </ul>
       </section>
+
+      <AgentsSettings />
 
       {telemetry && (
         <section className="jm-panel p-4">

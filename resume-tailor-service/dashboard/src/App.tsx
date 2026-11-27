@@ -27,7 +27,7 @@ const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   board: { title: "Board", subtitle: "Pipeline by stage" },
   people: { title: "People", subtitle: "Outreach contacts and drafts" },
   search: { title: "Search", subtitle: "Find new roles and start agents" },
-  settings: { title: "Settings", subtitle: "Stats, connections, and telemetry" },
+  settings: { title: "Settings", subtitle: "Stats, connections, agents, and telemetry" },
 };
 
 const CLOSED = new Set(["rejected", "skipped", "archived"]);

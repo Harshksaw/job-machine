@@ -222,3 +222,75 @@ export interface FollowUpNudge {
 }
 
 export type JobDecision = "approve" | "hold" | "applied";
+
+// Agent orchestrator settings (/api/pipeline/*). Keys never appear here: an adapter
+// names the env var that holds its key, and the API only says whether it is set.
+export type PipelineCapability = "cheap" | "reason" | "web" | "browser_read";
+
+export interface AdapterSpec {
+  name: string;
+  type: "cli" | "api" | "sdk";
+  command: string[];
+  output: "file" | "stdout";
+  isolation: string;
+  provider: string;
+  model: string;
+  key_env: string;
+  env: Record<string, string>;
+  capabilities: PipelineCapability[];
+  cost_tier: number;
+  max_parallel: number;
+  enabled: boolean;
+  timeouts: Partial<Record<PipelineCapability, number>>;
+  family: string;
+}
+
+export interface StepCanary {
+  adapter: string;
+  share: number;
+}
+
+export interface StepPrefs {
+  prefer: string[];
+  canary: StepCanary | null;
+}
+
+export interface PipelineConfig {
+  workers: number;
+  adapters: Record<string, AdapterSpec>;
+  capability_caps: Partial<Record<PipelineCapability, number>>;
+  steps: Record<string, StepPrefs>;
+  version: number;
+  updated_at: string;
+}
+
+export interface AdapterHealth {
+  healthy: boolean;
+  reason: string;
+  until: string | null;
+}
+
+export interface AdapterTestResult {
+  outcome: string;
+  error: string;
+  model: string;
+  at: string;
+  duration_ms: number;
+}
+
+export interface AdapterStatus extends AdapterSpec {
+  key_set: boolean;
+  health: AdapterHealth;
+  last_test: AdapterTestResult | null;
+}
+
+export interface PipelineVersion {
+  version: number;
+  updated_at: string;
+  note: string;
+}
+
+export interface PipelineStep {
+  step: string;
+  capability: PipelineCapability;
+}
