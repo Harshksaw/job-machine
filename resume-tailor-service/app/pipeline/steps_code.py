@@ -279,6 +279,12 @@ def _needs_harsh(ctx: StepContext) -> list[str]:
                     f"- Review, {issue.get('field', 'packet')}: {issue.get('problem', '')}"
                     + (f" (fix: {issue['fix']})" if issue.get("fix") else "")
                 ))
+    repaired = (ctx.outputs.get("repair") or {}).get("repaired") or []
+    if repaired:
+        lines.append(_clean("- Repaired once after review, check again: " + ", ".join(map(str, repaired))))
+    form = ctx.outputs.get("form_fields") or {}
+    if form.get("note"):
+        lines.append(_clean(f"- Form not fully read: {form['note']}"))
     return lines
 
 

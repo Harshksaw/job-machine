@@ -244,3 +244,69 @@ def test_a_required_choice_question_is_flagged_for_harsh_not_skipped():
     [answer] = job_store.get_job(job.id).application_answers
     assert answer.needs_user_input and "Yes, No" in answer.clarification
     assert model.prompts == []
+
+
+# repair (spec 6.4): one repair round on what a failing review flagged
+
+
+def _review(passed, issues):
+    return StepSpec("review", "code", run=lambda ctx: StepResult(output={"pass": passed, "issues": issues}))
+
+
+LETTER_ISSUE = {"field": "cover_letter", "problem": "Opens with a vague line.", "fix": "Start with the product."}
+
+
+def test_repair_spec():
+    step = steps_service.repair_step()
+    assert (step.kind, step.capability) == ("service", "reason")
+    assert set(step.owns) == {"fit_analysis", "cover_letter", "application_answers"}
+
+
+def test_repair_does_nothing_after_a_passing_review():
+    job = _job(cover_letter="Old letter for Acme Cloud.")
+    model = Script(_valid_kit_payload())
+    result = _run(job, _review(True, []), steps_service.repair_step(complete_kit=model, deps=("review",)))
+    assert result.status == "packet_ready"
+    assert result.steps["repair"].output == {"repaired": [], "unrepaired": []}
+    assert model.prompts == [] and job_store.get_job(job.id).cover_letter == "Old letter for Acme Cloud."
+
+
+def test_repair_regenerates_the_letter_with_the_review_issues():
+    job = _job(cover_letter="Old letter for Acme Cloud.")
+    model = Script(_valid_kit_payload())
+    result = _run(job, _fit(7), _review(False, [LETTER_ISSUE]),
+                  steps_service.repair_step(complete_kit=model, deps=("fit_score", "review")))
+    assert result.status == "packet_ready", result.terminal_reason
+    assert "Opens with a vague line." in model.prompts[0] and "Start with the product." in model.prompts[0]
+    saved = job_store.get_job(job.id)
+    assert saved.cover_letter.startswith("Acme Cloud needs") and saved.fit_score == 7
+    assert result.steps["repair"].output == {"repaired": ["cover_letter"], "unrepaired": []}
+
+
+def test_repair_regenerates_a_flagged_answer_in_place():
+    old = ApplicationAnswer(id="a1", question="Why Acme Cloud?", answer="Old stiff reply.",
+                            created_at="t", updated_at="t")
+    harsh = ApplicationAnswer(id="a2", question="Salary?", needs_user_input=True, clarification="ask",
+                              created_at="t", updated_at="t")
+    job = _job(application_answers=[old, harsh])
+    issue = {"field": "Why Acme Cloud?", "problem": "Reads stiff.", "fix": "Say one real thing."}
+    model = Script(GOOD_ANSWER)
+    result = _run(job, _review(False, [issue, {"field": "Salary?", "problem": "Empty.", "fix": ""}]),
+                  steps_service.repair_step(complete_answer=model, deps=("review",)))
+    assert result.status == "packet_ready", result.terminal_reason
+    answers = job_store.get_job(job.id).application_answers
+    assert [a.id for a in answers] == ["a1", "a2"]
+    assert answers[0].answer.startswith("I built a RAG platform") and answers[1].needs_user_input
+    assert "Reads stiff." in model.prompts[0] and len(model.prompts) == 1
+    assert result.steps["repair"].output == {"repaired": ["Why Acme Cloud?"], "unrepaired": ["Salary?"]}
+
+
+def test_a_repair_that_still_fails_keeps_the_old_text_and_the_run_goes_on():
+    job = _job(cover_letter="Old letter for Acme Cloud.")
+    bad = _valid_kit_payload()
+    bad["cover_letter"] = "Too short for Acme Cloud."
+    result = _run(job, _review(False, [LETTER_ISSUE]),
+                  steps_service.repair_step(complete_kit=Script(bad), deps=("review",)))
+    assert result.status == "packet_ready"
+    assert job_store.get_job(job.id).cover_letter == "Old letter for Acme Cloud."
+    assert result.steps["repair"].output == {"repaired": [], "unrepaired": ["cover_letter"]}

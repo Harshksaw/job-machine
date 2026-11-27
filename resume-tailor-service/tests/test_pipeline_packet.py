@@ -98,17 +98,18 @@ def test_packet_pipeline_order_and_dependencies():
     assert pipeline.name == "packet" and pipeline.done_status == "packet_ready"
     assert pipeline.order == [
         "claim", "resolve_apply_url", "fetch_jd", "liveness", "eligibility", "fit_score",
-        "company_context", "kit", "form_fields", "people", "answers", "review", "brief",
+        "company_context", "kit", "form_fields", "people", "answers", "review", "repair", "brief",
     ]
     deps = {step.name: step.deps for step in pipeline.steps}
     for name in ("company_context", "kit", "form_fields", "people"):
         assert deps[name] == ("fit_score",)
     assert set(deps["answers"]) == {"company_context", "kit", "form_fields", "people"}
-    assert deps["review"] == ("answers",) and deps["brief"] == ("review",)
+    assert deps["review"] == ("answers",) and deps["repair"] == ("fit_score", "review")
+    assert deps["brief"] == ("repair",)
     brief = pipeline.steps[-1]
     assert brief.owns == ("research_brief", "status")
     kinds = {step.name: step.kind for step in pipeline.steps}
-    assert kinds["kit"] == kinds["answers"] == "service"
+    assert kinds["kit"] == kinds["answers"] == kinds["repair"] == "service"
     assert all(kinds[n] == "agent" for n in
                ("eligibility", "fit_score", "company_context", "form_fields", "people", "review"))
 
@@ -190,7 +191,22 @@ def test_failing_review_still_ready_with_issues_under_needs_harsh():
     assert result.status == "packet_ready", result.terminal_reason
     saved = job_store.get_job(job.id)
     assert saved.review.passed is False
-    assert "Reads stiff." in _sections(saved.research_brief)["NEEDS HARSH"]
+    needs = _sections(saved.research_brief)["NEEDS HARSH"]
+    assert "Reads stiff." in needs
+    # One repair round ran on the flagged answer; nothing reviewed it again.
+    assert result.steps["repair"].output["repaired"] == ["Why Acme Cloud?"]
+    assert "Repaired once after review, check again: Why Acme Cloud?" in needs
+
+
+def test_a_blocked_form_read_is_flagged_for_harsh():
+    job = _job()
+    adapters = _adapters(8)
+    adapters["browser_read"] = FakeAdapter("fake_browser", [ok({
+        "url": GH_POSTING, "fields": [], "note": "Captcha before the form."})])
+    result = _go(job, adapters)
+    assert result.status == "packet_ready", result.terminal_reason
+    needs = _sections(job_store.get_job(job.id).research_brief)["NEEDS HARSH"]
+    assert "Form not fully read: Captcha before the form." in needs
 
 
 def test_a_kit_that_never_validates_fails_the_run_and_keeps_completed_steps():

@@ -44,32 +44,42 @@ def _bank(path: Path | None):
 # kit
 
 
+def _draft_kit(ctx: StepContext, bank, complete: Complete | None, issues: list[str] | None = None):
+    """generate_kit with one validation repair, then the shared rules with one more.
+    Raises StepFailed with the errors when the draft still fails."""
+    try:
+        generated = generate_kit(ctx.job, bank, max_retries=_REPAIRS, previous_errors=issues,
+                                 **_kw(complete))
+        errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
+        if errors:
+            generated = generate_kit(ctx.job, bank, max_retries=0, previous_errors=errors,
+                                     **_kw(complete))
+            errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
+    except JobGenerationError as exc:
+        raise StepFailed(str(exc)) from exc
+    if errors:
+        raise StepFailed(f"cover letter failed the shared rules after one repair: {errors}")
+    return generated
+
+
+def _pinned(analysis, ctx: StepContext):
+    """fit_score is the gate (rule 2). Writing fit_analysis also sets fit_score from its
+    score, so the kit's own score must not move it."""
+    fit = (ctx.outputs.get("fit_score") or {}).get("score")
+    if isinstance(fit, int) and fit != analysis.score:
+        return analysis.model_copy(update={
+            "score": fit, "recommendation": "apply" if fit >= FIT_FLOOR else "review",
+        })
+    return analysis
+
+
 def kit_step(complete: Complete | None = None, *, bank_path: Path | None = None,
              deps: tuple[str, ...] = ()) -> StepSpec:
     def kit(ctx: StepContext) -> StepResult:
-        bank = _bank(bank_path)
-        try:
-            generated = generate_kit(ctx.job, bank, max_retries=_REPAIRS, **_kw(complete))
-            errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
-            if errors:
-                generated = generate_kit(ctx.job, bank, max_retries=0, previous_errors=errors,
-                                         **_kw(complete))
-                errors = rules.cover_letter_errors(generated.cover_letter, ctx.job.company)
-        except JobGenerationError as exc:
-            raise StepFailed(str(exc)) from exc
-        if errors:
-            raise StepFailed(f"cover letter failed the shared rules after one repair: {errors}")
-        analysis = generated.analysis
-        kit_score = analysis.score
-        fit = (ctx.outputs.get("fit_score") or {}).get("score")
-        if isinstance(fit, int) and fit != analysis.score:
-            # fit_score is the gate (rule 2). Writing fit_analysis also sets fit_score
-            # from its score, so the kit's own score must not move it.
-            analysis = analysis.model_copy(update={
-                "score": fit, "recommendation": "apply" if fit >= FIT_FLOOR else "review",
-            })
+        generated = _draft_kit(ctx, _bank(bank_path), complete)
+        analysis = _pinned(generated.analysis, ctx)
         return StepResult(
-            output={"kit_score": kit_score, "score": analysis.score,
+            output={"kit_score": generated.analysis.score, "score": analysis.score,
                     "words": len(generated.cover_letter.split())},
             writes={"fit_analysis": analysis.model_dump(), "cover_letter": generated.cover_letter},
         )
@@ -116,19 +126,20 @@ def _key(question: str) -> str:
     return " ".join(question.lower().split())
 
 
-def _answer(ctx: StepContext, bank, field: FormField, complete: Complete | None):
+def _answer(ctx: StepContext, bank, question: str, complete: Complete | None,
+            issues: list[str] | None = None):
     try:
-        draft = generate_answer(ctx.job, bank, field.label, ANSWER_CONSTRAINTS,
-                                max_retries=_REPAIRS, **_kw(complete))
+        draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
+                                max_retries=_REPAIRS, previous_errors=issues, **_kw(complete))
         errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
         if errors:
-            draft = generate_answer(ctx.job, bank, field.label, ANSWER_CONSTRAINTS,
+            draft = generate_answer(ctx.job, bank, question, ANSWER_CONSTRAINTS,
                                     max_retries=0, previous_errors=errors, **_kw(complete))
             errors = [] if draft.needs_user_input else rules.answer_errors(draft.answer)
     except JobGenerationError as exc:
-        raise StepFailed(f"answer for {field.label!r}: {exc}") from exc
+        raise StepFailed(f"answer for {question!r}: {exc}") from exc
     if errors:
-        raise StepFailed(f"answer for {field.label!r} failed the shared rules after one repair: {errors}")
+        raise StepFailed(f"answer for {question!r} failed the shared rules after one repair: {errors}")
     return draft
 
 
@@ -154,7 +165,7 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
                 draft = GeneratedAnswer(needs_user_input=True, clarification=_choice_note(field))
             else:
                 bank = bank or _bank(bank_path)
-                draft = _answer(ctx, bank, field, complete)
+                draft = _answer(ctx, bank, field.label, complete)
             if draft.needs_user_input:
                 needs.append(field.label)
             stamp = now_iso()
@@ -173,3 +184,61 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
 
     return StepSpec("answers", "service", deps=deps, owns=("application_answers",),
                     capability="reason", run=answers)
+
+
+# repair (spec 6.4)
+
+
+def _issue_text(issue: dict) -> str:
+    text = f"Review: {issue.get('problem', '')}".strip()
+    return text + (f" Fix: {issue['fix']}" if issue.get("fix") else "")
+
+
+def repair_step(complete_kit: Complete | None = None, complete_answer: Complete | None = None, *,
+                bank_path: Path | None = None, deps: tuple[str, ...] = ()) -> StepSpec:
+    """One repair round on what a failing review flagged: the cover letter, or a drafted
+    answer by its question, regenerated once with the review issues fed back. There is
+    no second review, so the review stays failed and its issues stay under NEEDS HARSH;
+    a repair that still fails validation keeps the old text and the run goes on."""
+
+    def repair(ctx: StepContext) -> StepResult:
+        review = ctx.outputs.get("review") or {}
+        repaired: list[str] = []
+        unrepaired: list[str] = []
+        if review.get("pass") is not False:
+            return StepResult(output={"repaired": repaired, "unrepaired": unrepaired})
+        by_field: dict[str, list[str]] = {}
+        for issue in review.get("issues") or []:
+            if isinstance(issue, dict) and str(issue.get("field") or "").strip():
+                by_field.setdefault(str(issue["field"]).strip(), []).append(_issue_text(issue))
+        bank = _bank(bank_path)
+        writes: dict = {}
+        answers = list(ctx.job.application_answers)
+        for field, issues in by_field.items():
+            try:
+                if field == "cover_letter" and ctx.job.cover_letter.strip():
+                    generated = _draft_kit(ctx, bank, complete_kit, issues)
+                    writes["fit_analysis"] = _pinned(generated.analysis, ctx).model_dump()
+                    writes["cover_letter"] = generated.cover_letter
+                    repaired.append(field)
+                    continue
+                index = next((i for i, a in enumerate(answers)
+                              if _key(a.question) == _key(field) and not a.needs_user_input), None)
+                if index is None:
+                    unrepaired.append(field)
+                    continue
+                draft = _answer(ctx, bank, answers[index].question, complete_answer, issues)
+                answers[index] = answers[index].model_copy(update={
+                    "answer": draft.answer, "source_ids": draft.source_ids,
+                    "needs_user_input": draft.needs_user_input,
+                    "clarification": draft.clarification, "updated_at": now_iso(),
+                })
+                writes["application_answers"] = [a.model_dump() for a in answers]
+                repaired.append(field)
+            except StepFailed:
+                unrepaired.append(field)
+        return StepResult(output={"repaired": repaired, "unrepaired": unrepaired}, writes=writes)
+
+    return StepSpec("repair", "service", deps=deps,
+                    owns=("fit_analysis", "cover_letter", "application_answers"),
+                    capability="reason", run=repair)

@@ -29,7 +29,7 @@ Spec: `docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md` sections 
    generate_answer, off by default.
 5. pipelines: claim -> resolve_apply_url -> fetch_jd -> liveness -> eligibility ->
    fit_score -> (company_context, kit, form_fields, people) -> answers -> review ->
-   brief(mark_ready). Owner ruling: resolve_apply_url moves ahead of fetch_jd and
+   repair -> brief(mark_ready). Owner ruling: resolve_apply_url moves ahead of fetch_jd and
    liveness in the M3 chain too, so board listings get their JD from the employer ATS.
 6. End to end test with FakeAdapters, then an independent review and fixes.
 
@@ -39,9 +39,16 @@ Spec: `docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md` sections 
   also writes fit_analysis with the new score and matching recommendation, because
   `update_job` overwrites fit_score from fit_analysis.score. The kit step pins its
   analysis score to the fit_score output for the same reason and records `kit_score`.
-- The review driven repair round of 6.4 needs a runner that reruns an earlier step; M4
-  does not add one. A failing review lands under NEEDS HARSH and the packet is still
-  ready, which is the spec's end state after a failed repair.
+- The review driven repair round of 6.4 is a `repair` service step between review and
+  brief: it regenerates the flagged cover letter or answers once with the issues fed
+  back. There is no second review, so the review stays failed, its issues stay under
+  NEEDS HARSH with a "repaired once, check again" line, and the packet is still ready.
+  A repair that fails validation keeps the old text. Review on a different adapter
+  than the writer is left to the M2 router (kit and answers are service steps today).
+- Tier A2 (AGENTS.md): eligibility keeps a US, UK or Australia only remote role
+  eligible with `tier_a2`, and fit_score then needs 7 instead of 6.
+- Choice, date and number form fields that are not personal become `needs_user_input`
+  answers with their options, never skipped silently (rule 5).
 - Agent fallbacks for fetch_jd and resolve_apply_url stay `needs_agent` outputs (M2+).
 - answers skips personal value fields (name, contact, links, resume); judgment
   questions are kept and marked `needs_user_input` by the existing detection with no

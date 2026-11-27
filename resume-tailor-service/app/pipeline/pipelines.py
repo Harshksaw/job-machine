@@ -1,12 +1,14 @@
 """The packet pipeline: one dossier from intake to an apply packet.
 
     claim -> resolve_apply_url -> fetch_jd -> liveness -> eligibility -> fit_score
-      -> (company_context, kit, form_fields, people) -> answers -> review -> brief
+      -> (company_context, kit, form_fields, people) -> answers -> review -> repair -> brief
 
 resolve_apply_url runs before fetch_jd and liveness (owner ruling, M4), so a board
 listing gets its JD and its liveness check from the employer ATS. A fit below 6 ends
 the run "retained_for_review" before anything is written for the application (rule 2);
-people runs only at fit 8 and up. brief marks the dossier ready.
+people runs only at fit 8 and up. A failing review gets one repair round on what it
+flagged (spec 6.4); brief then marks the dossier ready, with any open review issues
+under NEEDS HARSH.
 
 Design: docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md section 4.
 """
@@ -39,7 +41,9 @@ def packet_steps(
         steps_agent.people_step(deps=after_fit),
         steps_service.answers_step(complete_answer, bank_path=bank_path, deps=_FAN_OUT),
         steps_agent.review_step(deps=("answers",)),
-        steps_code.brief_step(deps=("review",), mark_ready=True),
+        steps_service.repair_step(complete_kit, complete_answer, bank_path=bank_path,
+                                  deps=("fit_score", "review")),
+        steps_code.brief_step(deps=("repair",), mark_ready=True),
     )
 
 
