@@ -301,9 +301,12 @@ def post_cancel(run_id: str, x_job_machine: str | None = Header(default=None)) -
 
 @router.get("/worker")
 def get_worker() -> dict:
-    """Whether this service process runs the worker pool (PIPELINE_WORKERS > 0)."""
+    """Whether this service process runs the worker pool (PIPELINE_WORKERS > 0), how
+    many workers claim runs now (Settings `workers`) and the most it may use."""
     pool = worker.ACTIVE_POOL
-    return {"running": pool is not None, "workers": pool.size if pool is not None else 0}
+    if pool is None:
+        return {"running": False, "workers": 0, "max_workers": 0}
+    return {"running": True, "workers": pool.active_workers, "max_workers": pool.size}
 
 
 @router.get("/stats")

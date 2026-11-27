@@ -352,3 +352,21 @@ def test_stop_waits_one_deadline_for_the_whole_pool():
         thread.join(5)
     assert took < 0.7
     assert {store.get_run(r.id).status for r in runs} == {"queued"}
+
+
+def test_settings_workers_sets_how_many_threads_claim_and_zero_pauses():
+    job = _job()
+    pipeline = Pipeline("p", (StepSpec("a", "code", run=lambda ctx: StepResult()),))
+    run = store.create_run(job.id, "p", pipeline.order)
+    current = {"cfg": config.PipelineConfig.model_validate({"workers": 0})}
+    pool = _pool({"p": pipeline}, size=2, load_config=lambda: current["cfg"])
+    pool.start()
+    try:
+        time.sleep(0.3)
+        assert store.get_run(run.id).status == "queued"  # paused from Settings
+        assert pool.active_workers == 0
+        current["cfg"] = config.PipelineConfig.model_validate({"workers": 4})
+        assert _wait(_ended(run.id))
+        assert pool.active_workers == 2  # capped by PIPELINE_WORKERS
+    finally:
+        pool.stop()

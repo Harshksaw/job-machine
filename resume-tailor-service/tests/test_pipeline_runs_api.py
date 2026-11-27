@@ -184,10 +184,11 @@ def test_worker_route_reports_whether_the_pool_runs(client, monkeypatch):
     from app.pipeline import worker
 
     monkeypatch.setattr(worker, "ACTIVE_POOL", None)
-    assert client.get("/api/pipeline/worker").json() == {"running": False, "workers": 0}
+    assert client.get("/api/pipeline/worker").json() == {"running": False, "workers": 0, "max_workers": 0}
 
     class Pool:
         size = 3
+        active_workers = 2
 
     monkeypatch.setattr(worker, "ACTIVE_POOL", Pool())
-    assert client.get("/api/pipeline/worker").json() == {"running": True, "workers": 3}
+    assert client.get("/api/pipeline/worker").json() == {"running": True, "workers": 2, "max_workers": 3}

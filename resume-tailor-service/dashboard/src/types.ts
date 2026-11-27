@@ -380,7 +380,9 @@ export interface PipelineStats {
 
 export interface PipelineWorkerStatus {
   running: boolean;
+  // Workers claiming runs now (Settings `workers`), at most max_workers (PIPELINE_WORKERS).
   workers: number;
+  max_workers: number;
 }
 
 export interface PipelineEnqueueResult {

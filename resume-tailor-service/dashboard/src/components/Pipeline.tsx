@@ -233,7 +233,9 @@ export default function Pipeline() {
           {workerStatus === null
             ? "Checking the worker..."
             : workerStatus.running
-              ? `The worker pool is running with ${workerStatus.workers} ${workerStatus.workers === 1 ? "worker" : "workers"}.`
+              ? workerStatus.workers === 0
+                ? `The worker pool is paused: workers is 0 in Settings (up to ${workerStatus.max_workers} allowed by PIPELINE_WORKERS).`
+                : `The worker pool is running with ${workerStatus.workers} of ${workerStatus.max_workers} ${workerStatus.max_workers === 1 ? "worker" : "workers"}. Change Workers in Settings to scale or pause it.`
               : "The worker pool is off (PIPELINE_WORKERS is 0 or unset), so queued runs wait until it is turned on or scripts/run_task.py drains them."}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">

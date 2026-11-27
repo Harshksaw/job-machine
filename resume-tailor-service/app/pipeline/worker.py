@@ -1,8 +1,11 @@
 """The worker pool that executes queued pipeline runs (M6, spec section 8).
 
 Started from the FastAPI lifespan only when the `PIPELINE_WORKERS` env var is a
-positive number (its value is the pool size); unset or 0 starts nothing, so merging
-this code changes nothing until Harsh turns it on. Each worker thread:
+positive number; unset or 0 starts nothing, so merging this code changes nothing until
+Harsh turns it on. `PIPELINE_WORKERS` is the switch and the most threads this process
+starts; `workers` in the stored config (Settings, seeded from agents.yaml, spec section
+8) is how many of them claim runs, read every tick, so 0 pauses the pool and a change
+applies without a restart. Each claiming worker thread:
 
 1. claims the oldest queued run whose lease is free (`store.claim`, one write, so two
    threads or two service copies never take the same run);
@@ -181,15 +184,18 @@ class WorkerPool:
         self._gates = Gates()
         self._chain = gated_chain(chain or _default_chain(), self._gates, load_config, self._stop)
         self._active: dict[str, str] = {}  # owner -> run id
+        # How many threads may claim now: Settings `workers`, capped by `size`.
+        self.active_workers = 0
         self._active_lock = threading.Lock()
         self.threads: list[threading.Thread] = []
 
     def start(self) -> None:
         if self.threads:
             return
+        self._refresh_target()
         for index in range(self.size):
             owner = f"{self._prefix}-{index}"
-            self.threads.append(threading.Thread(target=self._loop, args=(owner,), name=owner, daemon=True))
+            self.threads.append(threading.Thread(target=self._loop, args=(owner, index), name=owner, daemon=True))
         self.threads.append(threading.Thread(target=self._maintain, name=f"{self._prefix}-maint", daemon=True))
         for thread in self.threads:
             thread.start()
@@ -221,20 +227,33 @@ class WorkerPool:
             self.maintain()
             self._stop.wait(self._tick)
 
+    def _refresh_target(self) -> PipelineConfig | None:
+        try:
+            cfg = self._load_config()
+        except Exception:
+            log.exception("could not read the pipeline config; keeping %s workers", self.active_workers)
+            return None
+        self.active_workers = max(0, min(self.size, cfg.workers))
+        return cfg
+
     def maintain(self) -> None:
+        cfg = self._refresh_target()
         try:
             for run_id in store.reap_expired():
                 log.info("requeued run %s after its lease lapsed", run_id)
         except Exception:
             log.exception("reaper failed")
         try:
-            for run in enqueue_due(self._load_config()):
+            for run in enqueue_due(cfg) if cfg is not None else []:
                 log.info("scheduled %s run %s", run.pipeline, run.id)
         except Exception:
             log.exception("schedules failed")
 
-    def _loop(self, owner: str) -> None:
+    def _loop(self, owner: str, index: int = 0) -> None:
         while not self._stop.is_set():
+            if index >= self.active_workers:
+                self._stop.wait(self._poll)
+                continue
             try:
                 run = self.claim_next(owner)
             except Exception:
