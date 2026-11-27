@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 
 class TailorRequest(BaseModel):
@@ -199,6 +199,46 @@ class ApplicationAnswer(ApplicationAnswerInput):
     updated_at: str
 
 
+FORM_FIELD_KINDS = (
+    "text", "textarea", "select", "radio", "checkbox", "file",
+    "email", "phone", "url", "date", "number", "other",
+)
+
+
+class FormField(BaseModel):
+    """One field of the real application form, read by the pipeline's form_fields step."""
+    label: str
+    kind: str = "text"
+    required: bool = False
+    options: list[str] = Field(default_factory=list)
+
+    @field_validator("label")
+    @classmethod
+    def _label_not_blank(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("label must not be blank")
+        return value.strip()
+
+    @field_validator("kind")
+    @classmethod
+    def _known_kind(cls, value: str) -> str:
+        if value not in FORM_FIELD_KINDS:
+            raise ValueError(f"kind must be one of {FORM_FIELD_KINDS}")
+        return value
+
+
+class ReviewIssue(BaseModel):
+    field: str
+    problem: str
+    fix: str = ""
+
+
+class PacketReview(BaseModel):
+    """The pipeline review of a packet. Agents write `pass`; it is stored as `passed`."""
+    passed: bool = Field(validation_alias=AliasChoices("passed", "pass"))
+    issues: list[ReviewIssue] = Field(default_factory=list)
+
+
 class JobActivityInput(BaseModel):
     kind: str = "note"
     title: str
@@ -305,6 +345,9 @@ class JobWorkspaceInput(BaseModel):
     cover_letter: str = ""
     application_answers: list[ApplicationAnswer] = Field(default_factory=list)
     tailored_resume_id: str | None = None
+    # Pipeline fields (agent orchestrator); defaults keep older documents loadable.
+    form_fields: list[FormField] = Field(default_factory=list)
+    review: PacketReview | None = None
 
     @field_validator("company", "role")
     @classmethod

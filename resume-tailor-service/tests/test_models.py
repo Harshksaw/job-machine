@@ -91,3 +91,36 @@ def test_person_statuses_constant():
         "replied",
         "skip",
     )
+
+
+def test_old_dossier_documents_load_without_form_fields_or_review():
+    from app.models import JobWorkspace
+
+    job = JobWorkspace.model_validate({
+        "id": "j1", "company": "Acme", "role": "Engineer",
+        "created_at": "t", "updated_at": "t",
+    })
+    assert job.form_fields == [] and job.review is None
+
+
+def test_form_field_and_review_round_trip():
+    from app.models import FormField, JobWorkspaceInput, PacketReview
+
+    data = JobWorkspaceInput(
+        company="Acme", role="Engineer",
+        form_fields=[{"label": "Why us?", "kind": "textarea", "required": True}],
+        review={"pass": False, "issues": [{"field": "cover_letter", "problem": "stiff", "fix": "loosen"}]},
+    )
+    assert data.form_fields == [FormField(label="Why us?", kind="textarea", required=True)]
+    assert isinstance(data.review, PacketReview) and data.review.passed is False
+    again = JobWorkspaceInput.model_validate(data.model_dump())
+    assert again == data
+
+
+def test_form_field_rejects_unknown_kind_and_blank_label():
+    from app.models import FormField
+
+    with pytest.raises(ValidationError):
+        FormField(label="Why us?", kind="essay")
+    with pytest.raises(ValidationError):
+        FormField(label="  ", kind="text")
