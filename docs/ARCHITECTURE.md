@@ -121,6 +121,29 @@ The SPA is mounted **last** so `StaticFiles` can never shadow an
 API route, and is guarded by an `is_dir()` check so the API still boots when the
 frontend has not been built.
 
+### 3.1a Agent orchestrator (`app/pipeline/`)
+
+One pipeline run per dossier walks a step DAG (claim, resolve_apply_url, fetch_jd,
+liveness, eligibility, fit_score, then company_context, kit, form_fields and people in
+parallel, answers, review, repair, brief) and stops at the apply packet; it never
+submits or contacts anyone. Task pipelines (mail sync, liveness sweep, remote boards,
+ATS watchlist) use the same runner with no dossier.
+
+- `runner.py` runs a run in dependency order, saves every step state as it changes,
+  writes only fields a step owns, and renews the run lease every 30s.
+- `router.py` and `adapters.py` pick and call agents (`cli`, `api`, `sdk`), with health,
+  budget and ledger stats; every try is a `pipeline_attempts` record.
+- `worker.py` is the pool, started from the FastAPI lifespan only when
+  `PIPELINE_WORKERS` > 0: claims queued runs, enforces adapter `max_parallel` and
+  capability caps, requeues runs whose lease lapsed, enqueues scheduled tasks.
+- `store.py` keeps runs and attempts in the `documents` table (JSON files without a
+  database URL); `config.py` keeps the versioned agent config, seeded from
+  `content/agents.yaml`.
+- `api.py` serves `/api/pipeline/*` (config, adapters, runs, retry, cancel, stats,
+  worker, mail results); `app/mcp_server.py` exposes the same to any agent over MCP.
+
+Operating it: `docs/AGENT-PLAYBOOK.md` "Agent orchestrator pipeline".
+
 ### 3.2 Resume tailoring pipeline (as built today)
 
 ```mermaid

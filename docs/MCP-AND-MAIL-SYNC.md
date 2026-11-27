@@ -20,9 +20,9 @@ Point it at a test copy (for example port 8421) by changing that variable.
 | `run_status(run_id \| job_id \| pipeline)` | One run with steps and attempts, or `{runs: [...]}` |
 | `search_mail_events(company, outcome, status, since, q, limit)` | Stored mail sync results; never reads the inbox. Also registered as `search_mail`, the spec name |
 
-Runs only queue until the M6 worker exists; `uv run python scripts/run_task.py --queued`
-executes queued task runs. Until then, schedule `scripts/run_task.py mail_sync` yourself
-(launchd or cron) if you want it unattended.
+Queued runs execute in the service's worker pool when it runs with `PIPELINE_WORKERS`
+above 0, and task pipelines can be put on a timer from Settings. Without the pool,
+`uv run python scripts/run_task.py --queued` executes queued task runs.
 
 Replace `/ABSOLUTE/PATH/TO/job-machine` below with the checkout path.
 

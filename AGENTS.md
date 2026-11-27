@@ -28,6 +28,8 @@ two files disagree, the owning file below wins.
 | Live queue state: applied, blocked, in flight | newest `SESSION-HANDOFF-*.md` (current: `SESSION-HANDOFF-2026-11-25.md`) | **no, gitignored** |
 | Browser profile setup and CDP wiring | `docs/BROWSER_PROFILE.md` | yes, committed |
 | Service internals, endpoints, persistence | `docs/ARCHITECTURE.md`, `resume-tailor-service/README.md` | yes, committed |
+| Agent orchestrator pipeline: enqueue, retry, schedules, workers | `docs/AGENT-PLAYBOOK.md` "Agent orchestrator pipeline" | yes, committed |
+| MCP server tools and Gmail mail sync | `docs/MCP-AND-MAIL-SYNC.md` | yes, committed |
 
 **The resume bank is the only description of Harsh's experience.** This file deliberately
 does not summarize his work history, stack, or accomplishments. A prose copy here would
@@ -230,6 +232,26 @@ and wait for his yes. He approves the document itself, not the idea of tailoring
 what changed against the original. This is the only artifact gated this way.
 Include `job_id`, `job_url`, and `session` in the `POST /tailor` body so the PDF
 attaches to the dossier and the artifact is logged. Details in `docs/AGENT-PLAYBOOK.md`.
+
+## Agent orchestrator pipeline
+
+Research, eligibility, fit scoring, the kit, answers and the review now run as one
+pipeline per dossier inside the service (`resume-tailor-service/app/pipeline/`). Prefer it
+over running the old research or scoring prompts yourself:
+
+- **Enqueue:** `POST /api/pipeline/runs` with header `X-Job-Machine: dashboard` and
+  `{"pipeline":"packet","job_ids":["<id>"]}`, or the `enqueue_run` tool of the
+  `job-machine` MCP server. Follow it with `GET /api/pipeline/runs/<run_id>`, the MCP
+  `run_status` tool, or the dashboard **Pipeline** tab.
+- **It stops at the apply packet.** It never submits, sends, signs in or contacts anyone;
+  applying and outreach stay with you under the hard rules above.
+- **Runs only execute when the service has `PIPELINE_WORKERS` above 0.** Agents, models,
+  schedules and "Use the pipeline for research" are set in **Settings**, never in code.
+- A pipeline run claims the dossier like any agent does, so check for a fresh claim
+  before you work a dossier that has a run queued or running.
+
+How to retry, cancel, read stats and drain task runs: `docs/AGENT-PLAYBOOK.md`
+"Agent orchestrator pipeline". The MCP setup: `docs/MCP-AND-MAIL-SYNC.md`.
 
 ## Sheet logging (MANDATORY after external actions)
 
