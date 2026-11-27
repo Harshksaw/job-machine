@@ -247,8 +247,10 @@ over running the old research or scoring prompts yourself:
   applying and outreach stay with you under the hard rules above.
 - **Runs only execute when the service has `PIPELINE_WORKERS` above 0.** Agents, models,
   schedules and "Use the pipeline for research" are set in **Settings**, never in code.
-- A pipeline run claims the dossier like any agent does, so check for a fresh claim
-  before you work a dossier that has a run queued or running.
+- A pipeline run claims the dossier in its first step, like any agent does, and stops if
+  another session holds a fresh claim. A queued run has not claimed yet, so before you
+  work a dossier also check `GET /api/pipeline/runs?job_id=<id>` and leave it alone if a
+  packet run is queued or running.
 
 How to retry, cancel, read stats and drain task runs: `docs/AGENT-PLAYBOOK.md`
 "Agent orchestrator pipeline". The MCP setup: `docs/MCP-AND-MAIL-SYNC.md`.

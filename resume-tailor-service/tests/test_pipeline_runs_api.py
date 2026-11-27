@@ -192,3 +192,25 @@ def test_worker_route_reports_whether_the_pool_runs(client, monkeypatch):
 
     monkeypatch.setattr(worker, "ACTIVE_POOL", Pool())
     assert client.get("/api/pipeline/worker").json() == {"running": True, "workers": 2, "max_workers": 3}
+
+
+def test_packet_runs_by_filter_pick_matching_dossiers(client):
+    def add(role, status, fit):
+        job = job_store.add_job(JobWorkspaceInput(company="Acme", role=role, status=status))
+        job_store.patch_job(job.id, {"fit_score": fit}, reason="test")
+        return job.id
+
+    high = add("A", "ready", 9)
+    add("B", "ready", 5)
+    add("C", "discovered", 9)
+    other = add("D", "ready", 8)
+    body = client.post("/api/pipeline/runs", json={"pipeline": "packet",
+                                                   "filter": {"status": "ready", "min_fit": 8, "limit": 1}},
+                       headers=HEADERS).json()
+    assert len(body["queued"]) == 1 and body["queued"][0]["job_id"] in (high, other)
+    again = client.post("/api/pipeline/runs", json={"pipeline": "packet", "filter": {"status": "ready", "min_fit": 8}},
+                        headers=HEADERS).json()
+    assert {r["job_id"] for r in again["queued"]} | set(again["skipped"]) == {high, other}
+    both = client.post("/api/pipeline/runs", json={"pipeline": "packet", "job_ids": [high], "filter": {"status": "ready"}},
+                       headers=HEADERS)
+    assert both.status_code == 422

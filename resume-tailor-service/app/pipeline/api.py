@@ -138,9 +138,29 @@ def post_adapter_test(name: str, x_job_machine: str | None = Header(default=None
 MAX_ENQUEUE = 50
 
 
+class RunFilter(BaseModel):
+    """Pick dossiers instead of naming them (spec section 7): status, minimum fit, limit."""
+    status: str = ""
+    min_fit: int | None = Field(default=None, ge=1, le=10)
+    limit: int = Field(default=20, ge=1, le=MAX_ENQUEUE)
+
+
 class RunRequest(BaseModel):
     pipeline: str
     job_ids: list[str] = Field(default_factory=list, max_length=MAX_ENQUEUE)
+    filter: RunFilter | None = None
+
+
+def _filtered(rule: RunFilter) -> list[str]:
+    """Dossier ids matching the filter, highest fit first. Dossiers that already have a
+    queued or running packet run count toward the limit and are reported as skipped."""
+    rows = [
+        summary for summary in job_store.list_summaries()
+        if (not rule.status or summary.status == rule.status)
+        and (rule.min_fit is None or (summary.fit_score or 0) >= rule.min_fit)
+    ]
+    rows.sort(key=lambda summary: (-(summary.fit_score or 0), summary.created_at))
+    return [summary.id for summary in rows[: rule.limit]]
 
 
 def _packet_order() -> list[str]:
@@ -163,8 +183,14 @@ def post_runs(data: RunRequest, x_job_machine: str | None = Header(default=None)
     if data.pipeline != "packet":
         names = ", ".join(["packet", *tasks.TASK_BUILDERS])
         raise HTTPException(status_code=422, detail=f"unknown pipeline {data.pipeline!r}; one of {names}")
+    if data.job_ids and data.filter is not None:
+        raise HTTPException(status_code=422, detail="give job_ids or filter, not both")
+    if data.filter is not None:
+        data.job_ids = _filtered(data.filter)
+        if not data.job_ids:
+            return {"queued": [], "skipped": []}
     if not data.job_ids:
-        raise HTTPException(status_code=422, detail="packet runs need job_ids")
+        raise HTTPException(status_code=422, detail="packet runs need job_ids or a filter")
     missing = [job_id for job_id in data.job_ids if job_store.get_job(job_id) is None]
     if missing:
         raise HTTPException(status_code=404, detail=f"no dossier {', '.join(missing)}")

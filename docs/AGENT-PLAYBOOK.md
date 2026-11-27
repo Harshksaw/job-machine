@@ -818,7 +818,8 @@ Design: `docs/superpowers/specs/2026-11-26-agent-orchestrator-design.md`. Code:
 needs the header `X-Job-Machine: dashboard`, and the API is loopback only.
 
 - **Enqueue a dossier:** `POST /api/pipeline/runs` `{"pipeline":"packet","job_ids":[...]}`
-  (at most 50 ids). A dossier that already has a queued or running packet run is listed
+  (at most 50 ids), or `{"pipeline":"packet","filter":{"status":"ready","min_fit":8,"limit":20}}`
+  to pick dossiers by status and fit, highest fit first. A dossier that already has a queued or running packet run is listed
   under `skipped`, not queued twice. Task pipelines (`mail_sync`, `liveness_sweep`,
   `remote_boards`, `ats_watchlist`) take no ids and answer 409 while one is active.
 - **Follow it:** `GET /api/pipeline/runs?job_id=<id>`, `GET /api/pipeline/runs/<run_id>`
