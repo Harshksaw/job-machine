@@ -374,7 +374,7 @@ def _stub(name, output, deps=()):
 def test_brief_assembles_every_section_and_marks_the_dossier_ready():
     job = _job(
         status="researching", apply_url=GH_POSTING, location="Remote, Canada",
-        fit_analysis={"score": 7, "recommendation": "apply", "verdict": "Strong backend match — light on Go",
+        fit_analysis={"score": 7, "recommendation": "apply", "verdict": "Strong backend match \u2014 light on Go",
                       "gaps": ["No production Go"]},
         cover_letter="Dear Acme team, ...",
     )
@@ -393,7 +393,7 @@ def test_brief_assembles_every_section_and_marks_the_dossier_ready():
     assert saved.status == "ready"
     text = saved.research_brief
     assert [line for line in text.splitlines() if line in HEADINGS] == HEADINGS
-    assert "—" not in text and "not available yet" not in text
+    assert "\u2014" not in text and "not available yet" not in text
     s = _sections(text)
     assert "Backend Engineer at Acme" in s["SUMMARY"] and "7/10" in s["SUMMARY"]
     assert "live" in s["SUMMARY"]
