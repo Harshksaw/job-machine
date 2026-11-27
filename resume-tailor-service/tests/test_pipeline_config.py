@@ -100,10 +100,13 @@ def test_key_set_reads_the_environment_never_the_value(monkeypatch):
 def test_committed_defaults_parse_and_hold_no_secrets():
     cfg = config.load_defaults()
 
-    assert {"gemini_lite", "claude_haiku", "codex", "cursor", "opencode_free", "antigravity", "openrouter"} <= set(cfg.adapters)
+    assert {"gemini_lite", "claude_haiku", "codex", "cursor", "opencode_free", "antigravity", "openrouter_haiku",
+            "gemini_flash"} <= set(cfg.adapters)
     assert cfg.adapters["claude_haiku"].isolation == "claude_hermetic"
-    assert cfg.adapters["openrouter"].type == "sdk"
-    assert cfg.adapters["openrouter"].enabled is False
+    assert cfg.adapters["openrouter_haiku"].type == "sdk"
+    assert cfg.adapters["openrouter_haiku"].key_env == "OPENROUTER_API_KEY"
+    assert cfg.adapters["openrouter_haiku"].tools == ["web_fetch", "dossier_read"]
+    assert cfg.adapters["gemini_flash"].enabled is False
     assert cfg.capability_caps["browser_read"] == 2
     text = config.DEFAULTS_PATH.read_text()
     assert "AIza" not in text and "sk-" not in text

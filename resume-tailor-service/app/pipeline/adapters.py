@@ -303,11 +303,33 @@ class ApiAdapter(_Base):
 
 
 class SdkAdapter(_Base):
-    """Placeholder for in process agents (Pydantic AI). Reports unavailable so the
-    router simply moves past it until M2b."""
+    """An in process agent on Pydantic AI (app/pipeline/sdk.py). A step gets its own
+    schema class as the structured output type; a plain call gets the JSON schema."""
+
+    def invoke(self, step, ctx, errors: list[str]) -> AdapterResult:
+        return self._run(render_prompt(step, ctx, errors), run_id=ctx.run.id, step=step.name,
+                         output=step.schema or {"type": "object"}, timeout=self.spec.timeout_for(step.capability))
 
     def call(self, prompt: str, *, run_id: str, step: str, schema: dict, timeout: int) -> AdapterResult:
-        return self._result("unavailable", "sdk adapters arrive in M2b")
+        return self._run(prompt, run_id=run_id, step=step, output=schema, timeout=timeout)
+
+    def _run(self, prompt: str, *, run_id: str, step: str, output, timeout: float) -> AdapterResult:
+        if self.spec.key_env and not key_set(self.spec):
+            return self._result("unavailable", f"{self.spec.key_env} is not set")
+        from app.pipeline import sdk
+        from app.pipeline.config import load_config
+
+        servers = load_config().mcp_servers if self.spec.mcp else {}
+        output_path, log_path = _paths(run_id, step)
+        t0 = time.monotonic()
+        done = sdk.run(self.spec, prompt, output=output, timeout=timeout, servers=servers)
+        log_path.write_text(f"{done.outcome} in {time.monotonic() - t0:.1f}s model {done.model}\n{done.error}\n",
+                            encoding="utf-8")
+        if done.output is not None:
+            output_path.write_text(json.dumps(done.output), encoding="utf-8")
+        return AdapterResult(outcome=done.outcome, output=done.output, error=done.error, model=done.model,
+                             tokens_in=done.tokens_in, tokens_out=done.tokens_out, cost=done.cost,
+                             output_ref=str(output_path))
 
 
 def build_adapter(spec: AdapterSpec) -> CliAdapter | ApiAdapter | SdkAdapter:

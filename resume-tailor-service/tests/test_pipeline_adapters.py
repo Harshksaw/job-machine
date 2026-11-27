@@ -236,13 +236,15 @@ def test_api_adapter_without_key_env_is_unavailable_not_a_crash(monkeypatch):
     assert _call(ApiAdapter(spec)).outcome == "unavailable"
 
 
-def test_sdk_adapter_is_unavailable_until_m2b():
-    spec = AdapterSpec.model_validate({"name": "or", "type": "sdk", "model": "openrouter:x", "capabilities": ["reason"]})
+def test_sdk_adapter_without_its_key_is_unavailable(monkeypatch):
+    monkeypatch.delenv("NO_SUCH_OR_KEY", raising=False)
+    spec = AdapterSpec.model_validate({"name": "or", "type": "sdk", "model": "openrouter:x",
+                                       "key_env": "NO_SUCH_OR_KEY", "capabilities": ["reason"]})
     adapter = build_adapter(spec)
 
     assert isinstance(adapter, SdkAdapter)
     result = _call(adapter)
-    assert (result.outcome, result.error) == ("unavailable", "sdk adapters arrive in M2b")
+    assert (result.outcome, result.error) == ("unavailable", "NO_SUCH_OR_KEY is not set")
 
 
 def test_build_adapter_picks_the_type():

@@ -28,8 +28,14 @@ COLLECTION = "pipeline_config"
 
 CAPABILITIES = ("cheap", "reason", "web", "browser_read")
 Capability = Literal["cheap", "reason", "web", "browser_read"]
-# M2 speaks to Gemini over plain HTTP; other vendors come through `sdk` in M2b.
+# M2 speaks to Gemini over plain HTTP; other vendors come through `sdk` (Pydantic AI).
 API_PROVIDERS = ("gemini",)
+# `sdk` model strings are "<provider>:<model>". google-gla is the Pydantic AI v1 name for
+# Google AI Studio, kept as an alias of v2's "google". Only ollama (local) needs no key.
+SDK_PROVIDERS = ("openrouter", "openai", "anthropic", "google", "google-gla", "ollama")
+SDK_KEYLESS = ("ollama",)
+# Built in tools an sdk agent may be given (app/pipeline/sdk.py).
+SDK_TOOLS = ("web_fetch", "dossier_read")
 # Step timeouts per capability (spec 5.3), overridable per adapter.
 DEFAULT_TIMEOUTS: dict[str, int] = {"cheap": 180, "reason": 480, "web": 600, "browser_read": 600}
 
@@ -46,6 +52,30 @@ _BACKEND_OVERRIDE = None
 
 class VersionNotFound(KeyError):
     pass
+
+
+def _secret_env(env: dict[str, str]) -> list[str]:
+    return [name for name, value in env.items()
+            if _SECRET_NAME.search(name) or _SECRET_VALUE.match(value.strip())]
+
+
+class McpServer(BaseModel):
+    """An MCP server an sdk agent may use: a local command (stdio) or a URL."""
+    command: list[str] = Field(default_factory=list)
+    url: str = ""
+    env: dict[str, str] = Field(default_factory=dict)
+    timeout: int = Field(default=30, ge=1, le=600)
+
+    @model_validator(mode="after")
+    def _check(self) -> McpServer:
+        if bool(self.command) == bool(self.url.strip()):
+            raise ValueError("an mcp server needs exactly one of command or url")
+        if self.url and not self.url.startswith(("https://", "http://")):
+            raise ValueError("an mcp server url must be http or https")
+        secret = _secret_env(self.env)
+        if secret:
+            raise ValueError(f"env must not carry secrets ({', '.join(secret)}); name the variable in key_env and keep it in .env")
+        return self
 
 
 class AdapterSpec(BaseModel):
@@ -67,6 +97,9 @@ class AdapterSpec(BaseModel):
     timeouts: dict[Capability, int] = Field(default_factory=dict)
     # The tool name agent_health and tools/ai-meter know this adapter by.
     family: str = ""
+    # sdk only: built in tools (SDK_TOOLS) and MCP servers (names in mcp_servers).
+    tools: list[str] = Field(default_factory=list)
+    mcp: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _check(self) -> AdapterSpec:
@@ -78,8 +111,18 @@ class AdapterSpec(BaseModel):
             raise ValueError("an api adapter needs key_env, the env var that holds its key")
         if self.type == "api" and self.provider not in API_PROVIDERS:
             raise ValueError(f"api provider must be one of {', '.join(API_PROVIDERS)}")
-        secret = [name for name, value in self.env.items()
-                  if _SECRET_NAME.search(name) or _SECRET_VALUE.match(value.strip())]
+        if self.type == "sdk":
+            provider, _, model = self.model.partition(":")
+            if provider not in SDK_PROVIDERS or not model.strip():
+                raise ValueError(f"an sdk model must be provider:model with provider one of {', '.join(SDK_PROVIDERS)}")
+            if provider not in SDK_KEYLESS and not self.key_env.strip():
+                raise ValueError(f"an sdk adapter on {provider} needs key_env, the env var that holds its key")
+        elif self.tools or self.mcp:
+            raise ValueError("tools and mcp are for sdk adapters only")
+        unknown = [tool for tool in self.tools if tool not in SDK_TOOLS]
+        if unknown:
+            raise ValueError(f"unknown tool {', '.join(unknown)}; known: {', '.join(SDK_TOOLS)}")
+        secret = _secret_env(self.env)
         if secret:
             raise ValueError(f"env must not carry secrets ({', '.join(secret)}); name the variable in key_env and keep it in .env")
         if any(seconds <= 0 for seconds in self.timeouts.values()):
@@ -105,6 +148,7 @@ class PipelineConfig(BaseModel):
     adapters: dict[str, AdapterSpec] = Field(default_factory=dict)
     capability_caps: dict[Capability, int] = Field(default_factory=dict)
     steps: dict[str, StepPrefs] = Field(default_factory=dict)
+    mcp_servers: dict[str, McpServer] = Field(default_factory=dict)
     version: int = 0
     updated_at: str = ""
 
@@ -117,6 +161,12 @@ class PipelineConfig(BaseModel):
             for step, prefs in self.steps.items()
             for name in prefs.prefer + ([prefs.canary.adapter] if prefs.canary else [])
             if name not in self.adapters
+        ]
+        unknown += [
+            f"adapter {name} names unknown mcp server {server!r}"
+            for name, spec in self.adapters.items()
+            for server in spec.mcp
+            if server not in self.mcp_servers
         ]
         if unknown:
             raise ValueError("; ".join(unknown))

@@ -7,6 +7,9 @@
 # sections 5 and 13.5.
 #
 # Command placeholders: {prompt} (required for cli), {schema} (the step's JSON schema).
+# sdk adapters take a Pydantic AI model string, provider:model, with provider one of
+# openrouter, openai, anthropic, google (google-gla), ollama; `tools` are built in read
+# only tools (web_fetch, dossier_read) and `mcp` names entries of `mcp_servers`.
 # `family` is the tool name used by app/agent_health.py and tools/ai-meter, so a blocked
 # or over budget tool drops out of every chain that uses it.
 workers: 4
@@ -58,15 +61,33 @@ adapters:
     capabilities: [reason, web, browser_read]
     cost_tier: 3
     max_parallel: 1
-  openrouter:
-    # In process agent (Pydantic AI) arrives in M2b; off until then.
+  openrouter_haiku:
+    # In process agent on Pydantic AI (spec 13.1). One OpenRouter key reaches many
+    # vendors, so losing one is a model string change. Without OPENROUTER_API_KEY in
+    # .env the router skips it.
     type: sdk
     model: "openrouter:anthropic/claude-haiku-4.5"
     key_env: OPENROUTER_API_KEY
-    capabilities: [reason, web]
+    family: openrouter
+    tools: [web_fetch, dossier_read]
+    capabilities: [cheap, reason, web]
+    cost_tier: 2
+    max_parallel: 2
+    enabled: false
+  gemini_flash:
+    # The same in process agent on a direct Google AI Studio key.
+    type: sdk
+    model: "google:gemini-3.5-flash"
+    key_env: GEMINI_API_KEY
+    family: gemini
+    tools: [web_fetch, dossier_read]
+    capabilities: [cheap, reason, web]
     cost_tier: 2
     max_parallel: 2
     enabled: false
 capability_caps:
   browser_read: 2
 steps: {}
+# MCP servers an sdk adapter may name in its `mcp` list, for example:
+#   fetch: {command: [uvx, mcp-server-fetch]}
+mcp_servers: {}
