@@ -10,6 +10,7 @@ from app import (
     dashboard, job_store, jobs, people, render, search, sessions, system, tailor, telemetry,
 )
 from app.bank import load_bank
+from app.pipeline import api as pipeline_api
 from app.models import TailorRequest, TailorResponse, TailoredResumeMeta
 from app.slug import safe_slug
 from app.errors import TailorValidationError, PdfCompileError, CannotFitOnePageError, ClaudeCliError
@@ -97,6 +98,8 @@ app.include_router(jobs.router)
 app.include_router(sessions.router)
 app.include_router(search.router)
 app.include_router(system.router)
+# Agents and models settings (spec 13.5). Routes only: no pipeline worker starts here.
+app.include_router(pipeline_api.router)
 
 # Traces every request; exports only when OTEL_EXPORTER_OTLP_ENDPOINT is set.
 telemetry.setup(app)

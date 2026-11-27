@@ -225,3 +225,27 @@ def test_safe_slug_strips_path_traversal():
 
     assert safe_slug("Acme Corp", "Backend Engineer") == "acme-corp-backend-engineer"
     assert safe_slug("..", "..") == "job"
+
+
+def test_pipeline_routes_are_mounted_before_the_spa(monkeypatch, tmp_path):
+    """The real app serves /api/pipeline/* (JSON fallback, no database) and the SPA
+    mount does not shadow them."""
+    from app.pipeline import api as pipeline_api, config as pipeline_config, store as pipeline_store
+
+    for name in ("DATABASE_URL", "DATABASE_URL_UNPOOLED"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(pipeline_config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(pipeline_config, "_JSON_BACKENDS", {})
+    monkeypatch.setattr(pipeline_store, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(pipeline_store, "_JSON_BACKENDS", {})
+    monkeypatch.setattr(pipeline_api.HEALTH, "_blocked_families", lambda: set())
+    client = TestClient(main_module.app)
+
+    config = client.get("/api/pipeline/config")
+    assert config.status_code == 200
+    assert config.json()["version"] == 1
+    assert client.get("/api/pipeline/config/versions").json()[0]["version"] == 1
+    adapters = client.get("/api/pipeline/adapters")
+    assert adapters.status_code == 200 and adapters.json()
+    assert client.put("/api/pipeline/config", json=config.json()).status_code == 403
+    assert (tmp_path / "pipeline_config.json").exists()

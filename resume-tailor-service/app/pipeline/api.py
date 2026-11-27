@@ -2,7 +2,8 @@
 the config, its version history and rollback, the adapter list with key and health
 state, and a one call test per adapter.
 
-Not mounted in app/main.py until M6; tests mount it on their own app. Mutating routes
+Mounted in app/main.py so the dashboard's "Agents and models" settings can use it. No
+worker starts from here; the worker pool is wired in M6. Mutating routes
 require the `X-Job-Machine: dashboard` header, like the other dashboard writes. Keys
 are never returned: only whether the named env var is set.
 """
@@ -80,11 +81,22 @@ def post_reset(x_job_machine: str | None = Header(default=None)) -> dict:
     return config.reset_to_defaults().model_dump(mode="json")
 
 
+def _last_tests() -> dict[str, dict]:
+    """The newest connection test per adapter, from the ledger."""
+    last: dict[str, dict] = {}
+    for attempt in store.list_attempts(TEST_RUN_ID):  # oldest first, so newest wins
+        last[attempt.adapter] = {"outcome": attempt.outcome, "error": attempt.error, "model": attempt.model,
+                                 "at": attempt.started_at, "duration_ms": attempt.duration_ms}
+    return last
+
+
 @router.get("/adapters")
 def get_adapters() -> list[dict]:
     blocked = HEALTH.blocked_families()
+    tests = _last_tests()
     return [
-        {**spec.model_dump(mode="json"), "key_set": config.key_set(spec), "health": HEALTH.status(spec, blocked)}
+        {**spec.model_dump(mode="json"), "key_set": config.key_set(spec), "health": HEALTH.status(spec, blocked),
+         "last_test": tests.get(spec.name)}
         for spec in config.load_config().adapters.values()
     ]
 

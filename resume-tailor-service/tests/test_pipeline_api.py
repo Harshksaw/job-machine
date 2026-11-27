@@ -106,3 +106,17 @@ def test_adapter_test_records_an_attempt_and_cools_down(client, monkeypatch):
     assert (attempt.adapter, attempt.outcome, attempt.model) == ("cursor", "unavailable", "m")
     assert api.HEALTH.status(config.load_config().adapters["cursor"])["healthy"] is False
     assert client.post("/api/pipeline/adapters/ghost/test", headers=HEADERS).status_code == 404
+
+
+def test_adapters_list_carries_the_last_test_result(client, monkeypatch):
+    monkeypatch.setattr(api, "build_adapter", Stub)
+    rows = {row["name"]: row for row in client.get("/api/pipeline/adapters").json()}
+    assert rows["cursor"]["last_test"] is None
+
+    client.post("/api/pipeline/adapters/cursor/test", headers=HEADERS)
+
+    rows = {row["name"]: row for row in client.get("/api/pipeline/adapters").json()}
+    last = rows["cursor"]["last_test"]
+    assert (last["outcome"], last["error"], last["model"]) == ("unavailable", "Out of credits", "m")
+    assert last["at"] and isinstance(last["duration_ms"], int)
+    assert rows["codex"]["last_test"] is None
