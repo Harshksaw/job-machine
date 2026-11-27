@@ -390,3 +390,32 @@ adapters:
 
 Needs from Harsh: an OpenRouter key (or other provider keys) in `.env`, and a Google
 Cloud OAuth client for read only Gmail.
+
+### 13.5 Configuration lives apart from code and is editable on the web (added 2026-11-26)
+
+Harsh's direction: keep configuration separate, and settable from the dashboard.
+
+- **Store:** the effective config is one document in a `pipeline_config` collection
+  (Postgres, JSON fallback), with a `version` number and `updated_at`. Every save keeps
+  the previous versions so a bad change can be rolled back from the web.
+- **Seed:** `content/agents.yaml` is only the committed default. On first start, or on
+  "Reset to defaults", it is copied into the store. After that the store wins; the file
+  is never written by the service.
+- **Secrets never live in config.** Adapters name an env var (`key_env`); the API and UI
+  show only whether that variable is set, never its value. Keys stay in `.env`.
+- **API:** `GET /api/pipeline/config`, `PUT /api/pipeline/config` (validated against the
+  `AdapterSpec` and step preference models; unknown capabilities, missing commands or a
+  step preferring an adapter that lacks its capability return 422),
+  `GET /api/pipeline/config/versions`, `POST /api/pipeline/config/rollback/{version}`,
+  `POST /api/pipeline/adapters/{name}/test` (one tiny call, result recorded in the ledger).
+  Mutating routes require the `X-Job-Machine: dashboard` header like other mutating
+  dashboard routes.
+- **Dashboard:** a Settings section "Agents and models": adapter list (enabled toggle,
+  model string, capabilities, cost tier, max parallel, key set yes/no, health, last test),
+  per step preferred adapters and canary share, a version history with rollback, and a
+  Test button per adapter. The router reads the stored config on every step, so changes
+  apply to the next step without a restart.
+- **Isolation from the running system:** all orchestrator work happens on
+  `feat/agent-orchestrator` in the worktree `../job-machine-orchestrator`. Nothing is
+  wired into the live service (`app/main.py` lifespan, Overview button) until M6, and
+  manual smoke runs use another port (8421) with `PIPELINE_WORKERS=0`.
