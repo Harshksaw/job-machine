@@ -3,11 +3,11 @@ the config, its version history and rollback, the adapter list with key and heal
 state, and a one call test per adapter.
 
 Also (M8): enqueue and read pipeline runs, and the stored mail sync results, which the
-MCP server and later the dashboard read. Runs only queue here; the M6 worker or
-`scripts/run_task.py` executes them.
+MCP server and the dashboard read. Runs only queue here; the worker pool
+(app/pipeline/worker.py, on when PIPELINE_WORKERS > 0) or `scripts/run_task.py`
+executes them. M6 adds retry, cancel and the ledger stats.
 
-Mounted in app/main.py so the dashboard's "Agents and models" settings can use it. No
-worker starts from here; the worker pool is wired in M6. Mutating routes
+Mounted in app/main.py. No worker starts from here. Mutating routes
 require the `X-Job-Machine: dashboard` header, like the other dashboard writes. Keys
 are never returned: only whether the named env var is set.
 """
@@ -22,7 +22,8 @@ from pydantic import BaseModel, Field
 from app import job_store
 from app.llm import DIRECT_STEPS
 from app.mail import store as mail_store
-from app.pipeline import config, store, tasks
+from app.pipeline import adapters as adapters_module
+from app.pipeline import config, stats, store, tasks, worker
 from app.pipeline.pipelines import PACKET_PIPELINE
 from app.pipeline.adapters import build_adapter
 from app.pipeline.config import PipelineConfig
@@ -221,3 +222,91 @@ def get_mail_events(company: str = "", outcome: str = "", status: str = "", sinc
                     limit: int = Query(default=50, ge=1, le=500)) -> list[dict]:
     """Stored mail sync events, newest first. Reads the store, never Gmail."""
     return mail_store.list_events(company=company, outcome=outcome, status=status, since=since, q=q, limit=limit)
+
+
+# --- retry, cancel, stats (M6) ---------------------------------------------------------
+
+
+class RetryRequest(BaseModel):
+    step: str | None = None
+
+
+def _downstream(pipeline, start: str) -> set[str]:
+    """`start` and every step that depends on it, directly or not."""
+    reset = {start}
+    for spec in pipeline.steps:  # listed in dependency order
+        if any(dep in reset for dep in spec.deps):
+            reset.add(spec.name)
+    return reset
+
+
+def _other_active(run) -> str:
+    if run.pipeline in tasks.TASK_BUILDERS:
+        active = tasks.active_run(run.pipeline)
+        return active.id if active is not None and active.id != run.id else ""
+    for other in store.list_runs(run.job_id):
+        if other.id != run.id and other.pipeline == run.pipeline and other.status in ("queued", "running"):
+            return other.id
+    return ""
+
+
+@router.post("/runs/{run_id}/retry")
+def post_retry(run_id: str, data: RetryRequest | None = None, x_job_machine: str | None = Header(default=None)) -> dict:
+    """Queue a finished run again, resuming at its first failed step, or at `step` and
+    everything after it. Steps before keep their output, so nothing done is redone."""
+    _require_dashboard(x_job_machine)
+    run = store.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"no run {run_id}")
+    if run.status in ("queued", "running"):
+        raise HTTPException(status_code=409, detail=f"run {run_id} is still {run.status}")
+    pipeline = worker.pipeline_for(run.pipeline)
+    if pipeline is None or pipeline.order != run.order:
+        raise HTTPException(status_code=422, detail=f"run {run_id} no longer matches a known pipeline")
+    step = (data.step if data else None) or ""
+    if step and step not in run.steps:
+        raise HTTPException(status_code=422, detail=f"run {run_id} has no step {step!r}")
+    if not step:
+        failed = [name for name in run.order if run.steps[name].status == "failed"]
+        if not failed:
+            raise HTTPException(status_code=409, detail="no failed step to resume from; name a step to rerun")
+        step = failed[0]
+    other = _other_active(run)
+    if other:
+        raise HTTPException(status_code=409, detail=f"run {other} is already queued or running for this work")
+    reset = _downstream(pipeline, step) | {
+        name for name, state in run.steps.items() if state.status in ("failed", "skipped", "running")
+    }
+    try:
+        again = store.reset_for_retry(run_id, reset)
+    except store.RunActive as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return {"run": again.model_dump(mode="json"), "reset": [name for name in run.order if name in reset]}
+
+
+@router.post("/runs/{run_id}/cancel")
+def post_cancel(run_id: str, x_job_machine: str | None = Header(default=None)) -> dict:
+    """End a queued or running run: mark it cancelled, free its lease and kill its
+    running CLI processes. Its worker stops at the next adapter boundary with no write."""
+    _require_dashboard(x_job_machine)
+    try:
+        run = store.cancel_run(run_id, "cancelled from the dashboard or API")
+    except store.RunNotFound:
+        raise HTTPException(status_code=404, detail=f"no run {run_id}")
+    except store.RunFinished as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    killed = adapters_module.kill_run(run_id)
+    return {"run": run.model_dump(mode="json"), "killed": killed}
+
+
+@router.get("/stats")
+def get_stats(since: str = "") -> dict:
+    """The attempt ledger summarised per step and adapter, and per model."""
+    try:
+        summary = stats.compute(store.list_attempts(), since=since)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="since must be an ISO 8601 time")
+    counts: dict[str, int] = {}
+    for run in store.list_runs():
+        counts[run.status] = counts.get(run.status, 0) + 1
+    return {**summary, "runs": counts}
