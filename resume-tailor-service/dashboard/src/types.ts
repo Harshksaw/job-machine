@@ -389,3 +389,45 @@ export interface PipelineEnqueueResult {
   queued: PipelineRunDetail[];
   skipped: string[];
 }
+
+// GET /api/pipeline/funnel, the Flow tab.
+export type FunnelNodeKind = "source" | "tier" | "dropped" | "reason" | "stage" | "job";
+
+export interface FunnelJob {
+  id: string;
+  company: string;
+  role: string;
+  fit_score: number | null;
+  status: string;
+  /** false for a research item that is not a dossier yet */
+  dossier: boolean;
+}
+
+export interface FunnelNode {
+  key: string;
+  label: string;
+  kind: FunnelNodeKind;
+  count: number;
+  children: FunnelNode[];
+  /** source: listings the last harvest fetched and dropped */
+  fetched?: number;
+  dropped?: number;
+  /** tier: kept by the last harvest */
+  kept?: number;
+  /** tier: guessed from the location, not marked by the harvest */
+  provisional?: boolean;
+  job?: FunnelJob;
+}
+
+export interface PipelineFunnel {
+  since: string;
+  until: string;
+  generated_at: string;
+  total: number;
+  stages: Record<string, number>;
+  stage_labels: Record<string, string>;
+  tiers: Record<string, number>;
+  harvest: { run_at: string; fetched: number; kept: number; dropped: number } | null;
+  events: Record<string, number>;
+  tree: FunnelNode[];
+}

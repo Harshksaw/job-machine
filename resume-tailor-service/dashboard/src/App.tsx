@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BriefcaseBusiness,
   Columns3,
+  GitFork,
   Inbox as InboxIcon,
   RefreshCw,
   Search as SearchIcon,
@@ -20,8 +21,9 @@ import Inbox from "./components/Inbox";
 import Search from "./components/Search";
 import Settings from "./components/Settings";
 import Pipeline from "./components/Pipeline";
+import Flow from "./components/Flow";
 
-type View = "inbox" | "workspace" | "board" | "people" | "search" | "pipeline" | "settings";
+type View = "inbox" | "workspace" | "board" | "people" | "search" | "pipeline" | "flow" | "settings";
 
 const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   inbox: { title: "Inbox", subtitle: "Decisions and approvals waiting on you" },
@@ -30,6 +32,7 @@ const VIEW_COPY: Record<View, { title: string; subtitle: string }> = {
   people: { title: "People", subtitle: "Outreach contacts and drafts" },
   search: { title: "Search", subtitle: "Find new roles and start agents" },
   pipeline: { title: "Pipeline", subtitle: "Orchestrator runs, step timelines, stats, and adapter health" },
+  flow: { title: "Flow", subtitle: "How listings move from source to outcome, with live counts" },
   settings: { title: "Settings", subtitle: "Stats, connections, agents, and telemetry" },
 };
 
@@ -42,6 +45,7 @@ function viewFromHash(): View {
     head === "people" ||
     head === "search" ||
     head === "pipeline" ||
+    head === "flow" ||
     head === "settings"
     ? head
     : "inbox";
@@ -129,6 +133,7 @@ export default function App() {
     { id: "people", label: "People", icon: Users, count: counts.people, hint: "to approve" },
     { id: "search", label: "Search", icon: SearchIcon, count: 0, hint: "find roles" },
     { id: "pipeline", label: "Pipeline", icon: Workflow, count: 0, hint: "orchestrator runs" },
+    { id: "flow", label: "Flow", icon: GitFork, count: 0, hint: "counts by stage" },
     { id: "settings", label: "Settings", icon: SettingsIcon, count: 0, hint: "stats and connections" },
   ];
 
@@ -234,6 +239,8 @@ export default function App() {
             <Search onJobsChanged={() => void loadJobs()} onOpenDossier={openDossier} />
           ) : view === "pipeline" ? (
             <Pipeline />
+          ) : view === "flow" ? (
+            <Flow onOpenDossier={openDossier} />
           ) : view === "settings" ? (
             <Settings />
           ) : view === "board" ? (

@@ -15,6 +15,7 @@ import type {
   PersonInput,
   PipelineConfig,
   PipelineEnqueueResult,
+  PipelineFunnel,
   PipelineRunDetail,
   PipelineRunSummary,
   PipelineStats,
@@ -690,4 +691,12 @@ export function getPipelineStats(since = ""): Promise<PipelineStats> {
 
 export function getPipelineWorker(): Promise<PipelineWorkerStatus> {
   return pipelineRequest("/api/pipeline/worker", {}, "Failed to load worker status.");
+}
+
+export function getPipelineFunnel(since = "", until = ""): Promise<PipelineFunnel> {
+  const query = new URLSearchParams();
+  if (since) query.set("since", since);
+  if (until) query.set("until", until);
+  const suffix = query.toString() ? `?${query}` : "";
+  return pipelineRequest(`/api/pipeline/funnel${suffix}`, {}, "Failed to load the flow counts.");
 }
