@@ -10,7 +10,7 @@ UK, Australia, New Zealand, any other country, Europe last. Nothing based in Ind
 
 Tier A: open to Canada, or anywhere. Tier A2: limited to the US, UK, Australia, New Zealand
 or another country outside India and Europe. Tier E: limited to Europe (EU, EEA,
-Switzerland); kept, but last. India excludes a role even when another region also matches.
+Switzerland and the rest of geographic Europe outside the UK); kept, but last. India excludes a role even when another region also matches.
 """
 from __future__ import annotations
 
@@ -64,8 +64,9 @@ _OTHER = re.compile(
     r"\bafrica\b|\bmiddle east\b",
     re.I,
 )
-# EU 27, EEA (Iceland, Liechtenstein, Norway) and Switzerland, plus the usual region words
-# and big tech cities. The UK is not here: it is Tier A2. "Ireland" only when not
+# EU 27, EEA (Iceland, Liechtenstein, Norway), Switzerland and the rest of geographic Europe
+# outside the UK (Balkans, Ukraine, Moldova, microstates), plus the usual region words and
+# big tech cities. The UK is not here: it is Tier A2. "Ireland" only when not
 # "Northern Ireland", which is the UK.
 _EUROPE = re.compile(
     r"\beurope\b|\beuropean\b|\beu\b|\beea\b|\bemea\b|\bschengen\b|\bcet\b|\bcest\b|"
@@ -76,7 +77,10 @@ _EUROPE = re.compile(
     r"\bslovenia\b|\bspain\b|\bsweden\b|\biceland\b|\bliechtenstein\b|\bnorway\b|"
     r"\bswitzerland\b|\bberlin\b|\bmunich\b|\bparis\b|\bamsterdam\b|\bmadrid\b|\bbarcelona\b|"
     r"\blisbon\b|\bdublin\b|\bwarsaw\b|\bstockholm\b|\bcopenhagen\b|\bzurich\b|\bvienna\b|"
-    r"\bprague\b",
+    r"\bprague\b|\balbania\b|\bandorra\b|\bbelarus\b|\bbosnia\b|\bherzegovina\b|\bkosovo\b|"
+    r"\bmoldova\b|\bmonaco\b|\bmontenegro\b|\bmacedonia\b|\bsan marino\b|\bserbia\b|"
+    r"\bukraine\b|\bvatican\b|\bbelgrade\b|\bkyiv\b|\bkiev\b|\bsarajevo\b|\btirana\b|"
+    r"\bskopje\b|\bchisinau\b|\bpodgorica\b|\blviv\b|\bnovi sad\b",
     re.I,
 )
 # Words that carry no place, so "Remote" or "Remote - " alone reads as unspecified.

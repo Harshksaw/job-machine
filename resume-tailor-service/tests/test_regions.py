@@ -119,3 +119,13 @@ def test_rank_follows_country_order():
 def test_company_base_in_description(location, description, tier, region, reason):
     result = classify_location(location, description=description)
     assert (result.tier, result.region, result.reason) == (tier, region, reason)
+
+
+@pytest.mark.parametrize("location", ["Serbia", "Ukraine", "Remote, Belgrade", "Bosnia and Herzegovina",
+                                      "Montenegro", "North Macedonia", "Albania", "Moldova", "Kyiv"])
+def test_european_countries_outside_the_eu_are_tier_e(location):
+    assert classify_location(location).tier == "E"
+
+
+def test_a_company_based_in_serbia_is_tier_e():
+    assert classify_location("Worldwide", description="A Belgrade-based studio.").tier == "E"
