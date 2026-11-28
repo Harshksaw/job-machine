@@ -117,10 +117,15 @@ only**. ZipRecruiter is also standing, but live-browser only (see the playbook).
 
 **Remote boards (added 2026-11-06):** Himalayas, Remotive, Jobicy, Working Nomads, and
 Remote OK, harvested with `resume-tailor-service/scripts/remote_boards.py`. It filters to
-engineering roles below senior that a Canada-based candidate can hold remotely and dedupes
-against the dossier store. A remote role limited to US, UK, Europe or Australian residents is no longer a skip (since
-2026-11-25, updated 2026-11-26): with fit 7 or higher it is **Tier A2**, second priority after roles open to Canada.
-Answer its forms honestly: authorized in that country No, sponsorship Yes. The
+engineering roles below senior, tiers every listing with `app/regions.py`
+(`classify_location`), and dedupes against the dossier store. No board is asked to filter by
+country. Tiers (since 2026-11-27): **Tier A** is remote open to Canada or anywhere. **Tier A2**
+is remote limited to US, UK, Australian, New Zealand or another non India country's residents;
+with fit 7 or higher it is second priority. **Tier E** is a European company or a Europe only
+role: kept, never silently dropped, but worked last, unless it is really good (remote, fit 8 or
+higher, posted in the last 14 days), which makes it Tier A2. Anything based in India is
+dropped, even when another region is also listed. For Tier A2 and Tier E forms answer
+honestly: authorized in that country No, sponsorship Yes. The
 board is for discovery; apply on the employer's own ATS when the listing links to one. YC's site
 mechanics (URL shape, apply-button selectors, dedupe key) are unverified until an agent
 actually runs a live session against workatastartup.com; capture what's learned in
@@ -132,10 +137,11 @@ following `prompts/research-sweep.md`, and the Fantastic Jobs "Research" presets
 and Australia remote) stage finds with `POST /api/research` instead of creating dossiers.
 Promotion to a `discovered` dossier happens from the dashboard Search tab or
 `POST /api/research/<id>/promote`. Fantastic Jobs is a 500 job trial: only through the
-dashboard presets, which enforce the budget. **Search policy since 2026-11-25:** remote only, no hybrid, no experience level filter (senior
-and above is still dropped by title). Employers in Canada, the US, Europe, the UK or Australia, nothing based in India. Order: Canada
-(`remote-ca`, straight to dossiers), then US, Europe, UK, Australia (`remote-us`, `remote-eu`,
-`remote-uk`, `remote-au`, staged in research). Batch work through
+dashboard presets, which enforce the budget. **Search policy since 2026-11-25 (country order updated 2026-11-27):** remote only, no hybrid, no experience level filter (senior
+and above is still dropped by title). Nothing based in India, even when another region also matches. Country order: Canada
+(`remote-ca`, straight to dossiers), then US, UK, Australia, New Zealand, any other country, Europe last
+(`remote-us`, `remote-uk`, `remote-au`, `remote-eu`, staged in research). Tiers A, A2 and E are
+defined under "Remote boards" above. Batch work through
 `resume-tailor-service/scripts/cursor_queue.py`. Prefer small startups: big names and
 employers with 1,000+ staff are kept aside as dismissed research items, never worked. The old `job_registry (RDS)` pipeline and its
 dossiers were removed on 2026-11-07.
