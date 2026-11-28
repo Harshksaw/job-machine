@@ -236,26 +236,34 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.
     try:
         ctx = _context(run_id)
         if step.when is not None and not step.when(ctx):
-            store.update_step(run_id, step.name, status="skipped", finished_at=now_iso())
+            store.update_step(run_id, step.name, owner=owner, status="skipped", finished_at=now_iso())
             return
-        store.update_step(run_id, step.name, status="running", started_at=now_iso(), error="")
+        store.update_step(run_id, step.name, owner=owner, status="running", started_at=now_iso(), error="")
         if step.kind == "agent":
             result = _run_agent(step, ctx, resolve_chain, stop, owner)
         else:
             result = _run_local(step, ctx)
         _check_interrupt(run_id, stop, owner)
-        _apply(step, ctx, result)
+        _apply(step, ctx, result, owner)
     except Exception as exc:
         # Anything a step, adapter or store raises fails this step; only a crash
         # (BaseException) escapes, and resume handles that.
         failure = exc if isinstance(exc, StepFailed) else StepFailed(_short(exc))
-        if not _holds(run_id, owner):
+        if isinstance(exc, store.NotLeaseHolder) or not _holds(run_id, owner):
             raise LeaseLost(run_id) from exc
-        store.update_step(run_id, step.name, status="failed", error=str(failure), finished_at=now_iso())
-        if failure.policy:
-            store.finish_run(run_id, "failed", f"{step.name}: {failure}")
+        try:
+            store.update_step(run_id, step.name, owner=owner, status="failed", error=str(failure),
+                              finished_at=now_iso())
+            if failure.policy:
+                store.finish_run(run_id, "failed", f"{step.name}: {failure}", owner=owner)
+        except store.NotLeaseHolder as lost:
+            raise LeaseLost(run_id) from lost
         return
-    store.complete_step(run_id, step.name, output=result.output, stop=result.stop, reason=result.reason)
+    try:
+        store.complete_step(run_id, step.name, output=result.output, stop=result.stop, reason=result.reason,
+                            owner=owner)
+    except store.NotLeaseHolder as exc:
+        raise LeaseLost(run_id) from exc
 
 
 def _context(run_id: str) -> StepContext:
@@ -377,7 +385,7 @@ def authors_of(ctx: StepContext, steps: tuple[str, ...]) -> set[str]:
     return authors
 
 
-def _apply(step: StepSpec, ctx: StepContext, result: StepResult) -> None:
+def _apply(step: StepSpec, ctx: StepContext, result: StepResult, owner: str | None = None) -> None:
     if result.stop and result.stop not in TERMINAL_STATUSES:
         raise StepFailed(f"unknown stop status {result.stop!r}")
     stray = sorted(set(result.writes) - set(step.owns))
@@ -391,6 +399,9 @@ def _apply(step: StepSpec, ctx: StepContext, result: StepResult) -> None:
             result.writes,
             reason=f"Pipeline run {ctx.run.id} step {step.name}",
             session=f"pipeline {ctx.run.id}",
+            # The lease is checked inside the dossier write, so a cancel or retry that
+            # lands after the last interrupt check still stops a stale write.
+            guard=lambda: store.lease_guard(ctx.run.id, owner),
         )
     except ValueError as exc:
         raise StepFailed(f"dossier rejected the write: {_short(exc)}") from exc

@@ -12,9 +12,10 @@ import json
 import os
 import threading
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
+from typing import Callable, ContextManager
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from app.models import (
@@ -438,13 +439,18 @@ def patch_job(
     reason: str = "Dossier patched",
     activity_kind: str = "updated",
     session: str = "",
+    guard: Callable[[], ContextManager] | None = None,
 ) -> JobWorkspace | None:
     """Change only the named fields. A full PUT saves a left out field as blank, which
-    is how agents have wiped cover letters; a patch cannot. Unknown names raise."""
+    is how agents have wiped cover letters; a patch cannot. Unknown names raise.
+
+    `guard`, when given, is entered inside the write transaction before the read and
+    held until the write, so a check it makes (the pipeline's lease) and the write are
+    one atomic step; whatever it raises aborts the patch."""
     unknown = sorted(set(fields) - set(JobWorkspaceInput.model_fields))
     if unknown:
         raise ValueError(f"unknown dossier fields: {', '.join(unknown)}")
-    with _transaction():
+    with _transaction(), (guard() if guard is not None else nullcontext()):
         current = get_job(job_id)
         if current is None:
             return None

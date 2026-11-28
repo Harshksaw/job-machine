@@ -223,3 +223,72 @@ def test_a_worker_that_lost_its_lease_writes_nothing_after_cancel_and_retry():
                            StepSpec("b", "code", deps=("a",), run=later)))
     assert runner.run(run.id, again, owner="new").status == "packet_ready"
     assert job_store.get_job(job.id).notes == "fresh"
+
+
+def test_step_state_writes_refuse_a_worker_that_does_not_hold_the_lease():
+    run = store.create_run("j1", "p", ["a"])
+    assert store.claim(run.id, "w2")
+
+    with pytest.raises(store.NotLeaseHolder):
+        store.update_step(run.id, "a", owner="w1", status="running")
+    with pytest.raises(store.NotLeaseHolder):
+        store.complete_step(run.id, "a", output={"stale": True}, owner="w1")
+
+    left = store.get_run(run.id)
+    assert left.steps["a"].status == "pending" and left.steps["a"].output is None
+    store.update_step(run.id, "a", owner="w2", status="running")
+    assert store.get_run(run.id).steps["a"].status == "running"
+
+
+def _cancel_and_retry(run_id, new_owner="new"):
+    store.cancel_run(run_id, "stop")
+    store.reset_for_retry(run_id, {"a"})
+    assert store.claim(run_id, new_owner)
+
+
+def test_a_cancel_that_lands_after_the_last_check_still_stops_the_dossier_write(monkeypatch):
+    """The race the interrupt check cannot close: the run is cancelled, retried and
+    claimed by another worker between that check and the write."""
+    job = _job()
+    original = runner._check_interrupt
+    calls = []
+
+    def late_cancel(run_id, stop, owner):
+        original(run_id, stop, owner)
+        calls.append(owner)
+        _cancel_and_retry(run_id)
+
+    def step(ctx):
+        return StepResult(output={"stale": True}, writes={"notes": "stale"})
+
+    monkeypatch.setattr(runner, "_check_interrupt", late_cancel)
+    pipeline = Pipeline("p", (StepSpec("a", "code", owns=("notes",), run=step),))
+    run = store.create_run(job.id, "p", pipeline.order)
+
+    runner.run(run.id, pipeline, owner="old")
+
+    assert calls == ["old"]
+    assert job_store.get_job(job.id).notes == ""
+    left = store.get_run(run.id)
+    assert left.lease_owner == "new" and left.steps["a"].status == "pending"
+
+
+def test_a_step_does_not_start_once_another_worker_holds_the_run(monkeypatch):
+    job = _job()
+    ran = []
+    original = runner._context
+
+    def taken_over(run_id):
+        ctx = original(run_id)
+        _cancel_and_retry(run_id)
+        return ctx
+
+    monkeypatch.setattr(runner, "_context", taken_over)
+    pipeline = Pipeline("p", (StepSpec("a", "code", run=lambda ctx: ran.append(1) or StepResult()),))
+    run = store.create_run(job.id, "p", pipeline.order)
+
+    runner.run(run.id, pipeline, owner="old")
+
+    assert ran == []
+    left = store.get_run(run.id)
+    assert left.lease_owner == "new" and left.steps["a"].status == "pending"

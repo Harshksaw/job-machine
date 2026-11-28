@@ -11,9 +11,12 @@ from __future__ import annotations
 import json
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
+
+from sqlalchemy import select
 
 from app import doc_store
 from app.pipeline.models import TERMINAL_STATUSES, Attempt, Run, StepState, now_iso
@@ -42,6 +45,19 @@ class RunFinished(ValueError):
 
 class RunActive(ValueError):
     """The run is still queued or running."""
+
+
+class NotLeaseHolder(RuntimeError):
+    """A worker tried to write a run (or its dossier) it no longer holds the lease of:
+    the run was cancelled, retried or reaped since it last checked."""
+
+
+def _require_owner(run: Run | None, owner: str | None) -> None:
+    if owner is None:
+        return
+    if run is None or not owner or run.lease_owner != owner:
+        held = run.lease_owner if run is not None else "nobody"
+        raise NotLeaseHolder(f"run {run.id if run else '?'} is held by {held or 'nobody'}, not {owner}")
 
 
 def _read(path: Path) -> list[dict]:
@@ -117,8 +133,11 @@ def _mutate(run_id: str, change: Callable[[Run], None]) -> Run:
         return run
 
 
-def update_step(run_id: str, step: str, **changes) -> Run:
+def update_step(run_id: str, step: str, *, owner: str | None = None, **changes) -> Run:
+    """Change one step state. With `owner`, only while that worker holds the lease,
+    checked in the same write (NotLeaseHolder otherwise)."""
     def change(run: Run) -> None:
+        _require_owner(run, owner)
         run.steps[step] = run.steps[step].model_copy(update=changes)
 
     return _mutate(run_id, change)
@@ -138,21 +157,28 @@ def start_run(run_id: str) -> Run:
     return _mutate(run_id, change)
 
 
-def finish_run(run_id: str, status: str, reason: str = "") -> Run:
-    """End a run. The first terminal status wins; steps that never started are skipped."""
+def finish_run(run_id: str, status: str, reason: str = "", *, owner: str | None = None) -> Run:
+    """End a run. The first terminal status wins; steps that never started are skipped.
+    With `owner`, only while that worker holds the lease."""
     if status not in TERMINAL_STATUSES:
         raise ValueError(f"{status!r} is not a terminal run status")
 
-    return _mutate(run_id, lambda run: _finish(run, status, reason))
+    def change(run: Run) -> None:
+        _require_owner(run, owner)
+        _finish(run, status, reason)
+
+    return _mutate(run_id, change)
 
 
-def complete_step(run_id: str, step: str, *, output: dict, stop: str = "", reason: str = "") -> Run:
+def complete_step(run_id: str, step: str, *, output: dict, stop: str = "", reason: str = "",
+                  owner: str | None = None) -> Run:
     """Mark a step done and, when it stops the run, end the run in the same write, so a
     crash between the two cannot keep the step and lose the stop."""
     if stop and stop not in TERMINAL_STATUSES:
         raise ValueError(f"{stop!r} is not a terminal run status")
 
     def change(run: Run) -> None:
+        _require_owner(run, owner)
         run.steps[step] = run.steps[step].model_copy(
             update={"status": "done", "output": output, "finished_at": now_iso()}
         )
@@ -170,6 +196,40 @@ def _finish(run: Run, status: str, reason: str) -> None:
     for name, state in run.steps.items():
         if state.status == "pending":
             run.steps[name] = state.model_copy(update={"status": "skipped"})
+
+
+@contextmanager
+def lease_guard(run_id: str, owner: str | None) -> Iterator[None]:
+    """Hold the run row while a dossier write happens, after checking `owner` still
+    holds the lease (NotLeaseHolder otherwise), so a cancel or retry cannot land
+    between the check and the write. Enter it inside the job_store transaction: on SQL
+    the run row is read FOR UPDATE on that transaction's connection (a nested store
+    transaction would reuse it under the wrong collection); on SQLite the backend's
+    writer lock already serialises; with JSON files the runs file stays locked."""
+    if owner is None:
+        yield
+        return
+    backend = _store(RUNS)
+    if isinstance(backend, doc_store.SqlBackend):
+        active = getattr(backend._local, "tx", None)
+        if active is None:
+            with backend.transaction(RUNS) as tx:
+                raw = tx.get(run_id)
+                _require_owner(Run.model_validate(raw) if raw is not None else None, owner)
+                yield
+            return
+        query = select(doc_store.documents.c.doc).where(
+            (doc_store.documents.c.collection == RUNS) & (doc_store.documents.c.id == run_id))
+        if active.conn.dialect.name == "postgresql":
+            query = query.with_for_update()
+        raw = active.conn.execute(query).scalar_one_or_none()
+        _require_owner(Run.model_validate(raw) if raw is not None else None, owner)
+        yield
+        return
+    with backend.transaction(RUNS) as tx:
+        raw = tx.get(run_id)
+        _require_owner(Run.model_validate(raw) if raw is not None else None, owner)
+        yield
 
 
 def acquire_lease(run_id: str, owner: str, seconds: int = LEASE_SECONDS) -> bool:
