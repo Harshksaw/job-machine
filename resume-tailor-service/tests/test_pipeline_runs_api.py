@@ -180,6 +180,18 @@ def test_stats_per_step_adapter_and_model(client):
     assert client.get("/api/pipeline/stats", params={"since": "2026-11-26T10:30:00+00:00"}).json()["steps"][0]["attempts"] == 1
 
 
+def test_stats_since_accepts_a_date_or_naive_time_as_utc_and_rejects_junk(client):
+    _attempt("claim", "code", "ok", 5, at="2026-11-25T23:00:00+00:00")
+    _attempt("claim", "code", "ok", 5, at="2026-11-26T10:00:00+00:00")
+
+    by_date = client.get("/api/pipeline/stats", params={"since": "2026-11-26"})
+    naive = client.get("/api/pipeline/stats", params={"since": "2026-11-26T09:00:00"})
+
+    assert by_date.status_code == 200 and by_date.json()["steps"][0]["attempts"] == 1
+    assert naive.status_code == 200 and naive.json()["steps"][0]["attempts"] == 1
+    assert client.get("/api/pipeline/stats", params={"since": "yesterday"}).status_code == 422
+
+
 def test_worker_route_reports_whether_the_pool_runs(client, monkeypatch):
     from app.pipeline import worker
 

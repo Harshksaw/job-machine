@@ -4,7 +4,7 @@ error. Pure functions over Attempt records."""
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.pipeline.models import Attempt
 
@@ -37,17 +37,30 @@ def _summary(attempts: list[Attempt]) -> dict:
     }
 
 
+def as_utc(text: str) -> datetime:
+    """An ISO 8601 time or date as an aware datetime. A date means its midnight and a
+    time without an offset is read as UTC, so comparing never mixes naive and aware
+    values. Raises ValueError for anything else."""
+    moment = datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def parse_since(since: str) -> datetime | None:
+    """The cutoff of a `since` query value, None when blank; ValueError when invalid."""
+    return as_utc(since) if (since or "").strip() else None
+
+
 def _after(attempt: Attempt, since: datetime | None) -> bool:
     if since is None:
         return True
     try:
-        return datetime.fromisoformat(attempt.started_at) >= since
+        return as_utc(attempt.started_at) >= since
     except ValueError:
         return False
 
 
 def compute(attempts: list[Attempt], since: str = "") -> dict:
-    cutoff = datetime.fromisoformat(since) if since else None
+    cutoff = parse_since(since)
     kept = [a for a in attempts if _after(a, cutoff)]
     by_step: dict[tuple[str, str], list[Attempt]] = {}
     by_model: dict[str, list[Attempt]] = {}
