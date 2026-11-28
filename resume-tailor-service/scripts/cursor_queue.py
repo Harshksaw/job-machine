@@ -9,7 +9,7 @@
 Targeting (AGENTS.md "Search policy since 2026-11-25"): remote only, nothing based in India,
 small startups first, big companies set aside. Tier A (open to Canada or anywhere) first,
 then Tier A2 (limited to the US, UK, Australia, New Zealand or another non India country),
-Tier E (European companies or Europe only roles) last. Outreach is Tier A only. Each `run` starts one `cursor-agent -p` per batch, waits for it, then
+then Tier B, Tier E (European companies or Europe only roles) last. Outreach is Tier A only. Each `run` starts one `cursor-agent -p` per batch, waits for it, then
 starts the next, so a lane never holds more than one agent. A lock file per lane stops a
 second copy. Run at most `score` plus one browser lane at once; `apply` and `outreach`
 each cap their own tab count in the prompt.
@@ -161,9 +161,9 @@ def _india(text: str | None) -> bool:
 
 # Exact tier token at the start of research_brief or next_action: "Tier A2" is not "Tier A".
 _TIER = re.compile(r"\s*tier\s+(a2|a|b|e)(?![a-z0-9])", re.I)
-# Apply lane order: Tier A first, then A2, Tier E (Europe) last. Tier B stays in score.
-TIER_ORDER = {"A": 0, "A2": 1, "E": 2}
-APPLY_MIN_FIT = {"A": 8, "A2": 7, "E": 7}
+# Apply lane order (BACKLOG-RUN-PROMPT.md "The queue"): Tier A, A2, B, then Tier E (Europe) last.
+TIER_ORDER = {"A": 0, "A2": 1, "B": 2, "E": 3}
+APPLY_MIN_FIT = {"A": 8, "A2": 7, "B": 7, "E": 7}
 
 
 def _tier_token(text: str | None) -> str | None:
@@ -228,9 +228,10 @@ def build_plan() -> dict:
     # Best first: higher fit.
     by_id = {j["id"]: j for j in jobs}
     # Tier A (open to Canada) first, then Tier A2 (US, UK, Australia, New Zealand or another
-    # non India country), Tier E (Europe only) last; best fit first inside a tier.
+    # non India country), Tier B, Tier E (Europe) last; best fit first inside a tier.
     plan["apply"].sort(key=lambda i: (TIER_ORDER[_tier(by_id[i])], -(by_id[i].get("fit_score") or 0)))
-    plan["review"] = list(plan["apply"])
+    # Review is the careful pass for the jobs that matter most: Tier A and A2 only.
+    plan["review"] = [i for i in plan["apply"] if _tier(by_id[i]) in ("A", "A2")]
     return plan
 
 

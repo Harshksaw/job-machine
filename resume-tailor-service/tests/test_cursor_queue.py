@@ -75,9 +75,19 @@ def test_plan_orders_tier_a_then_a2_then_e_and_outreach_is_tier_a_only(api):
     ]
     api["full"] = {j["id"]: j for j in api["jobs"]}
     plan = cursor_queue.build_plan()
-    assert plan["apply"] == ["a_hi", "a", "ready_a", "a2", "ready_a2", "e"]
-    assert "b" in plan["score"]
+    # Backlog order: Tier A, Tier A2, Tier B, then Tier E (Europe) last.
+    assert plan["apply"] == ["a_hi", "a", "ready_a", "a2", "ready_a2", "b", "e"]
+    assert "b" not in plan["score"]
+    assert plan["review"] == ["a_hi", "a", "ready_a", "a2", "ready_a2"]
     assert plan["outreach"] == ["ready_a"]
+
+
+def test_low_fit_tiers_stay_in_score(api):
+    api["jobs"] = [_job("b6", 6, brief="Tier B"), _job("e6", 6, brief="Tier E"),
+                   _job("a7", 7, brief="Tier A"), _job("none", 5)]
+    plan = cursor_queue.build_plan()
+    assert plan["apply"] == []
+    assert plan["score"] == ["b6", "e6", "a7", "none"]
 
 
 def test_indiana_is_not_india(api):
