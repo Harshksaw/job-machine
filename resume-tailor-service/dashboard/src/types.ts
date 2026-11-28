@@ -414,7 +414,7 @@ export interface FunnelNode {
   dropped?: number;
   /** tier: kept by the last harvest */
   kept?: number;
-  /** tier: guessed from the location, not marked by the harvest */
+  /** tier: classified from the location at read time, not stored by the harvest */
   provisional?: boolean;
   job?: FunnelJob;
 }

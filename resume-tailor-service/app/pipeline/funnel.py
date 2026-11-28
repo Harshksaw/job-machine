@@ -10,8 +10,7 @@ sync one on a status change. The tree itself is built from current state; `since
 and `until` keep the listings created or moved (an event) in that window.
 
 Region tiers come from `_tier_of`: an explicit `tier` field when the listing has one,
-else a rough location guess marked provisional. It is the one place to swap for
-`app.regions.classify_location` once that lands.
+else `app.regions.classify_location` (the harvest's own rules) marked provisional.
 
 Never call `record` from inside a job_store transaction: on SQL the store reuses that
 transaction for any collection (see app/pipeline/store.py).
@@ -29,11 +28,12 @@ from app import job_store, research_store
 from app.pipeline import store
 from app.pipeline.models import now_iso
 from app.pipeline.stats import as_utc, parse_since
+from app.regions import classify_location
 
 log = logging.getLogger(__name__)
 
 FUNNEL = "funnel_events"
-# The last harvest summary (written by scripts/remote_boards.py on the harvest branch):
+# The last harvest summary (scripts/remote_boards.harvest, from the CLI or the remote_boards task):
 # {run_at, sources: {name: {fetched, kept: {A, A2, E}, dropped: {reason: n}}}}.
 HARVEST_DIR = Path(__file__).resolve().parents[2] / "data"
 HARVEST_FILE = "remote_candidates.summary.json"
@@ -134,45 +134,41 @@ def _source_label(key: str) -> str:
 
 # --- region tier ------------------------------------------------------------------------
 
-TIERS = ("A", "A2", "E", "unknown")
+TIERS = ("A", "A2", "E", "unknown", "excluded")
 TIER_LABELS = {
     "A": "Tier A, open to Canada",
-    "A2": "Tier A2, US, UK or Australia",
+    "A2": "Tier A2, US, UK, Australia, New Zealand or another country",
     "E": "Tier E, Europe (last)",
     "unknown": "Region unknown",
+    "excluded": "Outside the region policy (India or not remote)",
     "dropped": "Dropped by the region filter",
 }
-_CANADA = re.compile(r"canada|north america|\bcan\b", re.I)
-_ANYWHERE = re.compile(r"anywhere|worldwide|global", re.I)
-_EXCLUDES = re.compile(r"exclud|except|\bnot\b|\bno\b", re.I)
-_A2_NOTE = re.compile(r"tier a2", re.I)
-_A2 = re.compile(r"\b(us|usa|u\.s\.|united states|america|uk|united kingdom|england|australia)\b", re.I)
-_EUROPE = re.compile(
-    r"europe|\beu\b|emea|germany|france|spain|portugal|netherlands|ireland|poland|sweden|denmark|"
-    r"norway|finland|italy|austria|switzerland|belgium|czech|romania|estonia|lithuania|latvia", re.I)
+# Exact tier tokens a pipeline step or a research promotion wrote into the notes.
+_NOTES_TIER = re.compile(r"\bTier (A2|A|E)\b")
 
 
 def _tier_of(item: dict) -> tuple[str, bool]:
-    """(tier, provisional). An explicit `tier` field wins (the harvest marks one); else a
-    rough guess from the location and scope, marked provisional. Swap the guess for
-    app.regions.classify_location once that module is merged."""
+    """(tier, provisional). An explicit `tier` field wins (the harvest and research staging
+    mark one). Else the newest exact tier token in the notes, else
+    app.regions.classify_location on the location, remote scope and job description. Any
+    tier not read from the `tier` field is provisional. A listing the classifier drops
+    (India, not remote) is "excluded"; one with no location at all is "unknown"."""
     explicit = str(item.get("tier") or "").strip()
     if explicit:
         upper = explicit.upper()
-        return (upper if upper in ("A", "A2", "E") else explicit.lower()), False
-    if item.get("open_to_canada") is True:
-        return "A", True
-    text = " ".join(str(item.get(key) or "") for key in ("location", "remote_scope", "work_mode"))
-    excluded = bool(_EXCLUDES.search(text))
-    if _CANADA.search(text) and not excluded:
-        return "A", True
-    if _A2_NOTE.search(str(item.get("notes") or "")) or _A2.search(text):
-        return "A2", True
-    if _EUROPE.search(text):
-        return "E", True
-    if _ANYWHERE.search(text) and not excluded:
-        return "A", True
-    return "unknown", True
+        if upper in ("A", "A2", "E"):
+            return upper, False
+        return ("excluded" if explicit.lower() == "drop" else explicit.lower()), False
+    noted = _NOTES_TIER.findall(str(item.get("notes") or ""))
+    if noted:
+        return noted[-1], True
+    location = str(item.get("location") or "").strip()
+    scope = str(item.get("remote_scope") or "").strip()
+    if not location and not scope:
+        return "unknown", True
+    description = str(item.get("jd_text") or item.get("description") or "")
+    where = classify_location(location, scope, description=description)
+    return ("excluded" if where.tier == "drop" else where.tier), True
 
 
 # --- stages -----------------------------------------------------------------------------
@@ -276,7 +272,7 @@ def _int(value: object) -> int:
 # --- the tree ---------------------------------------------------------------------------
 
 _JOB_FIELDS = ("id", "company", "role", "source", "location", "work_mode", "status", "fit_score", "notes",
-               "created_at", "updated_at", "tier")
+               "created_at", "updated_at", "tier", "jd_text")
 
 
 def _latest_packet_runs() -> dict[str, str]:

@@ -129,3 +129,21 @@ def test_european_countries_outside_the_eu_are_tier_e(location):
 
 def test_a_company_based_in_serbia_is_tier_e():
     assert classify_location("Worldwide", description="A Belgrade-based studio.").tier == "E"
+
+
+@pytest.mark.parametrize("location, tier, region", [
+    # A named exclusion is not an opening: Canada excluded is never Tier A.
+    ("Global remote, excluding Canada", "A2", "other"),
+    ("Worldwide except Canada", "A2", "other"),
+    ("Remote, not open to Canada", "A2", "other"),
+    # India excluded is not an India role.
+    ("Worldwide, excluding India", "A", "worldwide"),
+    ("US, except India", "A2", "us"),
+    # Worldwide with one country's work authorization required is that country only.
+    ("Worldwide, US work authorization required", "A2", "us"),
+    ("Anywhere, must have the right to work in the UK", "A2", "uk"),
+    ("Worldwide, Canadian work authorization required", "A", "canada"),
+])
+def test_exclusions_and_work_authorization_narrow_the_place(location, tier, region):
+    where = classify_location(location)
+    assert (where.tier, where.region) == (tier, region)

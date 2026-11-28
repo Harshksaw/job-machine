@@ -141,15 +141,32 @@ def classify_location(location: str, remote_scope: str = "", *, description: str
     return where
 
 
+# "excluding Canada", "except India", "not open to Canada": the places named up to the next
+# comma or full stop are carved out, never read as where the role may be held from.
+_EXCLUDED = re.compile(
+    r"\b(?:exclud(?:e|es|ed|ing)|except(?:\s+for)?|not\s+(?:open\s+to|available\s+(?:in|to)|in))\s+"
+    r"(?P<places>[^.,;()]*)",
+    re.I,
+)
+# A work authorization clause ties "worldwide" to whichever country it names.
+_WORK_AUTH = re.compile(
+    r"work authori[sz]ation|work permit|right to work|authori[sz]ed to work|eligible to work", re.I
+)
+
+
 def _classify_place(location: str, remote_scope: str) -> Classification:
     text = " ".join(part.strip() for part in (location or "", remote_scope or "") if part and part.strip())
+    excluded = " ".join(match.group("places") for match in _EXCLUDED.finditer(text))
+    text = _EXCLUDED.sub(" ", text)
+    no_canada = bool(_CANADA.search(excluded))
     if is_india(text):
         return _drop("india")
     if _NOT_REMOTE.search(text):
         return _drop("not remote")
     if _CANADA.search(text):
         return _kept("A", "canada")
-    if _WORLDWIDE.search(text):
+    worldwide = bool(_WORLDWIDE.search(text))
+    if worldwide and not no_canada and not _WORK_AUTH.search(text):
         return _kept("A", "worldwide")
     if _US_CASED.search(text) or _US.search(text):
         return _kept("A2", "us")
@@ -163,6 +180,11 @@ def _classify_place(location: str, remote_scope: str) -> Classification:
         return _kept("A2", "other")
     if _EUROPE.search(text):
         return _kept("E", "europe")
+    if no_canada:
+        # Open elsewhere but Canada is carved out: never Tier A.
+        return _kept("A2", "other")
+    if worldwide:
+        return _kept("A", "worldwide")
     if not _FILLER.sub("", text):
         return _kept("A", "unspecified")
     # A place we do not list (Brazil, Philippines, a city): another non India country.

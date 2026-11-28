@@ -55,10 +55,12 @@ export function flowSteps(funnel: PipelineFunnel): FlowStep[] {
   if (harvest) sourceParts.push({ label: "Fetched by the last harvest", count: harvest.fetched });
   const regionParts: FlowPart[] = [
     { label: "Tier A, open to Canada", count: tiers.A ?? 0 },
-    { label: "Tier A2, US, UK or Australia", count: tiers.A2 ?? 0 },
-    { label: "Tier E, Europe", count: tiers.E ?? 0 },
+    { label: "Tier A2, US, UK, Australia, New Zealand or another country", count: tiers.A2 ?? 0 },
+    { label: "Tier E, Europe (last)", count: tiers.E ?? 0 },
     { label: "Region unknown", count: tiers.unknown ?? 0 },
+    { label: "Outside the region policy (India or not remote)", count: tiers.excluded ?? 0 },
   ];
+  const tracked = regionParts.length;
   if (harvest) regionParts.push({ label: "Dropped by the filter", count: harvest.dropped });
   const eligibility = parts(s, [
     ["Waiting", ["research_new", "promoted", "discovered"]],
@@ -100,8 +102,8 @@ export function flowSteps(funnel: PipelineFunnel): FlowStep[] {
       key: "region",
       title: "2. Region filter",
       explain:
-        "Remote only. Roles open to Canada come first (A), then US, UK or Australia (A2, needs fit 7 or more), then Europe last (E). Senior titles and India based employers are dropped.",
-      count: total(regionParts.slice(0, 4)),
+        "Remote only. Roles open to Canada or anywhere come first (A), then the US, UK, Australia, New Zealand or another country (A2, needs fit 7 or more), then Europe last (E). Senior titles and India based roles or employers are dropped.",
+      count: total(regionParts.slice(0, tracked)),
       parts: regionParts,
     },
     {

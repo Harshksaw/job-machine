@@ -32,7 +32,7 @@ function Extra({ node }: { node: FunnelNode }) {
   if (node.fetched !== undefined) bits.push(`${node.fetched} fetched`);
   if (node.dropped) bits.push(`${node.dropped} dropped`);
   if (node.kept !== undefined) bits.push(`${node.kept} kept by harvest`);
-  if (node.provisional) bits.push("tier guessed from location");
+  if (node.provisional) bits.push("tier read from the location");
   if (node.job) {
     bits.push(node.job.fit_score !== null ? `fit ${node.job.fit_score}` : "not scored");
     bits.push(node.job.status);

@@ -113,8 +113,37 @@ def test_tier_reads_an_explicit_field_first_else_a_provisional_guess():
     assert funnel._tier_of({"location": "Remote, Canada"}) == ("A", True)
     assert funnel._tier_of({"location": "Remote (US only)"}) == ("A2", True)
     assert funnel._tier_of({"location": "Remote, Germany"}) == ("E", True)
-    assert funnel._tier_of({"location": "Somewhere"}) == ("unknown", True)
+    assert funnel._tier_of({"location": ""}) == ("unknown", True)
     assert funnel._tier_of({"notes": "Pipeline r1: eligible (Tier A2), US only"}) == ("A2", True)
+
+
+def test_tier_uses_the_shared_region_classifier():
+    # app.regions.classify_location, the same rules as the harvest and the research staging.
+    assert funnel._tier_of({"location": "Remote (New Zealand)"}) == ("A2", True)
+    assert funnel._tier_of({"location": "Somewhere"}) == ("A2", True)  # another non India country
+    assert funnel._tier_of({"location": "Remote, Switzerland"}) == ("E", True)
+    # The description says where the company is based.
+    assert funnel._tier_of({"location": "Worldwide", "jd_text": "A Berlin-based startup."}) == ("E", True)
+    assert funnel._tier_of({"location": "Worldwide", "description": "Headquartered in Pune, India."}) == (
+        "excluded", True)
+    assert funnel._tier_of({"location": "Bengaluru, India"}) == ("excluded", True)
+    assert funnel._tier_of({"location": "Toronto (hybrid)"}) == ("excluded", True)
+    # An explicit tier still wins over the location and the description, and "drop" is excluded.
+    assert funnel._tier_of({"tier": "E", "location": "Canada"}) == ("E", False)
+    assert funnel._tier_of({"tier": "drop", "location": "Canada"}) == ("excluded", False)
+    # The newest exact tier token in the notes, never "Tier A" read out of "Tier A2".
+    assert funnel._tier_of({"location": "Canada", "notes": "Tier A (canada)\nPipeline r2: Tier E"}) == ("E", True)
+
+
+def test_tier_e_is_labelled_europe_last_and_sorts_after_a2(client):
+    _job(company="Euro", source="LinkedIn", location="Remote, Germany")
+    _job(company="Kiwi", source="LinkedIn", location="New Zealand")
+    _job(company="Can", source="LinkedIn", location="Canada")
+    body = client.get("/api/pipeline/funnel").json()
+    children = _node(body["tree"], "linkedin")["children"]
+    assert [c["key"] for c in children] == ["A", "A2", "E"]
+    assert _node(children, "E")["label"] == "Tier E, Europe (last)"
+    assert body["tiers"]["E"] == 1 and body["tiers"]["excluded"] == 0
 
 
 # the tree

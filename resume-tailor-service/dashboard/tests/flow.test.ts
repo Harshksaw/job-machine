@@ -74,6 +74,17 @@ test("the flow boxes follow the pipeline order and carry live counts", () => {
   }
 });
 
+test("the region box lists Tier E as Europe (last) and the listings outside the policy", () => {
+  const region = flowSteps({ ...funnel, tiers: { A: 10, A2: 6, E: 3, unknown: 1, excluded: 2 } })[1];
+  const labels = region.parts.map((p) => p.label);
+  assert.equal(region.parts.find((p) => p.label === "Tier E, Europe (last)")?.count, 3);
+  assert.ok(labels.indexOf("Tier A2, US, UK, Australia, New Zealand or another country") < labels.indexOf("Tier E, Europe (last)"));
+  assert.equal(region.parts.find((p) => p.label === "Outside the region policy (India or not remote)")?.count, 2);
+  // Tracked listings only: the harvest drop count is not added to the box total.
+  assert.equal(region.count, 22);
+  assert.match(region.explain, /New Zealand/);
+});
+
 test("without a harvest file the source box has no fetched part", () => {
   const steps = flowSteps({ ...funnel, harvest: null });
   assert.equal(steps[0].parts.some((p) => p.label === "Fetched by the last harvest"), false);
