@@ -1,0 +1,127 @@
+"""Where a remote role may be held from, and which tier that puts it in.
+
+Policy (AGENTS.md, search policy): remote roles are worked in country order Canada, US,
+UK, Australia, New Zealand, any other country, Europe last. Nothing based in India.
+
+    classify_location("US, Canada")      -> tier A,  region canada
+    classify_location("United Kingdom")  -> tier A2, region uk
+    classify_location("Germany")         -> tier E,  region europe
+    classify_location("US, India")       -> tier drop, reason india
+
+Tier A: open to Canada, or anywhere. Tier A2: limited to the US, UK, Australia, New Zealand
+or another country outside India and Europe. Tier E: limited to Europe (EU, EEA,
+Switzerland); kept, but last. India excludes a role even when another region also matches.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Classification:
+    tier: str  # "A", "A2", "E" or "drop"
+    region: str  # canada, worldwide, unspecified, us, uk, australia, new zealand, other, europe, ""
+    reason: str = ""  # why it was dropped; empty when kept
+    rank: int = 99  # country order: lower is worked first
+
+
+# Lower rank is worked first. Tier A regions share rank 0.
+RANK = {
+    "canada": 0, "worldwide": 0, "unspecified": 0,
+    "us": 1, "uk": 2, "australia": 3, "new zealand": 4, "other": 5, "europe": 6,
+}
+
+_INDIA = re.compile(
+    r"\bindia\b|\bbengaluru\b|\bbangalore\b|\bmumbai\b|\bhyderabad\b|\bpune\b|\bdelhi\b|"
+    r"\bchennai\b|\bgurgaon\b|\bgurugram\b|\bnoida\b|\bkolkata\b|\bahmedabad\b",
+    re.I,
+)
+_NOT_REMOTE = re.compile(r"\bhybrid\b|\bon.?site\b|\bin.?office\b|\bin.person\b", re.I)
+
+_CANADA = re.compile(
+    r"\bcanada\b|\bcanadian\b|\bnorth america\b|\btoronto\b|\bvancouver\b|\bmontreal\b|\bcalgary\b|\bottawa\b|"
+    r"(?<!latin )(?<!south )(?<!central )\bamericas\b",
+    re.I,
+)
+_WORLDWIDE = re.compile(r"\bworld.?wide\b|\banywhere\b|\bglobal(ly)?\b|\bworld\b", re.I)
+# Strict: uppercase "US" only, so prose such as "work with us" never reads as the US.
+_US_CASED = re.compile(r"(?<![A-Za-z])US(?![A-Za-z])")
+_US = re.compile(
+    r"\bunited states\b|\busa\b|(?<![a-z])u\.s\.(a\.?)?|"
+    r"(?<!north )(?<!latin )(?<!south )(?<!central )\bamerica\b(?!s)",
+    re.I,
+)
+_UK = re.compile(
+    r"\bunited kingdom\b|\buk\b|\bu\.k\.|\bgreat britain\b|\bbritain\b|\bengland\b|"
+    r"\bscotland\b|\bwales\b|\bnorthern ireland\b|\blondon\b",
+    re.I,
+)
+_AUSTRALIA = re.compile(r"\baustralia\b|\baustralian\b|\banz\b|\bsydney\b|\bmelbourne\b", re.I)
+_NEW_ZEALAND = re.compile(r"\bnew zealand\b|\bnz\b|\baotearoa\b|\bauckland\b|\bwellington\b", re.I)
+_OTHER = re.compile(
+    r"\blatam\b|\blatin america\b|\bsouth america\b|\bcentral america\b|\bapac\b|\basia\b|"
+    r"\bafrica\b|\bmiddle east\b",
+    re.I,
+)
+# EU 27, EEA (Iceland, Liechtenstein, Norway) and Switzerland, plus the usual region words
+# and big tech cities. The UK is not here: it is Tier A2. "Ireland" only when not
+# "Northern Ireland", which is the UK.
+_EUROPE = re.compile(
+    r"\beurope\b|\beuropean\b|\beu\b|\beea\b|\bemea\b|\bschengen\b|\bcet\b|\bcest\b|"
+    r"\baustria\b|\bbelgium\b|\bbulgaria\b|\bcroatia\b|\bcyprus\b|\bczech republic\b|\bczechia\b|"
+    r"\bdenmark\b|\bestonia\b|\bfinland\b|\bfrance\b|\bgermany\b|\bdeutschland\b|\bgreece\b|"
+    r"\bhungary\b|(?<!northern )\bireland\b|\bitaly\b|\blatvia\b|\blithuania\b|\bluxembourg\b|"
+    r"\bmalta\b|\bnetherlands\b|\bholland\b|\bpoland\b|\bportugal\b|\bromania\b|\bslovakia\b|"
+    r"\bslovenia\b|\bspain\b|\bsweden\b|\biceland\b|\bliechtenstein\b|\bnorway\b|"
+    r"\bswitzerland\b|\bberlin\b|\bmunich\b|\bparis\b|\bamsterdam\b|\bmadrid\b|\bbarcelona\b|"
+    r"\blisbon\b|\bdublin\b|\bwarsaw\b|\bstockholm\b|\bcopenhagen\b|\bzurich\b|\bvienna\b|"
+    r"\bprague\b",
+    re.I,
+)
+# Words that carry no place, so "Remote" or "Remote - " alone reads as unspecified.
+_FILLER = re.compile(
+    r"\bremote\b|\bonly\b|\bbased\b|\bfully\b|\bfirst\b|\bjob\b|\btime ?zones?\b|[^a-z]+", re.I
+)
+
+
+def is_india(text: str | None) -> bool:
+    """True when the text names India or a major Indian city. 'Indiana' is not India."""
+    return bool(_INDIA.search(text or ""))
+
+
+def _drop(reason: str) -> Classification:
+    return Classification("drop", "", reason, RANK.get("drop", 99))
+
+
+def _kept(tier: str, region: str) -> Classification:
+    return Classification(tier, region, "", RANK[region])
+
+
+def classify_location(location: str, remote_scope: str = "") -> Classification:
+    """Tier a remote listing from its location text and optional remote scope."""
+    text = " ".join(part.strip() for part in (location or "", remote_scope or "") if part and part.strip())
+    if is_india(text):
+        return _drop("india")
+    if _NOT_REMOTE.search(text):
+        return _drop("not remote")
+    if _CANADA.search(text):
+        return _kept("A", "canada")
+    if _WORLDWIDE.search(text):
+        return _kept("A", "worldwide")
+    if _US_CASED.search(text) or _US.search(text):
+        return _kept("A2", "us")
+    if _UK.search(text):
+        return _kept("A2", "uk")
+    if _AUSTRALIA.search(text):
+        return _kept("A2", "australia")
+    if _NEW_ZEALAND.search(text):
+        return _kept("A2", "new zealand")
+    if _OTHER.search(text):
+        return _kept("A2", "other")
+    if _EUROPE.search(text):
+        return _kept("E", "europe")
+    if not _FILLER.sub("", text):
+        return _kept("A", "unspecified")
+    # A place we do not list (Brazil, Philippines, a city): another non India country.
+    return _kept("A2", "other")
