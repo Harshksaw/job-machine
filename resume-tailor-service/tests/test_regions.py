@@ -101,3 +101,21 @@ def test_rank_follows_country_order():
     ranks = [classify_location(place).rank for place in order]
     assert ranks == sorted(ranks)
     assert len(set(ranks)) == len(ranks)
+
+
+@pytest.mark.parametrize("location, description, tier, region, reason", [
+    # The company base in the description overrides an open location.
+    ("Worldwide", "We are a startup headquartered in Bengaluru, India.", "drop", "", "india"),
+    ("Canada", "Acme is an India based fintech.", "drop", "", "india"),
+    ("Worldwide", "We are headquartered in Berlin, Germany and hire anywhere.", "E", "europe", ""),
+    ("USA", "Our HQ is in Amsterdam.", "E", "europe", ""),
+    ("Worldwide", "A Paris-based team building tools.", "E", "europe", ""),
+    # No base sentence, or a base outside India and Europe, leaves the location tier alone.
+    ("Worldwide", "We build developer tools. Offices in London and Toronto.", "A", "worldwide", ""),
+    ("Worldwide", "We are headquartered in London, UK.", "A", "worldwide", ""),
+    ("USA", "Based in San Francisco, we sell to India and Europe.", "A2", "us", ""),
+    ("Worldwide", "", "A", "worldwide", ""),
+])
+def test_company_base_in_description(location, description, tier, region, reason):
+    result = classify_location(location, description=description)
+    assert (result.tier, result.region, result.reason) == (tier, region, reason)

@@ -132,3 +132,13 @@ def test_harvest_outputs_are_gitignored(path):
     repo = SERVICE.parent
     result = subprocess.run(["git", "check-ignore", "-q", "--no-index", path], cwd=repo)
     assert result.returncode == 0, f"{path} is not gitignored"
+
+
+def test_harvest_reads_company_base_from_the_description():
+    india = _row("Worldwide", company="Ind")
+    india["jd_text"] = "We are headquartered in Pune, India. " + JD
+    europe = _row("Worldwide", company="Eur")
+    europe["jd_text"] = "We are a Berlin-based startup. " + JD
+    kept, summary = remote_boards.harvest([("B", lambda: [india, europe])], since="2026-11-01", known_jobs=[])
+    assert [(r["company"], r["tier"]) for r in kept] == [("Eur", "E")]
+    assert summary["sources"]["B"]["dropped"] == {"india": 1}

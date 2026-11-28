@@ -85,6 +85,28 @@ _FILLER = re.compile(
 )
 
 
+# Where the company itself is based, read from the job description: "headquartered in X",
+# "HQ is in X", "based in X", "X-based". Only the first place in the phrase counts.
+_BASE_IN = re.compile(
+    r"\b(?:headquartered|headquarters|hq|based|located)\s+(?:(?:is|are)\s+)?(?:in|out of)\s+"
+    r"(?:the\s+)?(?P<place>[^.,;:\n()]{1,60})",
+    re.I,
+)
+_PLACE_BASED = re.compile(r"\b(?P<place>[a-z]+(?: [a-z]+)?)[ -]based\b", re.I)
+
+
+def company_base(description: str | None) -> str:
+    """'india' or 'europe' when the description says the company is based there, else ''."""
+    for pattern in (_BASE_IN, _PLACE_BASED):
+        for match in pattern.finditer(description or ""):
+            place = re.split(r"\s+(?:and|or|with|but)\s+", match.group("place"), maxsplit=1)[0]
+            if is_india(place):
+                return "india"
+            if _EUROPE.search(place) and not _UK.search(place):
+                return "europe"
+    return ""
+
+
 def is_india(text: str | None) -> bool:
     """True when the text names India or a major Indian city. 'Indiana' is not India."""
     return bool(_INDIA.search(text or ""))
@@ -98,8 +120,24 @@ def _kept(tier: str, region: str) -> Classification:
     return Classification(tier, region, "", RANK[region])
 
 
-def classify_location(location: str, remote_scope: str = "") -> Classification:
-    """Tier a remote listing from its location text and optional remote scope."""
+def classify_location(location: str, remote_scope: str = "", *, description: str = "") -> Classification:
+    """Tier a remote listing from its location text and optional remote scope.
+
+    `description` (the job description) is read only for where the company is based: an
+    India based company is dropped, a European company drops to Tier E.
+    """
+    where = _classify_place(location, remote_scope)
+    if where.tier == "drop":
+        return where
+    base = company_base(description)
+    if base == "india":
+        return _drop("india")
+    if base == "europe" and where.tier in ("A", "A2"):
+        return _kept("E", "europe")
+    return where
+
+
+def _classify_place(location: str, remote_scope: str) -> Classification:
     text = " ".join(part.strip() for part in (location or "", remote_scope or "") if part and part.strip())
     if is_india(text):
         return _drop("india")

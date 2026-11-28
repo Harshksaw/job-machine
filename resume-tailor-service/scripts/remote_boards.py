@@ -12,6 +12,9 @@ Nomads, Remote OK. No board is asked to filter by country: every listing is fetc
 - Tier E: remote limited to Europe (EU, EEA, Switzerland). Kept, worked last.
 - Dropped: anything based in India, even when another region also matches.
 
+The job description is read for where the company is based ("headquartered in X",
+"X-based"): an India based company is dropped, a European company drops to Tier E.
+
 Country order inside the output: Canada, US, UK, Australia, New Zealand, other, Europe last.
 Each kept row carries `tier` and `region`. Rows are also filtered to engineering roles below
 senior and deduped against the dossier store with the store's own canonical URL plus a
@@ -217,7 +220,7 @@ def keep(row: dict, since: str) -> str:
         return "title"
     if SENIORITY_DROP.search(row["seniority"]) and "entry" not in row["seniority"].lower():
         return "seniority"
-    where = classify_location(row["location"], row.get("remote_scope", ""))
+    where = classify_location(row["location"], row.get("remote_scope", ""), description=row["jd_text"])
     row["tier"], row["region"] = where.tier, where.region
     row["_rank"] = where.rank
     if where.tier == "drop":
