@@ -103,6 +103,29 @@ def test_claim_is_idempotent_for_its_own_run():
 
 
 
+def test_a_finished_runs_claim_does_not_block_the_next_run():
+    job = _job()
+    first = _run(job, steps_code.claim_step())
+    assert first.status == "packet_ready"
+
+    second = _run(job, steps_code.claim_step())
+
+    assert second.status == "packet_ready", second.terminal_reason
+    titles = [a.title for a in job_store.get_job(job.id).activities]
+    assert f"Claimed by pipeline {second.id}" in titles
+
+
+def test_a_claim_from_a_run_still_active_keeps_blocking():
+    job = _job()
+    pipeline = Pipeline("t", (steps_code.claim_step(),))
+    active = store.create_run(job.id, pipeline.name, pipeline.order)
+    store.start_run(active.id)
+    _activity(job, f"Claimed by pipeline {active.id}", session=f"pipeline {active.id}",
+              occurred_at=_ago(minutes=5))
+
+    assert _run(job, steps_code.claim_step()).status == "failed"
+
+
 def test_claim_checks_the_live_dossier_not_the_step_snapshot(monkeypatch):
     """Two runs racing for one dossier: a claim that lands after the step context was
     loaded must still be seen, so the check and the write happen in one transaction."""

@@ -16,7 +16,8 @@ from typing import Callable
 
 from app import job_store
 from app.models import JobActivity, JobActivityInput, JobWorkspace
-from app.pipeline import ats
+from app.pipeline import ats, store
+from app.pipeline.models import TERMINAL_STATUSES
 from app.pipeline.runner import Pipeline, StepContext, StepFailed, StepResult, StepSpec
 
 CLAIM_WINDOW = timedelta(hours=2)
@@ -44,6 +45,24 @@ _APPLIED = "already applied"
 _OWN = "own claim"
 
 
+_PIPELINE_SESSION = re.compile(r"^pipeline (\S+)$")
+
+
+def _released(activity: JobActivity) -> bool:
+    """A claim by a pipeline run that has ended is released: that run no longer works
+    the dossier, so it must not block the next run. A claim whose run is unknown (or
+    belongs to another tool) stays live until the claim window lapses."""
+    match = _PIPELINE_SESSION.match(activity.session or "") or _PIPELINE_SESSION.match(
+        activity.title.removeprefix("Claimed by ").strip())
+    if match is None:
+        return False
+    try:
+        run = store.get_run(match.group(1))
+    except Exception:
+        return False
+    return run is not None and run.status in TERMINAL_STATUSES
+
+
 def _claim_conflict(job: JobWorkspace, session: str) -> str:
     """"" when the run may claim the dossier, else why not."""
     if job.status in _SUBMITTED_STATUSES or any(a.kind == "applied" for a in job.activities):
@@ -55,6 +74,8 @@ def _claim_conflict(job: JobWorkspace, session: str) -> str:
             continue
         if activity.title == f"Claimed by {session}" or activity.session == session:
             own = True  # this run's own claim, from before a resume
+            continue
+        if _released(activity):
             continue
         moment = _when(activity)
         if moment is None or moment >= cutoff:
