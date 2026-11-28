@@ -23,13 +23,14 @@ from app import job_store
 from app.llm import DIRECT_STEPS
 from app.mail import store as mail_store
 from app.pipeline import adapters as adapters_module
-from app.pipeline import config, stats, store, tasks, worker
+from app.pipeline import config, funnel, stats, store, tasks, worker
 from app.pipeline.pipelines import PACKET_PIPELINE
 from app.pipeline.adapters import build_adapter
 from app.pipeline.config import PipelineConfig
 from app.pipeline.models import Attempt, now_iso
 from app.pipeline import router as router_module
 from app.pipeline.router import TrackedAdapter
+from app.pipeline.runner import TASK_PREFIX
 from app.search import _require_dashboard
 
 router = APIRouter(prefix="/api/pipeline")
@@ -322,7 +323,15 @@ def post_cancel(run_id: str, x_job_machine: str | None = Header(default=None)) -
     except store.RunFinished as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     killed = adapters_module.kill_run(run_id)
+    if not run.job_id.startswith(TASK_PREFIX):
+        funnel.record_safely("cancelled", job_id=run.job_id, step="run", run_id=run.id,
+                             source=_source_of(run.job_id))
     return {"run": run.model_dump(mode="json"), "killed": killed}
+
+
+def _source_of(job_id: str) -> str:
+    job = job_store.get_job(job_id)
+    return job.source if job is not None else ""
 
 
 @router.get("/worker")
@@ -346,3 +355,14 @@ def get_stats(since: str = "") -> dict:
     for run in store.list_runs():
         counts[run.status] = counts.get(run.status, 0) + 1
     return {**summary, "runs": counts}
+
+
+@router.get("/funnel")
+def get_funnel(since: str = "", until: str = "") -> dict:
+    """The Flow tab tree: Source, region tier, stage and the top jobs of each stage,
+    with harvest fetched and dropped counts. `since` and `until` (ISO date or time,
+    UTC when no offset) keep the listings created or moved in that window."""
+    try:
+        return funnel.build(since=since, until=until)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="since and until must be ISO 8601 dates or times")

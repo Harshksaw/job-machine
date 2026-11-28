@@ -26,7 +26,7 @@ from pydantic import BaseModel, ValidationError
 
 from app import job_store
 from app.models import JobWorkspace
-from app.pipeline import store
+from app.pipeline import funnel, store
 from app.pipeline.models import TERMINAL_STATUSES, AdapterResult, Attempt, Run, now_iso
 
 STEP_KINDS = ("code", "service", "agent")
@@ -218,6 +218,10 @@ def run(run_id: str, pipeline: Pipeline, *, owner: str, resolve_chain: Chain = _
             except LeaseLost:
                 return store.get_run(run_id)
             current = store.get_run(run_id)
+        if not task and current.status in TERMINAL_STATUSES and current.lease_owner == owner:
+            job = job_store.get_job(current.job_id)
+            funnel.record_safely(current.status, job_id=current.job_id, source=job.source if job else "",
+                                 step="run", run_id=run_id, detail=current.terminal_reason)
         return current
     finally:
         done_renewing.set()
@@ -278,6 +282,9 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.
                             owner=owner)
     except store.NotLeaseHolder as exc:
         raise LeaseLost(run_id) from exc
+    bucket = funnel.step_bucket(step.name, result.output, result.stop)
+    if bucket and ctx.job is not None:
+        funnel.record_safely(bucket, job_id=ctx.job.id, source=ctx.job.source, step=step.name, run_id=run_id)
 
 
 def _context(run_id: str) -> StepContext:

@@ -34,7 +34,7 @@ from app.house_style import strip_dashes
 from app.mail import gmail
 from app.mail import store as mail_store
 from app.models import JobActivityInput, SessionEventInput
-from app.pipeline import prompts, runner, steps_code, store
+from app.pipeline import funnel, prompts, runner, steps_code, store
 from app.pipeline.models import Run, now_iso
 from app.pipeline.runner import Pipeline, StepContext, StepResult, StepSpec, task_job_id
 
@@ -198,6 +198,9 @@ def _write(event: dict, decision: dict, session: str, run_id: str) -> tuple[str,
             job_store.patch_job(job_id, {"status": change},
                                 reason=f"Mail sync {run_id}: {event['outcome']} email", session=session)
     _mirror(job_id, data)
+    if change:
+        funnel.record_safely(change, job_id=job_id, step="mail_sync", run_id=run_id,
+                             source=getattr(job_store.get_job(job_id), "source", ""))
     return "written", change
 
 

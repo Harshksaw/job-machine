@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app import agent_runs, fantastic, job_store, research_store
+from app.pipeline import funnel
 from app.models import JobCaptureInput
 
 router = APIRouter()
@@ -128,12 +129,15 @@ def promote(item_id: str, x_job_machine: str | None = Header(default=None)) -> d
         session=f"Research {item.get('preset')}",
     ))
     research_store.set_status(item_id, "promoted", dossier_id=job.id)
+    funnel.record_safely("promoted", item_id=item_id, job_id=job.id, source=item.get("source", ""))
     return {"dossier_id": job.id, "created": created}
 
 
 @router.post("/api/research/{item_id}/dismiss")
 def dismiss(item_id: str, x_job_machine: str | None = Header(default=None)) -> dict:
     _require_dashboard(x_job_machine)
-    if research_store.set_status(item_id, "dismissed") is None:
+    item = research_store.set_status(item_id, "dismissed")
+    if item is None:
         raise HTTPException(status_code=404, detail="research item not found")
+    funnel.record_safely("dismissed", item_id=item_id, source=item.get("source", ""))
     return {"ok": True}
