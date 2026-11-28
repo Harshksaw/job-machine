@@ -39,12 +39,20 @@ def task_job_id(pipeline: str) -> str:
     return f"{TASK_PREFIX}{pipeline}"
 
 
+def _no_check() -> None:
+    return None
+
+
 @dataclass
 class StepContext:
     run: Run
     # None in a task run, which belongs to no dossier.
     job: JobWorkspace | None
     outputs: dict[str, dict]
+    # Raises when the run was cancelled, the worker is stopping or lost its lease.
+    # Service steps call it between fields and hand it to llm.complete (`cancel`), so
+    # they stop at the next model call instead of finishing work nobody will keep.
+    check: Callable[[], None] = _no_check
 
 
 @dataclass
@@ -143,6 +151,11 @@ class StepFailed(Exception):
         self.policy = policy
 
 
+class RunCancelled(StepFailed):
+    """The run was cancelled while this step ran. Step code that catches StepFailed to
+    carry on (the repair step) must let this one through."""
+
+
 Chain = Callable[[StepSpec], list[Adapter]]
 
 
@@ -223,7 +236,7 @@ def _check_interrupt(run_id: str, stop: threading.Event, owner: str | None) -> N
     if owner is not None and current.lease_owner != owner:
         raise LeaseLost(run_id)
     if current.status == "cancelled":
-        raise StepFailed("run cancelled")
+        raise RunCancelled("run cancelled")
 
 
 def _holds(run_id: str, owner: str | None) -> bool:
@@ -235,6 +248,7 @@ def _execute(run_id: str, step: StepSpec, resolve_chain: Chain, stop: threading.
              owner: str | None = None) -> None:
     try:
         ctx = _context(run_id)
+        ctx.check = lambda: _check_interrupt(run_id, stop, owner)
         if step.when is not None and not step.when(ctx):
             store.update_step(run_id, step.name, owner=owner, status="skipped", finished_at=now_iso())
             return

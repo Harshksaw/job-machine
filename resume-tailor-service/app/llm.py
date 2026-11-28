@@ -128,12 +128,18 @@ def _left(deadline: tuple[float, int] | None, failed: list[str]) -> float | None
 
 def complete(capability: str, prompt: str, schema, *, step: str = "", exclude_adapters=(),
              run_id: str = LLM_RUN_ID, job_id: str = "", budget=_CONFIG_BUDGET,
-             deadline: tuple[float, int] | None = None) -> tuple[Any, dict]:
+             deadline: tuple[float, int] | None = None,
+             cancel: Callable[[], None] | None = None) -> tuple[Any, dict]:
     """One structured model call through the router. Returns the parsed value (a model
     instance for a Pydantic class, else a dict) and meta: the adapter and model that
     answered, tokens, cost, and what failed before it. Raises LlmUnavailableError when
     the whole chain fails (NoAdapterError when there was nothing to try) or the time
-    budget runs out (see deadline_for; `deadline` carries one across several calls)."""
+    budget runs out (see deadline_for; `deadline` carries one across several calls).
+
+    `cancel` is the pipeline step's interrupt check: it raises when the run was
+    cancelled, the worker is shutting down or lost its lease. It runs before every try
+    and right after every adapter call, so a CLI that kill_run ended is neither
+    recorded as a try nor retried, and no next adapter starts."""
     from app.pipeline import config, router, store
     from app.pipeline.models import AdapterResult, Attempt, now_iso
 
@@ -148,10 +154,12 @@ def complete(capability: str, prompt: str, schema, *, step: str = "", exclude_ad
         raise NoAdapterError(f"no healthy enabled adapter offers capability {capability!r}{skipped}")
     json_schema = _json_schema(schema)
     failed: list[str] = []
+    stop = cancel or (lambda: None)
     for spec in specs:
         adapter = router.TrackedAdapter(_build(spec), router.HEALTH)
         errors: list[str] = []
         for _ in range(2):
+            stop()
             left = _left(deadline, failed)
             timeout = spec.timeout_for(capability)
             if left is not None:
@@ -162,6 +170,7 @@ def complete(capability: str, prompt: str, schema, *, step: str = "", exclude_ad
                                       schema=json_schema, timeout=timeout)
             except Exception as exc:
                 result = AdapterResult(outcome="error", error=f"{type(exc).__name__}: {exc}"[:300])
+            stop()
             parsed = None
             if result.outcome == "ok":
                 parsed, errors = _check(schema, result.output or {})

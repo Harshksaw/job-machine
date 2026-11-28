@@ -26,7 +26,7 @@ from app.errors import JobGenerationError
 from app.models import ApplicationAnswer, FormField, GeneratedAnswer
 from app.pipeline.models import now_iso
 from app.pipeline import rules
-from app.pipeline.runner import StepContext, StepFailed, StepResult, StepSpec
+from app.pipeline.runner import RunCancelled, StepContext, StepFailed, StepResult, StepSpec
 from app.pipeline.steps_agent import FIT_FLOOR
 
 BANK_PATH = Path(__file__).resolve().parents[2] / "content" / "resume_bank.yaml"
@@ -40,7 +40,7 @@ def _model(ctx: StepContext, complete: Complete | None, step: str, schema: dict)
     """The caller's `complete`, else one routed session for this step of this run."""
     if complete is not None:
         return complete
-    return llm.Session("reason", schema, step=step, run_id=ctx.run.id, job_id=ctx.run.job_id)
+    return llm.Session("reason", schema, step=step, run_id=ctx.run.id, job_id=ctx.run.job_id, cancel=ctx.check)
 
 
 def _next_adapter(model) -> bool:
@@ -193,6 +193,7 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
         bank = None
         model = _model(ctx, complete, "answers", _answer_schema())
         for field in ctx.job.form_fields:
+            ctx.check()  # a cancel, shutdown or lost lease stops before the next field
             if _key(field.label) in existing:
                 skipped.append({"label": field.label, "why": "already answered"})
                 continue
@@ -259,6 +260,7 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
         kit_model = _model(ctx, complete_kit, "repair", _kit_schema())
         answer_model = _model(ctx, complete_answer, "repair", _answer_schema())
         for field, issues in by_field.items():
+            ctx.check()
             try:
                 if field == "cover_letter":
                     # Only a letter the kit step wrote in this run; never a letter that
@@ -284,6 +286,8 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
                 })
                 writes["application_answers"] = [a.model_dump() for a in answers]
                 repaired.append(field)
+            except RunCancelled:
+                raise
             except StepFailed:
                 unrepaired.append(field)
         return StepResult(output={"repaired": repaired, "unrepaired": unrepaired}, writes=writes)

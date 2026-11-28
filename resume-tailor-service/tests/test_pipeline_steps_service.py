@@ -189,6 +189,36 @@ def test_answers_drafts_free_text_and_flags_judgment_fields_for_harsh():
     assert {"First name", "Email", "Resume"} == skipped
 
 
+def test_answers_stop_before_the_next_field_once_the_run_is_cancelled():
+    job = _job(form_fields=[FormField(label="Why Acme Cloud?", kind="textarea"),
+                            FormField(label="Tell us about a project you built", kind="textarea")])
+    calls = []
+
+    def model(prompt):
+        calls.append(prompt)
+        store.cancel_run(next(iter(store.list_runs(job.id))).id, "stop")
+        return json.dumps(GOOD_ANSWER)
+
+    result = _run(job, steps_service.answers_step(complete=model))
+
+    assert result.status == "cancelled"
+    assert len(calls) == 1
+    assert job_store.get_job(job.id).application_answers == []
+
+
+def test_routed_sessions_carry_the_step_cancel_check():
+    job = _job()
+    seen = {}
+
+    def kit(ctx):
+        seen["model"] = steps_service._model(ctx, None, "kit", {})
+        seen["check"] = ctx.check
+        return StepResult()
+
+    _run(job, StepSpec("kit", "service", run=kit))
+    assert seen["model"].options["cancel"] is seen["check"]
+
+
 def test_answers_keeps_an_existing_answer_for_the_same_question():
     existing = ApplicationAnswer(id="a1", question="Why Acme Cloud?", answer="Harsh wrote this.",
                                  status="approved", created_at="t", updated_at="t")

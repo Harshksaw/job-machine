@@ -351,3 +351,45 @@ def test_the_budget_covers_a_whole_generator_draft(monkeypatch):
     with pytest.raises(llm.LlmUnavailableError, match="time budget"):
         application_kit.generate_kit(_job(), bank, max_retries=2)
     assert len(a.prompts) == 2
+
+
+class Stopped(BaseException):
+    pass
+
+
+def test_a_cancel_check_stops_the_chain_and_never_retries_a_killed_cli(monkeypatch):
+    _save({"a": {"cost_tier": 1}, "b": {"cost_tier": 2}})
+    cancelled = []
+
+    class Killed(Scripted):
+        def call(self, prompt, **kwargs):
+            cancelled.append(True)  # kill_run ended the CLI mid call
+            return super().call(prompt, **kwargs)
+
+    a = Killed("a", [AdapterResult(outcome="invalid_output", error="killed"),
+                     AdapterResult(outcome="ok", output={"answer": "late"})])
+    b = Scripted("b", [AdapterResult(outcome="ok", output={"answer": "b"})])
+    _script(monkeypatch, {"a": a, "b": b})
+
+    def check():
+        if cancelled:
+            raise Stopped()
+
+    with pytest.raises(Stopped):
+        llm.complete("reason", "Say", Out, cancel=check)
+
+    assert len(a.prompts) == 1 and b.prompts == []
+    assert store.list_attempts(llm.LLM_RUN_ID) == []
+
+
+def test_a_cancel_check_runs_before_the_first_call_and_sessions_pass_it_on(monkeypatch):
+    _save({"a": {}})
+    a = Scripted("a", [AdapterResult(outcome="ok", output={"answer": "x"})])
+    _script(monkeypatch, {"a": a})
+
+    def check():
+        raise Stopped()
+
+    with pytest.raises(Stopped):
+        llm.Session("reason", Out, cancel=check).fresh()("Say")
+    assert a.prompts == []
