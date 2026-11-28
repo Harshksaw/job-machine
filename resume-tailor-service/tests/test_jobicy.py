@@ -35,23 +35,26 @@ def test_stages_finds_and_never_creates_dossiers():
         seen.append(url)
         return {"jobs": [_job(), _job(2, company="Beta")]}
 
-    result = jobicy.run_search("canada", fetch=fetch)
+    result = jobicy.run_search("remote", fetch=fetch)
     assert job_store.load_jobs() == []
-    assert any("geo=canada" in url and "industry=dev" in url for url in seen)
+    # Canada only was a server side geo filter; now every region comes back, tiered locally.
+    assert any("industry=dev" in url for url in seen)
+    assert not any("geo=" in url for url in seen)
     assert result["fetched"] == 2 and len(result["new"]) == 2
-    staged = research_store.list_items("jobicy-canada")
+    staged = research_store.list_items("jobicy-remote")
     beta = next(item for item in staged if item["company"] == "Beta")
     assert beta["source"] == "Jobicy"
     assert beta["salary"] == "CAD 70000 to 90000 per year"
     assert beta["jd_text"] == "Build things."
     assert beta["open_to_canada"] is True
+    assert (beta["tier"], beta["region"]) == ("A", "canada")
 
 
 def test_senior_titles_are_skipped_and_reruns_do_not_duplicate():
     payload = {"jobs": [_job(), _job(2, title="Senior Backend Engineer", level="Senior")]}
-    first = jobicy.run_search("canada", fetch=lambda url: payload)
+    first = jobicy.run_search("remote", fetch=lambda url: payload)
     assert first["senior_skipped"] == 1 and len(first["new"]) == 1
-    again = jobicy.run_search("canada", fetch=lambda url: payload)
+    again = jobicy.run_search("remote", fetch=lambda url: payload)
     assert again["new"] == [] and len(research_store.list_items()) == 1
 
 

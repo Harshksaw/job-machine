@@ -18,6 +18,7 @@ import urllib.request
 from typing import Callable
 
 from app import job_store, research_store
+from app.regions import tag_item
 
 API = "https://remoteok.com/api"
 USER_AGENT = "job-machine/1.0 (personal job search)"
@@ -29,7 +30,6 @@ PRESETS: dict[str, dict] = {
     },
 }
 
-_CANADA_OK = ("canada", "north america", "americas", "worldwide", "anywhere", "global")
 _SENIOR = re.compile(r"senior|staff|principal|lead|manager|director|head|\bsr\b", re.I)
 _ENGINEERING = re.compile(
     r"engineer|developer|programmer|software|full.?stack|back.?end|front.?end|\bml\b|\bai\b|"
@@ -65,13 +65,6 @@ def _get() -> list:
         ) from err
 
 
-def _open_to_canada(location: str) -> bool:
-    text = (location or "").strip().lower()
-    if not text:
-        return True
-    return any(word in text for word in _CANADA_OK)
-
-
 def to_research(job: dict, preset: str) -> dict:
     url = (job.get("url") or "").strip()
     location = (job.get("location") or "").strip()
@@ -79,7 +72,7 @@ def to_research(job: dict, preset: str) -> dict:
     role = (job.get("position") or "").strip() or "Unknown"
     tracked = job_store.find_matching_job(company, role, url)
     posted = (job.get("date") or "")[:10]
-    return {
+    item = {
         "id": "ro-" + hashlib.sha1((url or str(job.get("id") or "")).encode()).hexdigest()[:20],
         "preset": f"remote-ok-{preset}",
         "source": SOURCE,
@@ -88,7 +81,6 @@ def to_research(job: dict, preset: str) -> dict:
         "url": url,
         "location": location or "Worldwide",
         "remote_scope": location or "Worldwide",
-        "open_to_canada": _open_to_canada(location),
         "visa": None,
         "experience": "",
         "salary": _salary(job.get("salary_min"), job.get("salary_max")),
@@ -96,6 +88,8 @@ def to_research(job: dict, preset: str) -> dict:
         "jd_text": _text(job.get("description", "")),
         "tracked_dossier": tracked.id if tracked else None,
     }
+    tag_item(item)  # tier, region and open_to_canada from app.regions
+    return item
 
 
 def run_search(preset: str, fetch: Callable[[], list] | None = None) -> dict:
@@ -108,19 +102,26 @@ def run_search(preset: str, fetch: Callable[[], list] | None = None) -> dict:
     rows = (fetch or _get)()
     jobs = [row for row in rows if isinstance(row, dict) and row.get("position")]
     new, duplicates, skipped = [], [], 0
+    dropped: dict[str, int] = {}
     for job in jobs:
         title = job.get("position") or ""
         if not _ENGINEERING.search(title) or _SENIOR.search(title):
             skipped += 1
             continue
-        item, created = research_store.add(to_research(job, preset))
+        item = to_research(job, preset)
+        where = tag_item(item)
+        if where.tier == "drop":  # India, or not remote
+            dropped[where.reason] = dropped.get(where.reason, 0) + 1
+            continue
+        item, created = research_store.add(item)
         if created and not item["tracked_dossier"]:
             new.append({
                 "id": item["id"], "company": item["company"], "role": item["role"],
-                "open_to_canada": item["open_to_canada"], "salary": item["salary"],
+                "open_to_canada": item["open_to_canada"],
+                "tier": item["tier"], "region": item["region"], "salary": item["salary"],
             })
         else:
             duplicates.append(f"{item['company']} | {item['role']}")
     return {
-        "fetched": len(jobs), "new": new, "duplicates": duplicates, "senior_skipped": skipped,
+        "fetched": len(jobs), "new": new, "duplicates": duplicates, "dropped": dropped, "senior_skipped": skipped,
     }

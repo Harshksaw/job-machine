@@ -163,3 +163,19 @@ def _classify_place(location: str, remote_scope: str) -> Classification:
         return _kept("A", "unspecified")
     # A place we do not list (Brazil, Philippines, a city): another non India country.
     return _kept("A2", "other")
+
+
+def open_to_canada(location: str, remote_scope: str = "") -> bool:
+    """True when the place itself lets someone living in Canada take the role (Tier A by
+    place alone; the company base does not change this fact)."""
+    return _classify_place(location, remote_scope).tier == "A"
+
+
+def tag_item(item: dict) -> Classification:
+    """Set `tier`, `region` and `open_to_canada` on a research item from its `location`,
+    `remote_scope` and `jd_text`. Returns the classification; tier "drop" means do not stage."""
+    location, scope = item.get("location") or "", item.get("remote_scope") or ""
+    where = classify_location(location, scope, description=item.get("jd_text") or "")
+    item["tier"], item["region"] = where.tier, where.region
+    item["open_to_canada"] = open_to_canada(location, scope)
+    return where
