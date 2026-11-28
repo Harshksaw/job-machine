@@ -60,9 +60,11 @@ def _prefix(ctx: StepContext) -> str:
 class EligibilityOutput(BaseModel):
     eligible: bool
     reason: str
-    # AGENTS.md (2026-11-25): remote limited to US, UK or Australian residents is
-    # eligible as Tier A2, which needs fit 7 or higher.
+    # AGENTS.md (2026-11-27): remote limited to US, UK, Australian, New Zealand or another
+    # non India country's residents is eligible as Tier A2, which needs fit 7 or higher.
     tier_a2: bool = False
+    # Europe only, or a European company: eligible as Tier E, kept and worked last.
+    tier_e: bool = False
 
     _reason = field_validator("reason")(_not_blank)
 
@@ -71,6 +73,8 @@ def _finish_eligibility(out: EligibilityOutput, ctx: StepContext) -> StepResult:
     verdict = "eligible" if out.eligible else "ineligible"
     if out.eligible and out.tier_a2:
         verdict = "eligible (Tier A2)"
+    elif out.eligible and out.tier_e:
+        verdict = "eligible (Tier E)"
     writes = {"notes": _append_note(ctx, f"{_prefix(ctx)} {verdict}, {out.reason}")}
     output = out.model_dump()
     if out.eligible:

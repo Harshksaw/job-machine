@@ -338,6 +338,32 @@ def test_tier_a2_fit_seven_continues():
 
 def test_eligibility_output_defaults_tier_a2_false():
     assert steps_agent.EligibilityOutput(eligible=True, reason="ok").tier_a2 is False
+    assert steps_agent.EligibilityOutput(eligible=True, reason="ok").tier_e is False
+
+
+# Tier E and the wider Tier A2 (AGENTS.md, 2026-11-27): Europe only or a European company is
+# kept as Tier E, worked last; New Zealand or another non India country is Tier A2.
+
+
+def test_eligibility_prompt_keeps_europe_as_tier_e_and_new_zealand_as_tier_a2():
+    from app.pipeline import prompts
+
+    source = prompts.template_source("eligibility")
+    assert "EU residents only" not in source
+    assert "other than Canada, the US, the UK\n  and Australia" not in source
+    assert "tier_e" in source and "New Zealand" in source and "India" in source
+
+
+def test_tier_e_eligibility_is_noted_so_the_flow_tab_reads_it():
+    from app.pipeline import funnel
+
+    job = _job()
+    result, _ = _run(job, [steps_agent.eligibility_step()], {"eligibility": [
+        ok({"eligible": True, "reason": "Remote, EU residents only.", "tier_e": True})]})
+    assert result.status == "packet_ready"
+    notes = job_store.get_job(job.id).notes
+    assert "eligible (Tier E)" in notes
+    assert funnel._tier_of({"location": "Canada", "notes": notes}) == ("E", True)
 
 
 # why_this_role traceability

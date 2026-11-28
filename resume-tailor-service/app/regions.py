@@ -96,7 +96,16 @@ _BASE_IN = re.compile(
     r"(?:the\s+)?(?P<place>[^.,;:\n()]{1,60})",
     re.I,
 )
-_PLACE_BASED = re.compile(r"\b(?P<place>[a-z]+(?: [a-z]+)?)[ -]based\b", re.I)
+# "X-based" counts only when it describes the company: followed (after at most two words,
+# such as "AI" or "software") by a company noun, or ending the clause. "India based
+# customers" or "Berlin-based partners" says nothing about where the company is.
+_PLACE_BASED = re.compile(
+    r"\b(?P<place>[a-z]+(?: [a-z]+)?)[ -]based\b"
+    r"(?=(?:\s+[\w-]+){0,2}?\s+(?:company|companies|startup|start-up|scale-?up|team|studio|firm|"
+    r"agency|business|organi[sz]ation|consultancy|fintech|saas|employer|lab|group|venture|"
+    r"enterprise|corporation|platform|product company)\b|\s*(?:[.,;:!)]|$))",
+    re.I,
+)
 
 
 def company_base(description: str | None) -> str:

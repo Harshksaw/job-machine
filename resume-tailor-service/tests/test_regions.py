@@ -115,6 +115,11 @@ def test_rank_follows_country_order():
     ("Worldwide", "We are headquartered in London, UK.", "A", "worldwide", ""),
     ("USA", "Based in San Francisco, we sell to India and Europe.", "A2", "us", ""),
     ("Worldwide", "", "A", "worldwide", ""),
+    # "X based" names the company only when it describes the company, not its customers.
+    ("Canada", "We build tools for India based customers and Berlin-based partners.", "A", "canada", ""),
+    ("Worldwide", "We help India-based merchants get paid.", "A", "worldwide", ""),
+    ("Worldwide", "We are a Berlin-based AI startup.", "E", "europe", ""),
+    ("Worldwide", "Our team is fully remote and Lisbon based.", "E", "europe", ""),
 ])
 def test_company_base_in_description(location, description, tier, region, reason):
     result = classify_location(location, description=description)
