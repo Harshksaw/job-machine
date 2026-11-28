@@ -6,9 +6,10 @@
     .venv/bin/python scripts/cursor_queue.py run apply            # Ego Lite form fills
     .venv/bin/python scripts/cursor_queue.py run outreach         # people and drafts
 
-Targeting (AGENTS.md "Search policy since 2026-11-25"): remote only, employers in Canada,
-the US, Europe, the UK or Australia, nothing based in India, small startups first, big
-companies set aside. Each `run` starts one `cursor-agent -p` per batch, waits for it, then
+Targeting (AGENTS.md "Search policy since 2026-11-25"): remote only, nothing based in India,
+small startups first, big companies set aside. Tier A (open to Canada or anywhere) first,
+then Tier A2 (limited to the US, UK, Australia, New Zealand or another non India country),
+Tier E (European companies or Europe only roles) last. Outreach is Tier A only. Each `run` starts one `cursor-agent -p` per batch, waits for it, then
 starts the next, so a lane never holds more than one agent. A lock file per lane stops a
 second copy. Run at most `score` plus one browser lane at once; `apply` and `outreach`
 each cap their own tab count in the prompt.
@@ -29,6 +30,8 @@ from pathlib import Path
 
 API = "http://127.0.0.1:8420"
 SERVICE = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(SERVICE))
+from app.regions import is_india  # noqa: E402
 REPO = SERVICE.parent
 STATE = SERVICE / "data" / "cursor_queue_state.json"
 LOG_DIR = REPO / "logs" / "cursor-queue"
@@ -57,11 +60,14 @@ LANES = {
 }
 
 _COMMON = """You are a Cursor agent for Harsh Saw's Job Machine. Read AGENTS.md and docs/AGENT-PLAYBOOK.md
-first; their rules win. Targeting: remote only, employers in Canada, the US, Europe, the UK or
-Australia, nothing based in India, small startups (under about 200 people, seed to Series B) first,
-big companies (big names or 1,000+ staff) skipped with note "big company, set aside".
-Remote open to Canada comes first. Remote limited to US, UK, Europe or Australian residents is NOT a skip:
-with fit 7+ write "Tier A2" (second priority); answer such forms authorized there No, sponsorship Yes. Claim each
+first; their rules win. Targeting: remote only, nothing based in India (even when another region
+is also listed), small startups (under about 200 people, seed to Series B) first, big companies
+(big names or 1,000+ staff) skipped with note "big company, set aside". Country order: Canada, US,
+UK, Australia, New Zealand, other, Europe last. Remote open to Canada or anywhere is "Tier A".
+Remote limited to US, UK, Australian, New Zealand or another non India country's residents is NOT
+a skip: with fit 7+ write "Tier A2" (second priority). A European company or a Europe only role is
+"Tier E" (last), unless it is really good (remote, fit 8+, posted in the last 14 days): then "Tier A2".
+Answer Tier A2 and Tier E forms authorized there No, sponsorship Yes. Claim each
 dossier before you work it (AGENTS.md) with the title "Claimed by cursor_queue <lane>". A claim with that same title is yours from an
 earlier batch: take it over. Only other titles count as another agent and skip any claimed by another agent in the last 2 hours.
 Never fabricate: every claim traces to resume-tailor-service/content/resume_bank.yaml. Never press
@@ -73,10 +79,10 @@ Work ONLY the items listed below, then stop and print one line per item: id, com
 _TASKS = {
     "score": _COMMON + """
 Lane: score. NO BROWSER. Use web fetch and the job API only.
-For each item: confirm the role is fully remote and open to someone living in Canada (read the full
+For each item: confirm the role is fully remote and which countries a hire may live in (read the full
 description), find company size, stage and funding from public pages, then:
 - dossier: rescore fit against the bank (no experience level penalty for a 2 to 5 year band), write
-  `Tier A` or `Tier B` plus size, stage and source links at the start of research_brief, and set
+  `Tier A`, `Tier A2`, `Tier E` or `Tier B` plus size, stage and source links at the start of research_brief, and set
   status `skipped` with the reason if it fails targeting. GET fresh before PUT and send every field.
 - research item: POST /api/research/<id>/promote (header X-Job-Machine: dashboard) if it passes,
   otherwise POST /api/research/<id>/dismiss. After promoting, score the new dossier the same way.
@@ -150,25 +156,42 @@ def _remote(job: dict) -> bool:
 
 
 def _india(text: str | None) -> bool:
-    return "india" in (text or "").lower()
+    return is_india(text)
+
+
+# Exact tier token at the start of research_brief or next_action: "Tier A2" is not "Tier A".
+_TIER = re.compile(r"\s*tier\s+(a2|a|b|e)(?![a-z0-9])", re.I)
+# Apply lane order: Tier A first, then A2, Tier E (Europe) last. Tier B stays in score.
+TIER_ORDER = {"A": 0, "A2": 1, "E": 2}
+APPLY_MIN_FIT = {"A": 8, "A2": 7, "E": 7}
+
+
+def _tier_token(text: str | None) -> str | None:
+    match = _TIER.match(text or "")
+    return match.group(1).upper() if match else None
+
+
+def _tier(job: dict) -> str | None:
+    """Tier is written at the start of research_brief. The jobs list leaves that field
+    out, so a tier at the start of next_action counts, and a fit of 7 or more with no
+    tier yet is checked on the full dossier."""
+    for key in ("research_brief", "next_action"):
+        token = _tier_token(job.get(key))
+        if token:
+            return token
+    if (job.get("fit_score") or 0) < 7 or job.get("research_brief"):
+        return None
+    full = _get(f"/api/jobs/{job['id']}")
+    job["research_brief"] = full.get("research_brief") or ""
+    return _tier_token(job["research_brief"])
 
 
 def _tier_a(job: dict) -> bool:
-    """Tier is written at the start of research_brief. The jobs list leaves that
-    field out, so a next_action that starts with 'Tier A' counts, and a fit of
-    8 or more with no tier yet is checked on the full dossier."""
-    for key in ("research_brief", "next_action"):
-        if (job.get(key) or "").lstrip().lower().startswith("tier a"):
-            return True
-    if (job.get("fit_score") or 0) < 8 or job.get("research_brief"):
-        return False
-    full = _get(f"/api/jobs/{job['id']}")
-    job["research_brief"] = full.get("research_brief") or ""
-    return job["research_brief"].lstrip().lower().startswith("tier a")
+    return _tier(job) == "A"
 
 
 def _tier_a2(job: dict) -> bool:
-    return any((job.get(k) or "").lstrip().lower().startswith("tier a2") for k in ("research_brief", "next_action"))
+    return _tier(job) == "A2"
 
 
 def build_plan() -> dict:
@@ -187,7 +210,8 @@ def build_plan() -> dict:
             plan["cleanup_jobs"].append({"id": job["id"], "company": job["company"], "role": job["role"], "reason": reason})
             continue
         fit = job.get("fit_score") or 0
-        if (_tier_a2(job) and fit >= 7) or (_tier_a(job) and fit >= 8):
+        tier = _tier(job)
+        if tier in APPLY_MIN_FIT and fit >= APPLY_MIN_FIT[tier]:
             plan["apply"].append(job["id"])
         else:
             plan["score"].append(job["id"])
@@ -203,8 +227,9 @@ def build_plan() -> dict:
                         and not (j.get("people") or j.get("person_count"))]
     # Best first: higher fit.
     by_id = {j["id"]: j for j in jobs}
-    # Tier A (open to Canada) before Tier A2 (US, UK, Europe or Australia residents only), best fit first.
-    plan["apply"].sort(key=lambda i: (_tier_a2(by_id[i]), -(by_id[i].get("fit_score") or 0)))
+    # Tier A (open to Canada) first, then Tier A2 (US, UK, Australia, New Zealand or another
+    # non India country), Tier E (Europe only) last; best fit first inside a tier.
+    plan["apply"].sort(key=lambda i: (TIER_ORDER[_tier(by_id[i])], -(by_id[i].get("fit_score") or 0)))
     plan["review"] = list(plan["apply"])
     return plan
 
