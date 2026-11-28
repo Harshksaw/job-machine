@@ -39,10 +39,14 @@ def no_database_url(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def pipeline_store_in_tmp(monkeypatch, tmp_path):
-    """Runs, attempts and funnel events default to the real data/ folder. Any route that
+    """Runs, attempts, funnel events and the remote_boards harvest default to the real data/ folder. Any route that
     records a funnel event (research promote and dismiss, run cancel) would write there,
     so every test gets a temp folder unless it sets its own."""
     from app.pipeline import store
 
+    from app.pipeline import funnel
+
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "pipeline-store")
     monkeypatch.setattr(store, "_JSON_BACKENDS", {})
+    # The remote_boards task writes its harvest where the Flow tab reads it.
+    monkeypatch.setattr(funnel, "HARVEST_DIR", tmp_path / "harvest-store")

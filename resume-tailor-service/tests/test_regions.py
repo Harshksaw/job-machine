@@ -1,0 +1,131 @@
+import pytest
+
+from app.regions import Classification, classify_location, is_india
+
+
+@pytest.mark.parametrize(
+    "location, tier, region",
+    [
+        # Tier A: open to Canada, or anywhere.
+        ("Canada", "A", "canada"),
+        ("Remote - Canada", "A", "canada"),
+        ("USA, Canada", "A", "canada"),
+        ("North America", "A", "canada"),
+        ("Toronto, ON", "A", "canada"),
+        ("Americas", "A", "canada"),
+        ("Worldwide", "A", "worldwide"),
+        ("Anywhere in the World", "A", "worldwide"),
+        ("Global", "A", "worldwide"),
+        ("Europe, Canada", "A", "canada"),
+        ("", "A", "unspecified"),
+        ("Remote", "A", "unspecified"),
+        # Tier A2: limited to US, UK, Australia, New Zealand or another non India country.
+        ("USA", "A2", "us"),
+        ("US", "A2", "us"),
+        ("United States", "A2", "us"),
+        ("US Only", "A2", "us"),
+        ("Remote (U.S.)", "A2", "us"),
+        ("US time zones", "A2", "us"),
+        ("United Kingdom", "A2", "uk"),
+        ("UK", "A2", "uk"),
+        ("London, England", "A2", "uk"),
+        ("Belfast, Northern Ireland", "A2", "uk"),
+        ("Australia", "A2", "australia"),
+        ("New Zealand", "A2", "new zealand"),
+        ("NZ", "A2", "new zealand"),
+        ("Brazil", "A2", "other"),
+        ("LATAM", "A2", "other"),
+        ("Latin America", "A2", "other"),
+        ("Philippines", "A2", "other"),
+        ("UK, Germany", "A2", "uk"),
+        ("Australia, New Zealand", "A2", "australia"),
+        ("US or Europe", "A2", "us"),
+        # Tier E: Europe, last priority but kept.
+        ("Europe", "E", "europe"),
+        ("EU", "E", "europe"),
+        ("EMEA", "E", "europe"),
+        ("Germany", "E", "europe"),
+        ("Berlin, Germany", "E", "europe"),
+        ("Ireland", "E", "europe"),
+        ("Netherlands", "E", "europe"),
+        ("Switzerland", "E", "europe"),
+        ("Norway", "E", "europe"),
+        ("Iceland", "E", "europe"),
+        ("Liechtenstein", "E", "europe"),
+        ("Czechia", "E", "europe"),
+        ("Spain, Portugal, Poland", "E", "europe"),
+        ("Remote (CET +/- 2 hours)", "E", "europe"),
+    ],
+)
+def test_classify_location_tiers(location, tier, region):
+    result = classify_location(location)
+    assert isinstance(result, Classification)
+    assert (result.tier, result.region) == (tier, region), location
+    assert result.reason == ""
+
+
+@pytest.mark.parametrize(
+    "location",
+    ["India", "Bengaluru, India", "Bangalore", "US, India", "Worldwide, India",
+     "Canada or India", "Remote - Hyderabad", "Europe, India"],
+)
+def test_india_is_dropped_even_with_another_match(location):
+    result = classify_location(location)
+    assert (result.tier, result.reason) == ("drop", "india")
+
+
+@pytest.mark.parametrize("location", ["Hybrid - Toronto", "On-site, Austin", "Onsite"])
+def test_hybrid_or_onsite_location_is_dropped(location):
+    result = classify_location(location)
+    assert (result.tier, result.reason) == ("drop", "not remote")
+
+
+def test_us_match_is_strict():
+    # Lowercase "us" in prose is not the United States.
+    assert classify_location("Come work with us").region == "other"
+    assert classify_location("Join us anywhere").tier == "A"
+    # Indiana is a US state, not India.
+    assert classify_location("Indianapolis, Indiana").tier != "drop"
+    assert not is_india("Indiana")
+    assert is_india("Pune, India")
+
+
+def test_remote_scope_is_read_with_location():
+    assert classify_location("Remote", "Canada").tier == "A"
+    assert classify_location("Remote", "Germany").tier == "E"
+    assert classify_location("Remote", "US, India").reason == "india"
+
+
+def test_rank_follows_country_order():
+    order = ["Canada", "USA", "UK", "Australia", "New Zealand", "Brazil", "Germany"]
+    ranks = [classify_location(place).rank for place in order]
+    assert ranks == sorted(ranks)
+    assert len(set(ranks)) == len(ranks)
+
+
+@pytest.mark.parametrize("location, description, tier, region, reason", [
+    # The company base in the description overrides an open location.
+    ("Worldwide", "We are a startup headquartered in Bengaluru, India.", "drop", "", "india"),
+    ("Canada", "Acme is an India based fintech.", "drop", "", "india"),
+    ("Worldwide", "We are headquartered in Berlin, Germany and hire anywhere.", "E", "europe", ""),
+    ("USA", "Our HQ is in Amsterdam.", "E", "europe", ""),
+    ("Worldwide", "A Paris-based team building tools.", "E", "europe", ""),
+    # No base sentence, or a base outside India and Europe, leaves the location tier alone.
+    ("Worldwide", "We build developer tools. Offices in London and Toronto.", "A", "worldwide", ""),
+    ("Worldwide", "We are headquartered in London, UK.", "A", "worldwide", ""),
+    ("USA", "Based in San Francisco, we sell to India and Europe.", "A2", "us", ""),
+    ("Worldwide", "", "A", "worldwide", ""),
+])
+def test_company_base_in_description(location, description, tier, region, reason):
+    result = classify_location(location, description=description)
+    assert (result.tier, result.region, result.reason) == (tier, region, reason)
+
+
+@pytest.mark.parametrize("location", ["Serbia", "Ukraine", "Remote, Belgrade", "Bosnia and Herzegovina",
+                                      "Montenegro", "North Macedonia", "Albania", "Moldova", "Kyiv"])
+def test_european_countries_outside_the_eu_are_tier_e(location):
+    assert classify_location(location).tier == "E"
+
+
+def test_a_company_based_in_serbia_is_tier_e():
+    assert classify_location("Worldwide", description="A Belgrade-based studio.").tier == "E"

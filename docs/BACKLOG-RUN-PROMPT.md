@@ -31,8 +31,9 @@ prompt if they ever disagree.
    answers are casual, short and curated: one or two real facts, like a person typing a
    quick reply. No buzzwords, no tidy three part lists, no "I am excited to" openers.
 8. Eligibility: Canada authorized, no sponsorship. US roles: authorized No, sponsorship
-   Yes, never offer TN, pick H-1B where visa types are listed. Remote limited to residents
-   of other countries is a skip. If a school is not in a dropdown, pick Other.
+   Yes, never offer TN, pick H-1B where visa types are listed. Tier A2 and Tier E roles
+   (limited to residents of another country): authorized there No, sponsorship Yes. If a
+   school is not in a dropdown, pick Other.
 
 ## Targeting (since 2026-11-25)
 
@@ -40,17 +41,21 @@ Headless alternative to pasting this prompt: `resume-tailor-service/scripts/curs
 feeds Cursor small batches per lane (`plan`, `cleanup`, `run score|apply|outreach`), one
 agent per lane, with tab caps. Run `score` first: it writes the Tier that fills `apply`.
 
-- Remote only, from employers in Canada, the US, Europe, the UK or Australia. Nothing
-  based in India. Skip hybrid and on-site anywhere, US included: set status `skipped` with
-  note "not remote". A remote role limited to US, UK or Australian residents is not a skip: with fit 7 or
-  higher it is Tier A2, worked right after Tier A. Answer honestly: authorized there No,
-  sponsorship Yes. Remote limited to any other country is a skip.
-- Country order: Canada, then US, then Australia, then UK.
-- Tier A: a small startup (under about 200 people, seed to Series B), fully remote, fit 8
-  or higher. Tier A2: the same
-  but remote only for US, UK or Australian residents, fit 7 or higher. Tier B: everything
-  else that is still eligible. Write `Tier A` or `Tier B`
-  at the start of `research_brief`. Never start Tier B while Tier A has work left.
+- Remote only. Nothing based in India, even when another region is also listed. Skip
+  hybrid and on-site anywhere, US included: set status `skipped` with note "not remote".
+  A remote role limited to residents of another country is not a skip. Answer its forms
+  honestly: authorized there No, sponsorship Yes.
+- Country order: Canada, then US, then UK, then Australia, then New Zealand, then any
+  other country, Europe last.
+- Tier A: a small startup (under about 200 people, seed to Series B), fully remote and
+  open to Canada or anywhere, fit 8 or higher. Tier A2: the same but remote only for US,
+  UK, Australian, New Zealand or another non India country's residents, fit 7 or higher,
+  worked right after Tier A. Tier E: a European company or a Europe only role, fit 7 or
+  higher; kept but worked last, after Tier B, unless it is really good (remote, fit 8 or
+  higher, posted in the last 14 days), which makes it Tier A2. Tier B: everything else
+  that is still eligible. Write `Tier A`, `Tier A2`, `Tier E` or `Tier B` at the start of
+  `research_brief`. Never start Tier B while Tier A or A2 has work left. Outreach is Tier A
+  only.
 - Big names and companies with 1,000+ staff: skip with note "big company, set aside".
   Do not spend time on them.
 
@@ -64,7 +69,8 @@ Work in this order and keep a running list in a scratch file so you never lose y
 2. The dossiers stuck in `applying`: read the notes, check Gmail, skip anything not
    remote, then finish or park the rest, Tier A first.
 3. Research store items with status `new`: triage, promote remote Tier A finds.
-4. Tier B, fit 8 then fit 7, same loop.
+4. Tier A2 right after Tier A, then Tier B, fit 8 then fit 7, same loop.
+5. Tier E (Europe) last, same loop.
 
 Pull the live list from `GET http://127.0.0.1:8420/api/jobs` (a light summary), then read
 each full dossier from `/api/jobs/<id>`. A PUT replaces the whole dossier, so GET fresh,

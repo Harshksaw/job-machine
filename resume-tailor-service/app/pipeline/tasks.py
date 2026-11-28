@@ -39,7 +39,6 @@ from app.pipeline.models import Run, now_iso
 from app.pipeline.runner import Pipeline, StepContext, StepResult, StepSpec, task_job_id
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 WATCHLIST = Path(__file__).resolve().parents[2] / "content" / "ats_watchlist.yaml"
 
 MAIL_SYNC = "mail_sync"
@@ -348,15 +347,29 @@ def liveness_sweep_pipeline(check: steps_code.Check | None = None, *,
 
 def remote_boards_pipeline(boards=None, *, days: int = 21, out_path: Path | None = None) -> Pipeline:
     def refresh(ctx: StepContext) -> StepResult:
-        result = load_script("remote_boards").harvest(days, boards=boards)
-        path = out_path or DATA_DIR / "remote_candidates.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(result["kept"], indent=1), encoding="utf-8")
+        from app.pipeline import funnel
+
+        module = load_script("remote_boards")
+        # Default: where the Flow tab (GET /api/pipeline/funnel) reads the last harvest.
+        path = out_path or funnel.HARVEST_DIR / "remote_candidates.json"
+        kept, summary = module.harvest(boards, days=days, out=path)
+        sources = summary["sources"].values()
+        dropped: dict[str, int] = {}
+        kept_by_tier = {tier: 0 for tier in module.TIERS}
+        for counts in sources:
+            for reason, n in counts["dropped"].items():
+                dropped[reason] = dropped.get(reason, 0) + n
+            for tier, n in counts["kept"].items():
+                kept_by_tier[tier] = kept_by_tier.get(tier, 0) + n
+        per_board = {name: (f"failed: {counts['error']}"[:200] if "error" in counts else counts["fetched"])
+                     for name, counts in summary["sources"].items()}
         listed = [{k: row.get(k, "") for k in ("company", "role", "job_url", "source", "location", "posted",
-                                                "company_history")} for row in result["kept"]]
+                                                "tier", "region", "company_history")} for row in kept]
         # Harvest only: scoring and capture stay agent steps (AGENTS.md), so no dossier is written.
-        return StepResult(output={"fetched": result["fetched"], "kept": len(listed), "dropped": result["dropped"],
-                                  "boards": result["boards"], "candidates_file": str(path), "listings": listed})
+        return StepResult(output={"fetched": sum(c["fetched"] for c in sources), "kept": len(listed),
+                                  "kept_by_tier": kept_by_tier, "dropped": dropped, "boards": per_board,
+                                  "candidates_file": str(path), "summary_file": str(module.summary_path(path)),
+                                  "listings": listed})
 
     return Pipeline(REMOTE_BOARDS, (StepSpec("remote_boards_harvest", "code", run=refresh),),
                     done_status="completed", scope="task")

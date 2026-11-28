@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app import agent_runs, fantastic, job_store, research_store
 from app.pipeline import funnel
+from app.regions import classify_location
 from app.models import JobCaptureInput
 
 router = APIRouter()
@@ -112,6 +113,16 @@ def add_research(data: ResearchItem, x_job_machine: str | None = Header(default=
     return {"created": created, "item": {k: v for k, v in doc.items() if k != "jd_text"}}
 
 
+def _tier_note(item: dict) -> str:
+    """Tier from the staged item, or worked out from its scope when an agent posted it."""
+    tier, region = item.get("tier"), item.get("region")
+    if not tier:
+        where = classify_location(item.get("location") or "", item.get("remote_scope") or "",
+                                  description=item.get("jd_text") or "")
+        tier, region = where.tier, where.region
+    return f"Tier {tier} ({region or 'unknown'})." if tier != "drop" else "Tier: based in India or not remote."
+
+
 @router.post("/api/research/{item_id}/promote")
 def promote(item_id: str, x_job_machine: str | None = Header(default=None)) -> dict:
     _require_dashboard(x_job_machine)
@@ -124,7 +135,7 @@ def promote(item_id: str, x_job_machine: str | None = Header(default=None)) -> d
         work_mode="remote" if "remote" in item.get("preset", "") else "",
         status="discovered", jd_text=item.get("jd_text", ""),
         notes=f"Promoted from research ({item.get('preset')}). Remote scope: {item.get('remote_scope') or 'unspecified'}. "
-              f"Open to Canada: {item.get('open_to_canada')}. Needs a fit score.",
+              f"Open to Canada: {item.get('open_to_canada')}. {_tier_note(item)} Needs a fit score.",
         next_action="Score fit (AGENTS.md rule 2)",
         session=f"Research {item.get('preset')}",
     ))

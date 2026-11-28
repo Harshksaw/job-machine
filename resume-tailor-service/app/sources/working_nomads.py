@@ -17,6 +17,7 @@ import urllib.request
 from typing import Callable
 
 from app import job_store, research_store
+from app.regions import tag_item
 
 API = "https://www.workingnomads.com/api/exposed_jobs/"
 USER_AGENT = "job-machine/1.0 (personal job search)"
@@ -28,7 +29,6 @@ PRESETS: dict[str, dict] = {
     },
 }
 
-_CANADA_OK = ("canada", "north america", "americas", "worldwide", "anywhere", "global")
 _SENIOR = re.compile(r"senior|staff|principal|lead|manager|director|head|\bsr\b", re.I)
 
 
@@ -53,20 +53,13 @@ def _get() -> list:
         ) from err
 
 
-def _open_to_canada(location: str) -> bool:
-    text = (location or "").strip().lower()
-    if not text:
-        return True
-    return any(word in text for word in _CANADA_OK)
-
-
 def to_research(job: dict, preset: str) -> dict:
     url = (job.get("url") or "").strip()
     location = (job.get("location") or "").strip()
     company = (job.get("company_name") or "").strip() or "Unknown"
     role = (job.get("title") or "").strip() or "Unknown"
     tracked = job_store.find_matching_job(company, role, url)
-    return {
+    item = {
         "id": "wn-" + hashlib.sha1(url.encode()).hexdigest()[:20],
         "preset": f"working-nomads-{preset}",
         "source": "Working Nomads",
@@ -75,7 +68,6 @@ def to_research(job: dict, preset: str) -> dict:
         "url": url,
         "location": location or "Worldwide",
         "remote_scope": location or "Worldwide",
-        "open_to_canada": _open_to_canada(location),
         "visa": None,
         "experience": (job.get("category_name") or "").strip(),
         "salary": "",
@@ -83,6 +75,8 @@ def to_research(job: dict, preset: str) -> dict:
         "jd_text": _text(job.get("description", "")),
         "tracked_dossier": tracked.id if tracked else None,
     }
+    tag_item(item)  # tier, region and open_to_canada from app.regions
+    return item
 
 
 def run_search(preset: str, fetch: Callable[[], list] | None = None) -> dict:
@@ -101,16 +95,23 @@ def run_search(preset: str, fetch: Callable[[], list] | None = None) -> dict:
             continue
         kept.append(job)
     new, duplicates = [], []
+    dropped: dict[str, int] = {}
     for job in kept:
-        item, created = research_store.add(to_research(job, preset))
+        item = to_research(job, preset)
+        where = tag_item(item)
+        if where.tier == "drop":  # India, or not remote
+            dropped[where.reason] = dropped.get(where.reason, 0) + 1
+            continue
+        item, created = research_store.add(item)
         if created and not item["tracked_dossier"]:
             new.append({
                 "id": item["id"], "company": item["company"], "role": item["role"],
-                "open_to_canada": item["open_to_canada"], "salary": item["salary"],
+                "open_to_canada": item["open_to_canada"],
+                "tier": item["tier"], "region": item["region"], "salary": item["salary"],
             })
         else:
             duplicates.append(f"{item['company']} | {item['role']}")
     return {
-        "fetched": len(jobs), "new": new, "duplicates": duplicates,
+        "fetched": len(jobs), "new": new, "duplicates": duplicates, "dropped": dropped,
         "senior_skipped": skipped, "off_category": off_category,
     }

@@ -8,7 +8,10 @@ Usage terms: apply through `applicationLink` and show Himalayas as the source. B
 kept on every staged item (`url`, `source`).
 
     from app.sources import himalayas
-    himalayas.run_search("us-entry")   # stages new finds, returns counts
+    himalayas.run_search("all-entry")  # stages new finds, returns counts
+
+Every staged item carries `tier` and `region` from `app.regions.classify_location`; India
+based finds are not staged and are counted under `dropped`.
 """
 from __future__ import annotations
 
@@ -24,6 +27,7 @@ import urllib.request
 from typing import Callable
 
 from app import job_store, research_store
+from app.regions import tag_item
 
 API = "https://himalayas.app/jobs/api/search"
 USER_AGENT = "job-machine/1.0 (personal job search)"
@@ -33,6 +37,14 @@ PAUSE_SECONDS = 1.1  # stays well under 60 requests a minute
 # `countries` run one by one because the API takes a single country; `queries` are crossed
 # with them.
 PRESETS: dict[str, dict] = {
+    # No country filter: every region comes back and app.regions tiers it (A, A2, E; India
+    # dropped). The country presets below stay for narrower runs.
+    "all-entry": {
+        "label": "Himalayas: all remote, entry level (tiered locally)",
+        "countries": [None],
+        "queries": ["software engineer", "developer", "machine learning", "full stack"],
+        "seniority": "Entry-level",
+    },
     "canada-entry": {
         "label": "Himalayas: Canada remote, entry level",
         "countries": ["Canada"],
@@ -60,7 +72,6 @@ PRESETS: dict[str, dict] = {
     },
 }
 
-_CANADA_OK = ("canada", "north america", "americas", "worldwide", "anywhere", "global")
 _SENIOR = re.compile(r"senior|staff|principal|lead|manager|director|head|\bsr\b", re.I)
 
 
@@ -115,7 +126,7 @@ def to_research(job: dict, preset: str) -> dict:
     scope = ", ".join(p for p in places if p) or "Worldwide"
     url = job.get("applicationLink") or job.get("guid") or ""
     tracked = job_store.find_matching_job(job.get("companyName") or "", job.get("title") or "", url)
-    return {
+    item = {
         "id": "hm-" + hashlib.sha1((job.get("guid") or url).encode()).hexdigest()[:20],  # ids are 64 chars at most
         "preset": f"himalayas-{preset}",
         "source": "Himalayas",
@@ -124,7 +135,6 @@ def to_research(job: dict, preset: str) -> dict:
         "url": url,
         "location": scope,
         "remote_scope": scope,
-        "open_to_canada": any(word in scope.lower() for word in _CANADA_OK),
         "visa": None,
         "experience": ", ".join(job.get("seniority") or []),
         "salary": _salary(job),
@@ -132,6 +142,8 @@ def to_research(job: dict, preset: str) -> dict:
         "jd_text": _text(job.get("description", "")),
         "tracked_dossier": tracked.id if tracked else None,
     }
+    tag_item(item)  # tier, region and open_to_canada from app.regions
+    return item
 
 
 def _search(preset: dict, fetch: Callable[[dict], dict]) -> list[dict]:
@@ -160,14 +172,21 @@ def run_search(preset: str, fetch: Callable[[dict], dict] | None = None) -> dict
     key = "" if fetch else _key()
     jobs = _search(PRESETS[preset], fetch or (lambda params: _get(params, key)))
     new, duplicates, skipped = [], [], 0
+    dropped: dict[str, int] = {}
     for job in jobs:
         if _SENIOR.search(job.get("title") or ""):
             skipped += 1
             continue
-        item, created = research_store.add(to_research(job, preset))
+        item = to_research(job, preset)
+        where = tag_item(item)
+        if where.tier == "drop":  # India, or not remote
+            dropped[where.reason] = dropped.get(where.reason, 0) + 1
+            continue
+        item, created = research_store.add(item)
         if created and not item["tracked_dossier"]:
             new.append({"id": item["id"], "company": item["company"], "role": item["role"],
-                        "open_to_canada": item["open_to_canada"], "salary": item["salary"]})
+                        "open_to_canada": item["open_to_canada"],
+                        "tier": item["tier"], "region": item["region"], "salary": item["salary"]})
         else:
             duplicates.append(f"{item['company']} | {item['role']}")
-    return {"fetched": len(jobs), "new": new, "duplicates": duplicates, "senior_skipped": skipped}
+    return {"fetched": len(jobs), "new": new, "duplicates": duplicates, "dropped": dropped, "senior_skipped": skipped}

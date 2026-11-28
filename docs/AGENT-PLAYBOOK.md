@@ -359,6 +359,8 @@ Raw CDP run 2026-10-24 (6 of 6 applied, job Chrome): the dialog title reads as a
 zero-width string, so do not key on it. One textarea means no custom questions. The flip to
 `Applied` survived a fresh reload on all six.
 
+**Signed in search and field limits (2026-11-26).** `workatastartup.com/companies?role=eng&remote=only&jobType=fulltime&sortBy=created_desc` lists every matching startup (139 that day) with up to 4 jobs per card; scroll to the bottom until the `/jobs/<id>` link count stops growing. The public `ycombinator.com/jobs/role/...` pages only expose about 140 jobs in total. Custom question textareas in the apply dialog have `maxlength=250` and silently cut longer text; the main message has no limit. Read each question label from the textarea's parent text, not a `<label>` element (there is none). Some companies post the same role twice under two ids: apply once.
+
 **Check the button before trusting the dossier.** aSim already showed `Applied` while its
 dossier was still at `discovered` with no applied event, because the earlier submission was
 never logged. The button state is the real dedupe gate.
@@ -372,8 +374,10 @@ under a different title.
 
 ## Remote job boards
 
-`cd resume-tailor-service && uv run python scripts/remote_boards.py --out <file>` pulls all
-five boards, filters, dedupes, and writes candidates with full JD text. It never writes to
+`cd resume-tailor-service && uv run python scripts/remote_boards.py` pulls all five boards,
+filters, tiers (A, A2, E via `app/regions.py`), dedupes, and writes candidates with full JD
+text to the gitignored `data/remote_candidates.json`, plus a per board funnel in
+`data/remote_candidates.summary.json`. It never writes to
 the dossier store: score each candidate, then capture it. First run 2026-11-06: 764
 listings, 203 kept, 49 scored and captured (14 at fit 7 or higher).
 
@@ -381,8 +385,8 @@ Per board, verified 2026-11-06:
 
 | Board | Endpoint | Notes |
 |---|---|---|
-| Himalayas | `himalayas.app/jobs/api/search?q=&country=Canada&seniority=Entry-level&page=N` | Best source by far (490 of 764). 20 per page. `locationRestrictions` lists the countries a hire may live in; empty means worldwide. |
-| Jobicy | `jobicy.com/api/v2/remote-jobs?count=50&geo=canada&industry=engineering` | `jobLevel` is often "Any". |
+| Himalayas | `himalayas.app/jobs/api/search?q=&seniority=Entry-level&page=N` | Best source by far (490 of 764). 20 per page. `locationRestrictions` lists the countries a hire may live in; empty means worldwide. |
+| Jobicy | `jobicy.com/api/v2/remote-jobs?count=50&industry=engineering` | `jobLevel` is often "Any". |
 | Remotive | `remotive.com/api/remote-jobs?category=software-dev` | Small feed, mostly worldwide contract roles. |
 | Working Nomads | `workingnomads.com/api/exposed_jobs/` | About 30 recent jobs total; filter on `category_name`. |
 | Remote OK | `remoteok.com/api` | Row 0 is the API terms notice; the terms ask that Remote OK be credited as the source. |

@@ -269,6 +269,36 @@ def test_remote_boards_reuses_the_script_harvest(tmp_path):
     assert out["boards"]["Dead"].startswith("failed")
     assert json.loads(out_path.read_text())[0]["role"] == "Backend Engineer"
     assert len(job_store.list_summaries()) == 1  # harvest only
+    # The merged harvest tiers every row and writes the funnel summary beside the rows.
+    assert out["listings"][0]["tier"] == "A" and out["kept_by_tier"] == {"A": 1, "A2": 0, "E": 0}
+    summary = json.loads((tmp_path / "candidates.summary.json").read_text())
+    assert summary["sources"]["Fake"] == {"fetched": 3, "kept": {"A": 1, "A2": 0, "E": 0},
+                                          "dropped": {"already in dossiers": 1, "title": 1}}
+    assert "down" in summary["sources"]["Dead"]["error"]
+    assert out["summary_file"] == str(tmp_path / "candidates.summary.json")
+
+
+def test_remote_boards_task_feeds_the_flow_tab_harvest(tmp_path, monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from app.pipeline import api, funnel
+
+    # No out_path: the task writes where GET /api/pipeline/funnel reads the last harvest.
+    monkeypatch.setattr(funnel, "HARVEST_DIR", tmp_path / "harvest")
+    boards = [("Remotive", lambda: [_board_row("Globex", "Backend Engineer", "https://example.com/g"),
+                                    {**_board_row("Initech", "Software Engineer", "https://example.com/i"),
+                                     "location": "Germany"}])]
+    run = tasks.run_task("remote_boards", pipeline=tasks.remote_boards_pipeline(boards))
+    assert run.status == "completed"
+    assert (tmp_path / "harvest" / "remote_candidates.json").is_file()
+
+    app = FastAPI()
+    app.include_router(api.router)
+    body = TestClient(app).get("/api/pipeline/funnel").json()
+    assert body["harvest"]["fetched"] == 2 and body["harvest"]["kept"] == 2
+    remotive = next(node for node in body["tree"] if node["key"] == "remotive")
+    assert {child["key"] for child in remotive["children"]} >= {"A", "E"}
 
 
 def test_ats_watchlist_stages_new_listings_through_the_research_route(tmp_path):
