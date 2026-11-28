@@ -393,3 +393,31 @@ def test_a_capability_cap_of_zero_pauses_that_capability_instead_of_lifting_the_
         pool.stop()
     assert calls == []
     assert store.get_run(run.id).status == "queued"
+
+
+def test_a_run_waiting_on_a_paused_capability_can_still_be_cancelled():
+    calls = []
+
+    class Records(FakeAdapter):
+        def invoke(self, step, ctx, errors):
+            calls.append(step.name)
+            return AdapterResult(outcome="ok", output={"answer": "x"})
+
+    cfg = config.PipelineConfig.model_validate({
+        "adapters": {"a1": {"type": "cli", "command": ["x", "{prompt}"], "capabilities": ["browser_read"]}},
+        "capability_caps": {"browser_read": 0}})
+    pipeline = Pipeline("p", (_agent_step("s", capability="browser_read"),))
+    waiting = store.create_run(_job().id, "p", pipeline.order)
+    after = store.create_run(_job().id, "p2", ["c"])
+    code = Pipeline("p2", (StepSpec("c", "code", run=lambda ctx: StepResult()),))
+    pool = _pool({"p": pipeline, "p2": code}, chain=lambda step: [Records("a1", [])], load_config=lambda: cfg)
+    pool.start()
+    try:
+        assert _wait(lambda: store.get_run(waiting.id).status == "running")
+        store.cancel_run(waiting.id, "stop")
+        # The one worker is free again and picks up the next run.
+        assert _wait(_ended(after.id))
+    finally:
+        pool.stop()
+    assert calls == []
+    assert store.get_run(waiting.id).status == "cancelled"

@@ -84,7 +84,8 @@ class Gates:
             return held[1]
 
     @contextmanager
-    def hold(self, keys: list[tuple[str, int]], stop: threading.Event):
+    def hold(self, keys: list[tuple[str, int]], stop: threading.Event,
+             check: Callable[[], None] | None = None):
         # Always the same order (capability first, then adapter), so two calls never
         # wait on each other in a cycle.
         taken: list[threading.Semaphore] = []
@@ -94,6 +95,8 @@ class Gates:
                 while not sem.acquire(timeout=_GATE_WAIT):
                     if stop.is_set():
                         raise RunAbandoned(key)
+                    if check is not None:
+                        check()  # a run cancelled while it waits (a paused cap) lets go
                 taken.append(sem)
             yield
         finally:
@@ -112,7 +115,7 @@ class GatedAdapter:
         self.name = inner.name
 
     def invoke(self, step, ctx, errors: list[str]):
-        with self._gates.hold(self._keys, self._stop):
+        with self._gates.hold(self._keys, self._stop, getattr(ctx, "check", None)):
             return self._inner.invoke(step, ctx, errors)
 
 
