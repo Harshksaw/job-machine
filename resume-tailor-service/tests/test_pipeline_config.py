@@ -148,3 +148,9 @@ def test_reset_to_defaults_is_a_new_version():
 
     assert reset.version == 3
     assert reset.workers == config.load_defaults().workers
+
+
+def test_capability_caps_reject_negatives_and_keep_zero_as_paused():
+    with pytest.raises(ValueError):
+        PipelineConfig.model_validate({"capability_caps": {"browser_read": -1}})
+    assert PipelineConfig.model_validate({"capability_caps": {"browser_read": 0}}).capability_caps == {"browser_read": 0}

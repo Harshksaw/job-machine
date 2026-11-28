@@ -64,6 +64,7 @@ def test_put_saves_a_new_version_and_rollback_restores(client):
     # gemini_lite is cheap only; fit_score needs reason.
     lambda b: b.update(steps={"fit_score": {"prefer": ["gemini_lite"]}}),
     lambda b: b.update(steps={"no_such_step": {"prefer": ["codex"]}}),
+    lambda b: b.update(capability_caps={"browser_read": -1}),
 ])
 def test_bad_configs_are_422_and_not_saved(client, change):
     body = client.get("/api/pipeline/config").json()

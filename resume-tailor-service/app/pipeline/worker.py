@@ -120,10 +120,11 @@ def gated_chain(chain: runner.Chain, gates: Gates, load_config: Callable[[], Pip
                 stop: threading.Event) -> runner.Chain:
     def resolve(step) -> list:
         cfg = load_config()
+        # 0 is a semaphore nobody can take: the capability is paused, not unlimited.
         cap = cfg.capability_caps.get(step.capability)
         out = []
         for adapter in chain(step):
-            keys = [(f"capability:{step.capability}", cap)] if cap else []
+            keys = [(f"capability:{step.capability}", cap)] if cap is not None else []
             spec = cfg.adapters.get(adapter.name)
             keys.append((f"adapter:{adapter.name}", spec.max_parallel if spec else 1))
             out.append(GatedAdapter(adapter, gates, keys, stop))

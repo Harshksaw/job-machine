@@ -370,3 +370,26 @@ def test_settings_workers_sets_how_many_threads_claim_and_zero_pauses():
         assert pool.active_workers == 2  # capped by PIPELINE_WORKERS
     finally:
         pool.stop()
+
+
+def test_a_capability_cap_of_zero_pauses_that_capability_instead_of_lifting_the_limit():
+    calls = []
+
+    class Records(FakeAdapter):
+        def invoke(self, step, ctx, errors):
+            calls.append(step.name)
+            return AdapterResult(outcome="ok", output={"answer": "x"})
+
+    cfg = config.PipelineConfig.model_validate({
+        "adapters": {"a1": {"type": "cli", "command": ["x", "{prompt}"], "capabilities": ["browser_read"]}},
+        "capability_caps": {"browser_read": 0}})
+    pipeline = Pipeline("p", (_agent_step("s", capability="browser_read"),))
+    run = store.create_run(_job().id, "p", pipeline.order)
+    pool = _pool({"p": pipeline}, chain=lambda step: [Records("a1", [])], load_config=lambda: cfg)
+    pool.start()
+    try:
+        assert not _wait(_ended(run.id), timeout=0.5)
+    finally:
+        pool.stop()
+    assert calls == []
+    assert store.get_run(run.id).status == "queued"

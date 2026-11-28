@@ -13,7 +13,7 @@ import os
 import re
 import threading
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -155,7 +155,9 @@ class StepPrefs(BaseModel):
 class PipelineConfig(BaseModel):
     workers: int = Field(default=4, ge=0, le=32)
     adapters: dict[str, AdapterSpec] = Field(default_factory=dict)
-    capability_caps: dict[Capability, int] = Field(default_factory=dict)
+    # Most adapter calls of one capability at a time across the pool; 0 pauses that
+    # capability (calls wait until it is raised), absent means no cap.
+    capability_caps: dict[Capability, Annotated[int, Field(ge=0)]] = Field(default_factory=dict)
     steps: dict[str, StepPrefs] = Field(default_factory=dict)
     mcp_servers: dict[str, McpServer] = Field(default_factory=dict)
     # Seconds a direct model call (the dashboard's kit, answer and tailor routes) may
