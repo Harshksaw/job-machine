@@ -494,6 +494,16 @@ def replace_answers(updated: list[ApplicationAnswer], *, was: dict[str, str]) ->
     return Merge(compute)
 
 
+def last_writer(job: JobWorkspace, field: str) -> str:
+    """The reason of the newest revision that changed `field` ("" when none did). A
+    pipeline step writes "Pipeline run <id> step <name>", so this says whether a value
+    is still the one a run wrote or was edited since."""
+    for revision in reversed(job.revisions):
+        if field in revision.changed_fields:
+            return revision.reason
+    return ""
+
+
 def _resolve(current: JobWorkspace, fields: dict) -> dict:
     resolved = {}
     for key, value in fields.items():

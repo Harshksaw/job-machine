@@ -284,9 +284,10 @@ def _review(passed, issues):
     return StepSpec("review", "code", run=lambda ctx: StepResult(output={"pass": passed, "issues": issues}))
 
 
-def _kit_wrote():
+def _kit_wrote(letter="Old letter for Acme Cloud."):
     """Stands in for a kit step that wrote the dossier's letter in this run."""
-    return StepSpec("kit", "code", run=lambda ctx: StepResult(output={"wrote_letter": True}))
+    return StepSpec("kit", "code", owns=("cover_letter",),
+                    run=lambda ctx: StepResult(output={"wrote_letter": True}, writes={"cover_letter": letter}))
 
 
 LETTER_ISSUE = {"field": "cover_letter", "problem": "Opens with a vague line.", "fix": "Start with the product."}
@@ -308,7 +309,7 @@ def test_repair_does_nothing_after_a_passing_review():
 
 
 def test_repair_regenerates_the_letter_with_the_review_issues():
-    job = _job(cover_letter="Old letter for Acme Cloud.")
+    job = _job()  # the kit stub writes "Old letter for Acme Cloud." in this run
     model = Script(_valid_kit_payload())
     result = _run(job, _fit(7), _kit_wrote(), _review(False, [LETTER_ISSUE]),
                   steps_service.repair_step(complete_kit=model, deps=("fit_score", "kit", "review")))
@@ -338,7 +339,7 @@ def test_repair_regenerates_a_flagged_answer_in_place():
 
 
 def test_a_repair_that_still_fails_keeps_the_old_text_and_the_run_goes_on():
-    job = _job(cover_letter="Old letter for Acme Cloud.")
+    job = _job()  # the kit stub writes "Old letter for Acme Cloud." in this run
     bad = _valid_kit_payload()
     bad["cover_letter"] = "Too short for Acme Cloud."
     result = _run(job, _kit_wrote(), _review(False, [LETTER_ISSUE]),
@@ -447,3 +448,62 @@ def test_repair_keeps_an_answer_harsh_edited_while_the_step_ran(monkeypatch):
                                                                  deps=("review",)))
 
     assert [a.answer for a in job_store.get_job(job.id).application_answers] == ["Harsh rewrote this."]
+
+
+def _retry(run_id, pipeline, steps):
+    store.reset_for_retry(run_id, set(steps))
+    return runner.run(run_id, pipeline, owner="w2")
+
+
+def test_a_retried_kit_regenerates_the_letter_this_run_wrote():
+    job = _job()
+    first = _valid_kit_payload()
+    second = _valid_kit_payload()
+    second["cover_letter"] = second["cover_letter"].replace("Acme Cloud needs", "Acme Cloud still needs", 1)
+    model = Script(first, second)
+    pipeline = Pipeline("t", (steps_service.kit_step(complete=model),))
+    created = store.create_run(job.id, pipeline.name, pipeline.order)
+    runner.run(created.id, pipeline, owner="w1")
+
+    again = _retry(created.id, pipeline, {"kit"})
+
+    assert again.status == "packet_ready", again.terminal_reason
+    assert again.steps["kit"].output["wrote_letter"] is True
+    assert job_store.get_job(job.id).cover_letter.startswith("Acme Cloud still needs")
+
+
+def test_a_retried_kit_keeps_a_letter_harsh_edited_after_the_run_wrote_it():
+    job = _job()
+    model = Script(_valid_kit_payload())
+    pipeline = Pipeline("t", (steps_service.kit_step(complete=model),))
+    created = store.create_run(job.id, pipeline.name, pipeline.order)
+    runner.run(created.id, pipeline, owner="w1")
+    job_store.patch_job(job.id, {"cover_letter": "Harsh's own letter to Acme Cloud."}, reason="Edited by hand")
+
+    again = _retry(created.id, pipeline, {"kit"})
+
+    assert again.steps["kit"].output["wrote_letter"] is False
+    assert job_store.get_job(job.id).cover_letter == "Harsh's own letter to Acme Cloud."
+
+
+def test_a_letter_from_another_run_is_kept():
+    job = _job()
+    pipeline = Pipeline("t", (steps_service.kit_step(complete=Script(_valid_kit_payload())),))
+    created = store.create_run(job.id, pipeline.name, pipeline.order)
+    runner.run(created.id, pipeline, owner="w1")
+    letter = job_store.get_job(job.id).cover_letter
+
+    other = _run(job, steps_service.kit_step(complete=Script(_valid_kit_payload())))
+
+    assert other.steps["kit"].output["wrote_letter"] is False
+    assert job_store.get_job(job.id).cover_letter == letter
+
+
+def test_kit_does_not_overwrite_a_letter_saved_while_it_ran(monkeypatch):
+    job = _job()
+    _edit_after_snapshot(monkeypatch, job, lambda: job_store.patch_job(
+        job.id, {"cover_letter": "Harsh's own letter to Acme Cloud."}, reason="Edited by hand"))
+
+    _run(job, steps_service.kit_step(complete=Script(_valid_kit_payload())))
+
+    assert job_store.get_job(job.id).cover_letter == "Harsh's own letter to Acme Cloud."

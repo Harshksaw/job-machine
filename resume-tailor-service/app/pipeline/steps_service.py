@@ -95,6 +95,22 @@ def _pinned(analysis, ctx: StepContext):
     return analysis
 
 
+def _letter_is_ours(job, run_id: str) -> bool:
+    """Whether this run may (re)write the cover letter: there is none yet, or the one
+    there is still the letter this same run wrote (its kit or repair step), not hand
+    edited since. That lets a retry or resume regenerate and repair its own letter,
+    while a letter Harsh wrote or edited, or one from another run, stays protected
+    (owner ruling)."""
+    if not (job.cover_letter or "").strip():
+        return True
+    return job_store.last_writer(job, "cover_letter").startswith(f"Pipeline run {run_id} step ")
+
+
+def _guarded_letter(letter: str, run_id: str) -> job_store.Merge:
+    """The letter, written only if it is still ours inside the write transaction."""
+    return job_store.Merge(lambda current: letter if _letter_is_ours(current, run_id) else job_store.UNCHANGED)
+
+
 def kit_step(complete: Complete | None = None, *, bank_path: Path | None = None,
              deps: tuple[str, ...] = ()) -> StepSpec:
     def kit(ctx: StepContext) -> StepResult:
@@ -103,10 +119,11 @@ def kit_step(complete: Complete | None = None, *, bank_path: Path | None = None,
         analysis = _pinned(generated.analysis, ctx)
         writes: dict = {"fit_analysis": analysis.model_dump()}
         # Owner ruling: a letter already on the dossier may be hand edited, so it
-        # survives; only the analysis is refreshed.
-        keep = bool((ctx.job.cover_letter or "").strip())
+        # survives; only the analysis is refreshed. The letter this run wrote itself
+        # (before a retry or resume) is regenerated.
+        keep = not _letter_is_ours(ctx.job, ctx.run.id)
         if not keep:
-            writes["cover_letter"] = generated.cover_letter
+            writes["cover_letter"] = _guarded_letter(generated.cover_letter, ctx.run.id)
         return StepResult(
             output={"kit_score": generated.analysis.score, "score": analysis.score,
                     "cover_letter": "kept existing cover letter" if keep else "generated",
@@ -272,7 +289,7 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
                         continue
                     generated = _draft_kit(ctx, bank, kit_model, issues)
                     writes["fit_analysis"] = _pinned(generated.analysis, ctx).model_dump()
-                    writes["cover_letter"] = generated.cover_letter
+                    writes["cover_letter"] = _guarded_letter(generated.cover_letter, ctx.run.id)
                     repaired.append(field)
                     continue
                 index = next((i for i, a in enumerate(answers)
