@@ -62,6 +62,7 @@ logs/ai-usage.tmp
 tools/ai-meter/__pycache__/
 logs/agents/
 
-# Harvest output: carries per company application history; the repo is PUBLIC
-remote_candidates.json
-resume-tailor-service/remote_candidates.json
+# Harvest output and its funnel summary: carries per company application history; the
+# repo is PUBLIC. The default path is resume-tailor-service/data/ (ignored above); this
+# pattern also covers an --out anywhere else, such as the repo root.
+remote_candidates*.json
