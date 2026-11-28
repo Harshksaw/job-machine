@@ -25,6 +25,7 @@ from typing import Callable
 
 from app import job_store, research_store
 from app.models import JobCaptureInput
+from app.regions import Classification, classify_location, is_india, open_to_canada
 
 API = "https://data.fantastic.jobs/v1/active-ats"
 USAGE_PATH = Path(__file__).resolve().parent.parent / "data" / "fantastic_usage.json"
@@ -48,7 +49,8 @@ _BASE = {
     "ai_work_arrangement": "Remote Solely",
     "description_format": "text",
 }
-# Remote only, in this order of priority: Canada, US, Australia, UK. No experience level
+# Remote only, in this order of priority: Canada, US, UK, Australia, then Europe last
+# (AGENTS.md). Every find is tiered by app.regions (A, A2, E; India dropped). No experience level
 # filter (the title filter still drops senior and above) and no hybrid. Small companies are
 # approximated by the ATSes they use; `is_big_company` sets the rest aside.
 _SMALL_ATS = "ashby,lever,workable"
@@ -101,9 +103,23 @@ _BIG_NAMES = {
 _TOO_SENIOR = re.compile(r"senior|\bsr\b|staff|principal|\blead\b|manager|director|head of", re.I)
 
 
-def _in_india(job: dict) -> bool:
-    places = [*(job.get("locations_derived") or []), *(job.get("ai_remote_location_derived") or [])]
-    return any("india" in str(p).lower() for p in places)
+def _offices(job: dict) -> str:
+    locations = job.get("locations_derived") or []
+    return "; ".join(str(p) for p in locations) if isinstance(locations, list) else str(locations)
+
+
+def classify(job: dict) -> Classification:
+    """Tier a find with app.regions. The remote scope decides the place; the office list
+    (locations_derived) and the description say where the company is based, so an India
+    office drops the find and a European office makes it Tier E."""
+    raw = _raw_scope(job)
+    offices = _offices(job)
+    if is_india(offices):
+        return classify_location("India")
+    where = classify_location(raw or offices, description=job.get("description_text") or "")
+    if where.tier in ("A", "A2") and classify_location(offices).region == "europe":
+        return classify_location("Europe")
+    return where
 
 
 def is_big_company(job: dict) -> str:
@@ -123,24 +139,25 @@ def is_big_company(job: dict) -> str:
     return ""
 
 
-# Remote scopes that let someone living in Canada take the job.
-_OPEN_TO_CANADA = ("canada", "north america", "americas", "worldwide", "anywhere", "global")
-
-
-def remote_scope(job: dict) -> tuple[str, bool]:
-    """Where the employer lets remote hires live, and whether Canada fits."""
+def _raw_scope(job: dict) -> str:
     parts = job.get("ai_remote_location_derived") or job.get("ai_remote_location") or []
     if isinstance(parts, str):
         parts = [parts]
     requirements = job.get("location_requirements") or []
     if isinstance(requirements, str):
         requirements = [requirements]
-    scope = "; ".join(str(p) for p in [*parts, *requirements] if p) or "unspecified"
-    return scope, any(word in scope.lower() for word in _OPEN_TO_CANADA)
+    return "; ".join(str(p) for p in [*parts, *requirements] if p)
+
+
+def remote_scope(job: dict) -> tuple[str, bool]:
+    """Where the employer lets remote hires live, and whether Canada fits (app.regions)."""
+    raw = _raw_scope(job)
+    return raw or "unspecified", bool(raw) and open_to_canada(raw)
 
 
 def to_research(job: dict, preset: str) -> dict:
     scope, canada_ok = remote_scope(job)
+    where = classify(job)
     capture = to_capture(job, "")
     tracked = job_store.find_matching_job(capture.company, capture.role, capture.job_url)
     return {
@@ -153,6 +170,8 @@ def to_research(job: dict, preset: str) -> dict:
         "location": capture.location,
         "remote_scope": scope,
         "open_to_canada": canada_ok,
+        "tier": where.tier,
+        "region": where.region,
         "visa": job.get("ai_visa_sponsorship"),
         "experience": job.get("ai_experience_level"),
         "salary": " ".join(str(job.get(k) or "") for k in ("ai_salary_min_value", "ai_salary_max_value", "ai_salary_currency")).strip(),
@@ -209,6 +228,7 @@ def _work_mode(job: dict) -> str:
 
 def to_capture(job: dict, session: str) -> JobCaptureInput:
     locations = job.get("locations_derived") or []
+    where = classify(job)
     return JobCaptureInput(
         company=(job.get("organization") or "").strip() or "Unknown",
         role=(job.get("title") or "").strip() or "Unknown",
@@ -220,6 +240,7 @@ def to_capture(job: dict, session: str) -> JobCaptureInput:
         jd_text=job.get("description_text") or "",
         notes=(
             f"Fantastic Jobs id {job.get('id')}, posted {(job.get('date_posted') or '')[:10]}, "
+            f"Tier {where.tier} ({where.region}), "
             f"experience {job.get('ai_experience_level') or '?'}, "
             f"visa sponsorship {job.get('ai_visa_sponsorship')}. Needs a fit score."
         ),
@@ -251,9 +272,14 @@ def run_search(
         usage["jobs_used"] += len(jobs)
         session = f"Fantastic Jobs {datetime.now(timezone.utc):%Y-%m-%d}"
         new, duplicates, aside = [], [], []
+        dropped: dict[str, int] = {}
         staged = PRESETS[preset].get("stage") == "research"
         for job in jobs:
-            if _TOO_SENIOR.search(job.get("title") or "") or _in_india(job):
+            if _TOO_SENIOR.search(job.get("title") or ""):
+                continue
+            where = classify(job)
+            if where.tier == "drop":  # India, or not remote
+                dropped[where.reason] = dropped.get(where.reason, 0) + 1
                 continue
             reason = is_big_company(job)
             if reason:
@@ -267,7 +293,8 @@ def run_search(
                 item, created = research_store.add(to_research(job, preset))
                 if created and not item["tracked_dossier"]:
                     new.append({"id": item["id"], "company": item["company"], "role": item["role"],
-                                "open_to_canada": item["open_to_canada"]})
+                                "open_to_canada": item["open_to_canada"],
+                                "tier": item.get("tier"), "region": item.get("region")})
                 else:
                     duplicates.append(f"{item['company']} | {item['role']}")
             else:
@@ -283,4 +310,5 @@ def run_search(
             "stage": PRESETS[preset].get("stage", "dossier"),
         })
         _save_usage(usage)
-    return {"fetched": len(jobs), "new": new, "aside": aside, "duplicates": duplicates, "usage": usage_summary()}
+    return {"fetched": len(jobs), "new": new, "aside": aside, "duplicates": duplicates, "dropped": dropped,
+            "usage": usage_summary()}

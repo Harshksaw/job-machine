@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import agent_runs, fantastic, job_store
+from app import agent_runs, fantastic, job_store, research_store
 from app.main import app
 
 
@@ -9,6 +9,7 @@ from app.main import app
 def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(job_store, "STORE_PATH", tmp_path / "jobs.json")
     monkeypatch.setattr(fantastic, "USAGE_PATH", tmp_path / "usage.json")
+    monkeypatch.setattr(research_store, "STORE_PATH", tmp_path / "research.json")
 
 
 def _job(n, org="Acme", title="Software Engineer"):
@@ -207,3 +208,34 @@ def test_india_based_roles_are_dropped():
     india = {**_job(12, "Desi"), "locations_derived": ["Bengaluru, Karnataka, India"]}
     result = fantastic.run_search("remote-ca", 2, fetch=lambda _: [india, _job(13, "Kept")])
     assert [n["company"] for n in result["new"]] == ["Kept"]
+
+
+def _fantastic_job(n, org, office, scope=None):
+    job = {"id": n, "title": "Software Engineer", "organization": org,
+           "url": f"https://jobs.ashbyhq.com/x/{n}", "source": "ashby",
+           "locations_derived": [office], "ai_work_arrangement": "Remote Solely",
+           "description_text": "Build things.", "date_posted": "2026-11-06T00:00:00"}
+    if scope:
+        job["ai_remote_location_derived"] = [scope]
+    return job
+
+
+def test_fantastic_research_items_carry_tier_and_drop_india():
+    jobs = [_fantastic_job(1, "Usa", "Austin, Texas, United States", "United States"),
+            _fantastic_job(2, "Ger", "Berlin, Germany", "Germany"),
+            # A European company hiring anywhere is still Tier E (European company, last).
+            _fantastic_job(3, "Eurw", "Amsterdam, Netherlands", "Worldwide"),
+            _fantastic_job(4, "Ind", "Austin, Texas, United States", "United States; India")]
+    result = fantastic.run_search("remote-us", 4, fetch=lambda _: jobs)
+    staged = {i["company"]: i for i in research_store.list_items()}
+    assert {c: (i["tier"], i["region"]) for c, i in staged.items()} == {
+        "Usa": ("A2", "us"), "Ger": ("E", "europe"), "Eurw": ("E", "europe")}
+    assert staged["Eurw"]["open_to_canada"] is True  # the scope itself is open to Canada
+    assert result["dropped"] == {"india": 1}
+
+
+def test_fantastic_dossier_capture_notes_the_tier():
+    fantastic.run_search("remote-ca", 1, fetch=lambda _: [
+        _fantastic_job(1, "Can", "Vancouver, British Columbia, Canada")])
+    [job] = job_store.load_jobs()
+    assert "Tier A (canada)" in job.notes
