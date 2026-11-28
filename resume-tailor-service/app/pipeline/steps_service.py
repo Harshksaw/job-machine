@@ -19,7 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Callable
 
-from app import llm
+from app import job_store, llm
 from app.application_kit import _answer_schema, _judgment_clarification, _kit_schema, generate_answer, generate_kit
 from app.bank import load_bank
 from app.errors import JobGenerationError
@@ -222,8 +222,8 @@ def answers_step(complete: Complete | None = None, *, bank_path: Path | None = N
                   "meta": _meta(model)}
         if not new:
             return StepResult(output=output)
-        answers_out = [a.model_dump() for a in (*ctx.job.application_answers, *new)]
-        return StepResult(output=output, writes={"application_answers": answers_out})
+        # Merged at write time: an answer saved for the same question meanwhile wins.
+        return StepResult(output=output, writes={"application_answers": job_store.add_answers(new)})
 
     return StepSpec("answers", "service", deps=deps, owns=("application_answers",),
                     capability="reason", run=answers)
@@ -257,6 +257,8 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
         bank = _bank(bank_path)
         writes: dict = {}
         answers = list(ctx.job.application_answers)
+        was = {a.id: a.updated_at for a in answers}
+        replaced: list[ApplicationAnswer] = []
         kit_model = _model(ctx, complete_kit, "repair", _kit_schema())
         answer_model = _model(ctx, complete_answer, "repair", _answer_schema())
         for field, issues in by_field.items():
@@ -284,7 +286,9 @@ def repair_step(complete_kit: Complete | None = None, complete_answer: Complete 
                     "needs_user_input": draft.needs_user_input,
                     "clarification": draft.clarification, "updated_at": now_iso(),
                 })
-                writes["application_answers"] = [a.model_dump() for a in answers]
+                replaced.append(answers[index])
+                # By id, and only while the answer is as this step read it.
+                writes["application_answers"] = job_store.replace_answers(replaced, was=was)
                 repaired.append(field)
             except RunCancelled:
                 raise

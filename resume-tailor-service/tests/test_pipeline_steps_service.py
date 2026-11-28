@@ -389,3 +389,61 @@ def test_repair_rewrites_a_letter_the_kit_wrote_this_run():
                   steps_service.repair_step(complete_kit=kit_model, deps=("kit", "review")))
     assert result.steps["repair"].output == {"repaired": ["cover_letter"], "unrepaired": []}
     assert len(kit_model.prompts) == 2
+
+
+def _edit_after_snapshot(monkeypatch, job, change):
+    original = runner._context
+
+    def stale(run_id):
+        ctx = original(run_id)
+        change()
+        return ctx
+
+    monkeypatch.setattr(runner, "_context", stale)
+
+
+def test_answers_merge_with_answers_saved_while_the_step_ran(monkeypatch):
+    job = _job(form_fields=[FormField(label="Why Acme Cloud?", kind="textarea")])
+    late = ApplicationAnswer(id="h1", question="Anything else?", answer="Harsh typed this.",
+                             created_at="t", updated_at="t")
+    _edit_after_snapshot(monkeypatch, job, lambda: job_store.patch_job(
+        job.id, {"application_answers": [late.model_dump()]}))
+
+    result = _run(job, steps_service.answers_step(complete=Script(GOOD_ANSWER)))
+
+    assert result.status == "packet_ready", result.terminal_reason
+    questions = [a.question for a in job_store.get_job(job.id).application_answers]
+    assert questions == ["Anything else?", "Why Acme Cloud?"]
+
+
+def test_answers_never_overwrite_a_question_answered_while_the_step_ran(monkeypatch):
+    job = _job(form_fields=[FormField(label="Why Acme Cloud?", kind="textarea")])
+    late = ApplicationAnswer(id="h1", question="why acme cloud?", answer="Harsh typed this.",
+                             created_at="t", updated_at="t")
+    _edit_after_snapshot(monkeypatch, job, lambda: job_store.patch_job(
+        job.id, {"application_answers": [late.model_dump()]}))
+
+    _run(job, steps_service.answers_step(complete=Script(GOOD_ANSWER)))
+
+    assert [a.answer for a in job_store.get_job(job.id).application_answers] == ["Harsh typed this."]
+
+
+def test_repair_keeps_an_answer_harsh_edited_while_the_step_ran(monkeypatch):
+    old = ApplicationAnswer(id="a1", question="Why Acme Cloud?", answer="Old stiff reply.",
+                            created_at="t", updated_at="t")
+    job = _job(application_answers=[old])
+    edited = old.model_copy(update={"answer": "Harsh rewrote this.", "updated_at": "t2"})
+    loads = []
+
+    def edit_on_the_repair_snapshot():
+        loads.append(1)
+        if len(loads) == 2:  # review loads first, then repair
+            job_store.patch_job(job.id, {"application_answers": [edited.model_dump()]})
+
+    _edit_after_snapshot(monkeypatch, job, edit_on_the_repair_snapshot)
+    issue = {"field": "Why Acme Cloud?", "problem": "Reads stiff.", "fix": "Say one real thing."}
+
+    _run(job, _review(False, [issue]), steps_service.repair_step(complete_answer=Script(GOOD_ANSWER),
+                                                                 deps=("review",)))
+
+    assert [a.answer for a in job_store.get_job(job.id).application_answers] == ["Harsh rewrote this."]

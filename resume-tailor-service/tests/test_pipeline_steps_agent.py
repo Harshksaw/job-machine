@@ -369,3 +369,38 @@ def test_why_this_role_keeps_its_bank_ids(monkeypatch):
 
 def test_default_bank_ids_come_from_the_committed_bank():
     assert "profile.name" in steps_agent.bank_source_ids()
+
+
+def _edit_after_snapshot(monkeypatch, job, **fields):
+    """Change the dossier right after the step loaded its context, the way Harsh or
+    another tool can while an agent step runs."""
+    original = runner._context
+
+    def stale(run_id):
+        ctx = original(run_id)
+        job_store.patch_job(job.id, fields)
+        return ctx
+
+    monkeypatch.setattr(runner, "_context", stale)
+
+
+def test_note_steps_append_to_the_notes_as_they_are_at_write_time(monkeypatch):
+    job = _job()
+    _edit_after_snapshot(monkeypatch, job, notes="keep\nHarsh: recruiter called")
+
+    result, _ = _run(job, [steps_agent.eligibility_step()],
+                     {"eligibility": [ok({"eligible": True, "reason": "Remote Canada."})]})
+
+    notes = job_store.get_job(job.id).notes.splitlines()
+    assert notes[:2] == ["keep", "Harsh: recruiter called"]
+    assert notes[2].startswith(f"Pipeline {result.id}: eligible") and len(notes) == 3
+
+
+def test_fit_score_note_appends_at_write_time(monkeypatch):
+    job = _job()
+    _edit_after_snapshot(monkeypatch, job, notes="keep\nlate line")
+
+    _run(job, [steps_agent.fit_score_step()], {"fit_score": [ok({"score": 8, "reason": "Strong match."})]})
+
+    saved = job_store.get_job(job.id)
+    assert saved.notes.splitlines()[:2] == ["keep", "late line"] and saved.fit_score == 8

@@ -165,10 +165,9 @@ def liveness_step(check: Check | None = None, deps: tuple[str, ...] = ()) -> Ste
         if state != "closed":
             return StepResult(output=output)
         line = f"Pipeline {ctx.run.id}: posting closed ({evidence}) at {url}"
-        notes = (ctx.job.notes or "").rstrip("\n")
         return StepResult(
             output=output,
-            writes={"notes": f"{notes}\n{line}" if notes else line},
+            writes={"notes": job_store.append_note(line)},
             stop="closed_posting",
             reason=f"posting closed: {evidence}",
         )

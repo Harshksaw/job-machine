@@ -432,6 +432,79 @@ def _with_fit_synced(current: JobWorkspace, fields: dict) -> dict:
     return {**fields, "fit_analysis": analysis.model_dump()}
 
 
+class Merge:
+    """A patch value worked out from the dossier as it is inside the write transaction,
+    not from a copy read earlier, so an edit made meanwhile (Harsh, another tool) is
+    merged instead of overwritten. `compute(current)` returns the new value, or
+    UNCHANGED to leave the field alone."""
+
+    def __init__(self, compute: Callable[[JobWorkspace], object]):
+        self.compute = compute
+
+
+UNCHANGED = object()
+
+
+def append_note(line: str) -> Merge:
+    """Append one line to the notes as they are at write time."""
+
+    def compute(current: JobWorkspace) -> str:
+        notes = (current.notes or "").rstrip("\n")
+        return f"{notes}\n{line}" if notes else line
+
+    return Merge(compute)
+
+
+def _question_key(question: str) -> str:
+    return " ".join(question.lower().split())
+
+
+def add_answers(new: list[ApplicationAnswer]) -> Merge:
+    """Add answers for questions the dossier has no answer to at write time; an answer
+    saved meanwhile for the same question wins."""
+
+    def compute(current: JobWorkspace):
+        answers = list(current.application_answers)
+        seen = {_question_key(a.question) for a in answers}
+        added = [a for a in new if _question_key(a.question) not in seen]
+        if not added:
+            return UNCHANGED
+        return [a.model_dump() for a in (*answers, *added)]
+
+    return Merge(compute)
+
+
+def replace_answers(updated: list[ApplicationAnswer], *, was: dict[str, str]) -> Merge:
+    """Replace answers by id, each only while it is unchanged since it was read (its
+    `updated_at` still equals `was[id]`), so an answer edited meanwhile survives."""
+    by_id = {a.id: a for a in updated}
+
+    def compute(current: JobWorkspace):
+        changed = False
+        answers = []
+        for answer in current.application_answers:
+            replacement = by_id.get(answer.id)
+            if replacement is not None and was.get(answer.id) == answer.updated_at:
+                answers.append(replacement)
+                changed = True
+            else:
+                answers.append(answer)
+        return [a.model_dump() for a in answers] if changed else UNCHANGED
+
+    return Merge(compute)
+
+
+def _resolve(current: JobWorkspace, fields: dict) -> dict:
+    resolved = {}
+    for key, value in fields.items():
+        if isinstance(value, Merge):
+            value = value.compute(current)
+            if value is UNCHANGED:
+                continue
+        resolved[key] = value
+    return resolved
+
+
 def patch_job(
     job_id: str,
     fields: dict,
@@ -442,7 +515,8 @@ def patch_job(
     guard: Callable[[], ContextManager] | None = None,
 ) -> JobWorkspace | None:
     """Change only the named fields. A full PUT saves a left out field as blank, which
-    is how agents have wiped cover letters; a patch cannot. Unknown names raise.
+    is how agents have wiped cover letters; a patch cannot. Unknown names raise. A
+    `Merge` value is computed from the dossier inside the write transaction.
 
     `guard`, when given, is entered inside the write transaction before the read and
     held until the write, so a check it makes (the pipeline's lease) and the write are
@@ -454,8 +528,11 @@ def patch_job(
         current = get_job(job_id)
         if current is None:
             return None
+        fields = _with_fit_synced(current, _resolve(current, fields))
+        if not fields:
+            return current
         merged = JobWorkspaceInput.model_validate(
-            {**_input_from_job(current).model_dump(), **_with_fit_synced(current, fields)}
+            {**_input_from_job(current).model_dump(), **fields}
         )
         return update_job(
             job_id, merged, reason=reason, activity_kind=activity_kind, session=session

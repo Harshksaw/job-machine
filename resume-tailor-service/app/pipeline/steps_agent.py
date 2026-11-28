@@ -44,9 +44,10 @@ def _url(value: str) -> str:
     return value
 
 
-def _append_note(ctx: StepContext, line: str) -> str:
-    notes = (ctx.job.notes or "").rstrip("\n")
-    return f"{notes}\n{line}" if notes else line
+def _append_note(ctx: StepContext, line: str) -> job_store.Merge:
+    """The line appended to the notes as they are at write time, not to this step's
+    snapshot, so a note added while the step ran survives."""
+    return job_store.append_note(line)
 
 
 def _prefix(ctx: StepContext) -> str:
