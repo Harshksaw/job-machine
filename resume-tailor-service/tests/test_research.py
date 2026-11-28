@@ -60,3 +60,18 @@ def test_dismiss_marks_item():
     item, _ = research_store.add({"company": "Delta", "role": "Dev", "url": "https://x.example/1"})
     assert client.post(f"/api/research/{item['id']}/dismiss", headers=H).json() == {"ok": True}
     assert research_store.get(item["id"])["status"] == "dismissed"
+
+
+def test_promote_keeps_the_tier_in_the_dossier_notes():
+    client = TestClient(app)
+    staged, _ = research_store.add({"company": "Euro", "role": "Developer", "url": "https://x.example/eu",
+                                    "location": "Germany", "remote_scope": "Germany",
+                                    "tier": "E", "region": "europe", "preset": "jobicy-remote"})
+    promoted = client.post(f"/api/research/{staged['id']}/promote", headers=H).json()
+    assert "Tier E (europe)" in job_store.get_job(promoted["dossier_id"]).notes
+    # An agent posted item has no stored tier: it is worked out from its scope.
+    posted = client.post("/api/research", headers=H, json={
+        "company": "Usa", "role": "Developer", "url": "https://x.example/us", "source": "sweep",
+        "remote_scope": "USA"}).json()["item"]
+    promoted = client.post(f"/api/research/{posted['id']}/promote", headers=H).json()
+    assert "Tier A2 (us)" in job_store.get_job(promoted["dossier_id"]).notes
