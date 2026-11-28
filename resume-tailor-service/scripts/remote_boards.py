@@ -9,7 +9,8 @@ Nomads, Remote OK. No board is asked to filter by country: every listing is fetc
 - Tier A: remote open to Canada, or anywhere.
 - Tier A2: remote limited to the US, UK, Australia, New Zealand or another
   country outside India and Europe.
-- Tier E: remote limited to Europe (EU, EEA, Switzerland). Kept, worked last.
+- Tier E: remote limited to Europe (EU, EEA, Switzerland and the rest of Europe outside the
+  UK), or a European company. Kept, worked last.
 - Dropped: anything based in India, even when another region also matches.
 
 The job description is read for where the company is based ("headquartered in X",
