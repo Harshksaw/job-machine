@@ -42,7 +42,7 @@ agent per lane, with tab caps. Run `score` first: it writes the Tier that fills 
 
 - Remote only, from employers in Canada, the US, Europe, the UK or Australia. Nothing
   based in India. Skip hybrid and on-site anywhere, US included: set status `skipped` with
-  note "not remote". A remote role limited to US, UK or Australian residents is not a skip: with fit 7 or
+  note "not remote". A remote role limited to US, UK, European or Australian residents is not a skip: with fit 7 or
   higher it is Tier A2, worked right after Tier A. Answer honestly: authorized there No,
   sponsorship Yes. Remote limited to any other country is a skip.
 - Country order: Canada, then US, then Australia, then UK.

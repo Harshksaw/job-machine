@@ -61,3 +61,7 @@ logs/ai-usage.json
 logs/ai-usage.tmp
 tools/ai-meter/__pycache__/
 logs/agents/
+
+# Harvest output: carries per company application history; the repo is PUBLIC
+remote_candidates.json
+resume-tailor-service/remote_candidates.json

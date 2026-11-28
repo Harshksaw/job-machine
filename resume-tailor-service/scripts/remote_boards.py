@@ -36,10 +36,11 @@ TITLE_DROP = re.compile(
     r"review lead|translator|annotat|content|writer|tutor|trainer",
     re.I,
 )
-# Remote roles must let him work from Canada. A US-only remote role means living in the
-# US, which is not the same as the on-site relocation the eligibility policy allows.
+# Remote roles open to Canada (Tier A) or US, UK, Europe, Australia (Tier A2 per policy update 2026-11-26).
 LOCATION_OK = re.compile(
-    r"canada|north america|americas|worldwide|anywhere|global|remote$|^$", re.I
+    r"canada|north america|americas|worldwide|anywhere|global|united states|\busa?\b|"
+    r"united kingdom|\buk\b|europe|european|\beu\b|australia|new zealand|\bnz\b|remote$|^$",
+    re.I,
 )
 SENIORITY_DROP = re.compile(r"senior|director|executive|lead", re.I)
 

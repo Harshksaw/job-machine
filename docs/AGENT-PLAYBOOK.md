@@ -359,6 +359,8 @@ Raw CDP run 2026-10-24 (6 of 6 applied, job Chrome): the dialog title reads as a
 zero-width string, so do not key on it. One textarea means no custom questions. The flip to
 `Applied` survived a fresh reload on all six.
 
+**Signed in search and field limits (2026-11-26).** `workatastartup.com/companies?role=eng&remote=only&jobType=fulltime&sortBy=created_desc` lists every matching startup (139 that day) with up to 4 jobs per card; scroll to the bottom until the `/jobs/<id>` link count stops growing. The public `ycombinator.com/jobs/role/...` pages only expose about 140 jobs in total. Custom question textareas in the apply dialog have `maxlength=250` and silently cut longer text; the main message has no limit. Read each question label from the textarea's parent text, not a `<label>` element (there is none). Some companies post the same role twice under two ids: apply once.
+
 **Check the button before trusting the dossier.** aSim already showed `Applied` while its
 dossier was still at `discovered` with no applied event, because the earlier submission was
 never logged. The button state is the real dedupe gate.

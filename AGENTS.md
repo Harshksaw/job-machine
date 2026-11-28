@@ -25,7 +25,7 @@ two files disagree, the owning file below wins.
 | Personal answers: address, salary numbers, exact work status, DOB, French, start date | `docs/PERSONAL-ANSWERS.md` | **no, gitignored** |
 | Operating techniques, ATS JD fetches, per-site gotchas, known-broken lanes | `docs/AGENT-PLAYBOOK.md` | yes, committed |
 | Dashboard (system of record: Inbox + dossiers) | `http://127.0.0.1:8420/` | local only |
-| Live queue state: applied, blocked, in flight | newest `SESSION-HANDOFF-*.md` (current: `SESSION-HANDOFF-2026-11-25.md`) | **no, gitignored** |
+| Live queue state: applied, blocked, in flight | newest `SESSION-HANDOFF-*.md` (current: `SESSION-HANDOFF-2026-11-26.md`) | **no, gitignored** |
 | Browser profile setup and CDP wiring | `docs/BROWSER_PROFILE.md` | yes, committed |
 | Service internals, endpoints, persistence | `docs/ARCHITECTURE.md`, `resume-tailor-service/README.md` | yes, committed |
 
@@ -118,8 +118,8 @@ only**. ZipRecruiter is also standing, but live-browser only (see the playbook).
 **Remote boards (added 2026-11-06):** Himalayas, Remotive, Jobicy, Working Nomads, and
 Remote OK, harvested with `resume-tailor-service/scripts/remote_boards.py`. It filters to
 engineering roles below senior that a Canada-based candidate can hold remotely and dedupes
-against the dossier store. A remote role limited to US, UK or Australian residents is no longer a skip (since
-2026-11-25): with fit 7 or higher it is **Tier A2**, second priority after roles open to Canada.
+against the dossier store. A remote role limited to US, UK, Europe or Australian residents is no longer a skip (since
+2026-11-25, updated 2026-11-26): with fit 7 or higher it is **Tier A2**, second priority after roles open to Canada.
 Answer its forms honestly: authorized in that country No, sponsorship Yes. The
 board is for discovery; apply on the employer's own ATS when the listing links to one. YC's site
 mechanics (URL shape, apply-button selectors, dedupe key) are unverified until an agent

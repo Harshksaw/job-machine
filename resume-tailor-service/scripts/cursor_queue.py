@@ -60,7 +60,7 @@ _COMMON = """You are a Cursor agent for Harsh Saw's Job Machine. Read AGENTS.md 
 first; their rules win. Targeting: remote only, employers in Canada, the US, Europe, the UK or
 Australia, nothing based in India, small startups (under about 200 people, seed to Series B) first,
 big companies (big names or 1,000+ staff) skipped with note "big company, set aside".
-Remote open to Canada comes first. Remote limited to US, UK or Australian residents is NOT a skip:
+Remote open to Canada comes first. Remote limited to US, UK, Europe or Australian residents is NOT a skip:
 with fit 7+ write "Tier A2" (second priority); answer such forms authorized there No, sponsorship Yes. Claim each
 dossier before you work it (AGENTS.md) with the title "Claimed by cursor_queue <lane>". A claim with that same title is yours from an
 earlier batch: take it over. Only other titles count as another agent and skip any claimed by another agent in the last 2 hours.
@@ -203,7 +203,7 @@ def build_plan() -> dict:
                         and not (j.get("people") or j.get("person_count"))]
     # Best first: higher fit.
     by_id = {j["id"]: j for j in jobs}
-    # Tier A (open to Canada) before Tier A2 (US, UK or Australia residents only), best fit first.
+    # Tier A (open to Canada) before Tier A2 (US, UK, Europe or Australia residents only), best fit first.
     plan["apply"].sort(key=lambda i: (_tier_a2(by_id[i]), -(by_id[i].get("fit_score") or 0)))
     plan["review"] = list(plan["apply"])
     return plan
