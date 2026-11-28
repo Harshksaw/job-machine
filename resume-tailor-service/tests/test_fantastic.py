@@ -239,3 +239,25 @@ def test_fantastic_dossier_capture_notes_the_tier():
         _fantastic_job(1, "Can", "Vancouver, British Columbia, Canada")])
     [job] = job_store.load_jobs()
     assert "Tier A (canada)" in job.notes
+
+
+@pytest.mark.parametrize("task", ["triage-research", "triage-filter"])
+def test_triage_prompts_keep_tier_a2_and_e_finds(task):
+    prompt = agent_runs.TASKS[task]["prompt"]
+    assert "US residents only" not in prompt
+    assert "residents of countries other than Canada" not in prompt
+    assert "Tier A2" in prompt and "Tier E" in prompt and "India" in prompt
+
+
+def test_fantastic_european_office_alongside_others_is_not_a_european_company():
+    job = {**_fantastic_job(5, "SfCo", "San Francisco, California", "Worldwide"),
+           "locations_derived": ["San Francisco, California", "Berlin, Germany"]}
+    fantastic.run_search("remote-us", 1, fetch=lambda _: [job])
+    [item] = research_store.list_items()
+    assert (item["tier"], item["region"]) == ("A", "worldwide")
+
+
+def test_fantastic_open_to_canada_falls_back_to_the_office_when_scope_is_missing():
+    fantastic.run_search("remote-us", 1, fetch=lambda _: [_fantastic_job(6, "Van", "Vancouver, British Columbia, Canada")])
+    [item] = research_store.list_items()
+    assert item["tier"] == "A" and item["open_to_canada"] is True

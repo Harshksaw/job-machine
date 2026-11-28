@@ -110,14 +110,19 @@ def _offices(job: dict) -> str:
 
 def classify(job: dict) -> Classification:
     """Tier a find with app.regions. The remote scope decides the place; the office list
-    (locations_derived) and the description say where the company is based, so an India
-    office drops the find and a European office makes it Tier E."""
+    (locations_derived) and the description say where the company is based. Any India
+    office drops the find (nothing based in India, even next to another region). Only a
+    company whose offices are all in Europe is a European company (Tier E); one Berlin
+    office next to a US head office is not."""
     raw = _raw_scope(job)
     offices = _offices(job)
     if is_india(offices):
         return classify_location("India")
     where = classify_location(raw or offices, description=job.get("description_text") or "")
-    if where.tier in ("A", "A2") and classify_location(offices).region == "europe":
+    places = [p for p in (job.get("locations_derived") or []) if str(p).strip()] \
+        if isinstance(job.get("locations_derived"), list) else [offices] if offices else []
+    european = bool(places) and all(classify_location(str(p)).region == "europe" for p in places)
+    if where.tier in ("A", "A2") and european:
         return classify_location("Europe")
     return where
 
@@ -157,6 +162,8 @@ def remote_scope(job: dict) -> tuple[str, bool]:
 
 def to_research(job: dict, preset: str) -> dict:
     scope, canada_ok = remote_scope(job)
+    if not _raw_scope(job):  # no scope given: the office list is the only place we have
+        canada_ok = open_to_canada(_offices(job))
     where = classify(job)
     capture = to_capture(job, "")
     tracked = job_store.find_matching_job(capture.company, capture.role, capture.job_url)
