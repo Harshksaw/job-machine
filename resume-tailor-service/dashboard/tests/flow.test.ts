@@ -44,7 +44,7 @@ const funnel: PipelineFunnel = {
   stages: {
     research_new: 4, dismissed: 2, promoted: 1, discovered: 3, ineligible: 2, retained: 3, eligible: 1,
     ready: 1, packet_ready: 1, applying: 0, applied: 1, outreach: 0, interview: 1, offer: 0, rejected: 0,
-    closed: 0, skipped: 0, archived: 0,
+    closed: 0, skipped: 0, archived: 0, in_pipeline: 2, run_failed: 1,
   },
   stage_labels: {},
   tiers: { A: 10, A2: 6, E: 3, unknown: 1 },
@@ -65,7 +65,8 @@ test("the flow boxes follow the pipeline order and carry live counts", () => {
   assert.equal(byKey.eligibility.parts.find((p) => p.label === "Ineligible")?.count, 2);
   assert.equal(byKey.eligibility.parts.find((p) => p.label === "Waiting")?.count, 8);
   assert.equal(byKey.fit.parts.find((p) => p.label === "Retained, fit too low")?.count, 3);
-  assert.equal(byKey.packet.count, 2);
+  assert.equal(byKey.packet.count, 5);
+  assert.equal(byKey.packet.parts.find((p) => p.label === "Run failed, needs a look")?.count, 1);
   assert.equal(byKey.apply.count, 1);
   assert.equal(byKey.outcome.count, 1);
   for (const step of steps) {

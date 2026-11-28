@@ -70,6 +70,8 @@ export function flowSteps(funnel: PipelineFunnel): FlowStep[] {
     ["Eligible, fit 6 or more", ["eligible"]],
   ]);
   const packet = parts(s, [
+    ["Run queued or running", ["in_pipeline"]],
+    ["Run failed, needs a look", ["run_failed"]],
     ["Ready", ["ready"]],
     ["Packet ready", ["packet_ready"]],
   ]);

@@ -207,3 +207,32 @@ def test_since_keeps_records_created_or_moved_in_the_range(client):
 
     assert body["total"] == 1 and body["events"] == {"eligible": 1}
     assert client.get("/api/pipeline/funnel", params={"since": "soon"}).status_code == 422
+
+
+def test_only_the_named_harvest_summary_counts_and_only_inside_the_range(client):
+    funnel.HARVEST_DIR.mkdir()
+    summary = {"run_at": "2026-11-26T08:00:00+00:00",
+               "sources": {"remotive": {"fetched": 100, "kept": {"A": 1}, "dropped": {"senior title": 99}}}}
+    (funnel.HARVEST_DIR / "remote_candidates.summary.json").write_text(json.dumps(summary))
+    (funnel.HARVEST_DIR / "older.summary.json").write_text(json.dumps(summary))
+
+    assert client.get("/api/pipeline/funnel").json()["harvest"]["fetched"] == 100
+    inside = client.get("/api/pipeline/funnel", params={"since": "2026-11-25"}).json()
+    outside = client.get("/api/pipeline/funnel", params={"since": "2026-11-27"}).json()
+    assert inside["harvest"]["fetched"] == 100
+    assert outside["harvest"] is None and all(n["key"] != "remotive" for n in outside["tree"])
+
+
+def test_worldwide_with_an_exclusion_is_not_tier_a():
+    assert funnel._tier_of({"location": "Worldwide"}) == ("A", True)
+    assert funnel._tier_of({"location": "Global remote, excluding Canada"})[0] != "A"
+    assert funnel._tier_of({"location": "Worldwide, US work authorization required"}) == ("A2", True)
+
+
+def test_failed_and_active_runs_get_their_own_stage(client):
+    failed = _job(company="Failed Co", source="LinkedIn", location="Canada", status="ready")
+    active = _job(company="Busy Co", source="LinkedIn", location="Canada")
+    store.finish_run(store.create_run(failed.id, "packet", ["claim"]).id, "failed", "no adapter")
+    store.create_run(active.id, "packet", ["claim"])
+    stages = client.get("/api/pipeline/funnel").json()["stages"]
+    assert stages["run_failed"] == 1 and stages["in_pipeline"] == 1

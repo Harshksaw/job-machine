@@ -33,10 +33,10 @@ from app.pipeline.stats import as_utc, parse_since
 log = logging.getLogger(__name__)
 
 FUNNEL = "funnel_events"
-# Harvest summaries (`<name>.summary.json`, written by scripts/remote_boards.py):
+# The last harvest summary (written by scripts/remote_boards.py on the harvest branch):
 # {run_at, sources: {name: {fetched, kept: {A, A2, E}, dropped: {reason: n}}}}.
 HARVEST_DIR = Path(__file__).resolve().parents[2] / "data"
-HARVEST_GLOB = "*.summary.json"
+HARVEST_FILE = "remote_candidates.summary.json"
 TOP_JOBS = 10
 
 # --- events -----------------------------------------------------------------------------
@@ -142,7 +142,9 @@ TIER_LABELS = {
     "unknown": "Region unknown",
     "dropped": "Dropped by the region filter",
 }
-_CANADA = re.compile(r"canada|north america|anywhere|worldwide|global|\bcan\b", re.I)
+_CANADA = re.compile(r"canada|north america|\bcan\b", re.I)
+_ANYWHERE = re.compile(r"anywhere|worldwide|global", re.I)
+_EXCLUDES = re.compile(r"exclud|except|\bnot\b|\bno\b", re.I)
 _A2_NOTE = re.compile(r"tier a2", re.I)
 _A2 = re.compile(r"\b(us|usa|u\.s\.|united states|america|uk|united kingdom|england|australia)\b", re.I)
 _EUROPE = re.compile(
@@ -161,12 +163,15 @@ def _tier_of(item: dict) -> tuple[str, bool]:
     if item.get("open_to_canada") is True:
         return "A", True
     text = " ".join(str(item.get(key) or "") for key in ("location", "remote_scope", "work_mode"))
-    if _CANADA.search(text):
+    excluded = bool(_EXCLUDES.search(text))
+    if _CANADA.search(text) and not excluded:
         return "A", True
     if _A2_NOTE.search(str(item.get("notes") or "")) or _A2.search(text):
         return "A2", True
     if _EUROPE.search(text):
         return "E", True
+    if _ANYWHERE.search(text) and not excluded:
+        return "A", True
     return "unknown", True
 
 
@@ -177,6 +182,8 @@ STAGES = (
     ("dismissed", "Research, dismissed"),
     ("promoted", "Promoted from research"),
     ("discovered", "Discovered, not scored"),
+    ("in_pipeline", "Packet run queued or running"),
+    ("run_failed", "Packet run failed or cancelled, needs a look"),
     ("ineligible", "Ineligible"),
     ("retained", "Retained for review, fit too low"),
     ("eligible", "Eligible, fit 6 or more"),
@@ -195,7 +202,9 @@ STAGES = (
 STAGE_LABELS = dict(STAGES)
 _PAST_PACKET = frozenset({"applying", "applied", "outreach", "interview", "offer", "rejected", "skipped", "archived"})
 _RUN_STAGE = {"packet_ready": "packet_ready", "ineligible": "ineligible",
-              "retained_for_review": "retained", "closed_posting": "closed"}
+              "retained_for_review": "retained", "closed_posting": "closed",
+              "queued": "in_pipeline", "running": "in_pipeline",
+              "failed": "run_failed", "cancelled": "run_failed"}
 
 
 def stage_of(job: dict, run_status: str) -> str:
@@ -217,13 +226,15 @@ def stage_of(job: dict, run_status: str) -> str:
 # --- harvest ----------------------------------------------------------------------------
 
 
-def _harvest() -> tuple[dict[str, dict], dict | None]:
-    """Per source {fetched, kept: {tier: n}, dropped: {reason: n}}, summed over every
-    summary file, and the overall totals; ({}, None) when there is none."""
+def _harvest(since: datetime | None = None, until: datetime | None = None) -> tuple[dict[str, dict], dict | None]:
+    """Per source {fetched, kept: {tier: n}, dropped: {reason: n}} from the last harvest
+    summary, and its totals; ({}, None) when there is none, it is unreadable, or a date
+    range is set and the harvest ran outside it."""
     per_source: dict[str, dict] = {}
     run_at = ""
     found = False
-    for path in sorted(HARVEST_DIR.glob(HARVEST_GLOB)) if HARVEST_DIR.is_dir() else []:
+    path = HARVEST_DIR / HARVEST_FILE
+    for path in [path] if path.is_file() else []:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
             sources = data.get("sources") or {}
@@ -244,7 +255,7 @@ def _harvest() -> tuple[dict[str, dict], dict | None]:
                 entry["kept"][key] = entry["kept"].get(key, 0) + _int(n)
             for reason, n in (raw.get("dropped") or {}).items():
                 entry["dropped"][str(reason)] = entry["dropped"].get(str(reason), 0) + _int(n)
-    if not found:
+    if not found or ((since or until) and not _in_range(run_at, since, until)):
         return {}, None
     totals = {
         "run_at": run_at,
@@ -345,7 +356,7 @@ def build(since: str = "", until: str = "") -> dict:
         moved = {e.get("job_id") for e in events} | {e.get("item_id") for e in events}
         moved.discard("")
         records = [r for r in records if r["id"] in moved or _in_range(r["at"], start, end)]
-    harvest, totals = _harvest()
+    harvest, totals = _harvest(start, end)
 
     by_source: dict[str, list[dict]] = {}
     for record_ in records:
