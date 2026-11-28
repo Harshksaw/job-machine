@@ -83,6 +83,12 @@ def test_patch_changes_only_named_fields_and_never_sets_applied(server):
     assert job_store.get_job(job.id).status == "ready"
 
 
+def test_patch_dossier_fit_score_alone_takes_effect(server):
+    job = _job(fit_analysis={"score": 8, "recommendation": "apply", "verdict": "ok"})
+    out = call(server, "patch_dossier", job_id=job.id, fields={"fit_score": 5})
+    assert out["fit_score"] == 5 and job_store.get_job(job.id).fit_analysis.score == 5
+
+
 def test_enqueue_and_run_status(server):
     job = _job()
     queued = call(server, "enqueue_run", pipeline="packet", job_ids=[job.id])

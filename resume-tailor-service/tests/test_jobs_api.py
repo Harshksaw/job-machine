@@ -637,3 +637,14 @@ def test_put_without_pipeline_fields_keeps_them(monkeypatch, tmp_path):
     # Sent explicitly, they still replace.
     payload["form_fields"] = []
     assert client.put(f"/api/jobs/{job['id']}", json=payload).json()["form_fields"] == []
+
+
+def test_patch_fit_score_alone_takes_effect_on_a_dossier_with_an_analysis(monkeypatch, tmp_path):
+    client = _client(monkeypatch, tmp_path)
+    job = _create(client)
+    job_store.patch_job(job["id"], {"fit_analysis": {"score": 8, "recommendation": "apply", "verdict": "ok"}})
+
+    response = client.patch(f"/api/jobs/{job['id']}", json={"fit_score": 3})
+
+    assert response.status_code == 200
+    assert response.json()["fit_score"] == 3 and response.json()["fit_analysis"]["score"] == 3

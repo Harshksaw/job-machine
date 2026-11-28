@@ -414,6 +414,23 @@ def update_job(
 
 
 
+# Rule 2: a fit of 6 or more is worth applying to; below that it is held for review.
+FIT_APPLY_FLOOR = 6
+
+
+def _with_fit_synced(current: JobWorkspace, fields: dict) -> dict:
+    """A patch of fit_score alone would be undone by _normalized_input, which copies
+    fit_analysis.score into fit_score. Move the stored analysis with the new score so
+    the patch takes effect."""
+    score = fields.get("fit_score")
+    if "fit_analysis" in fields or current.fit_analysis is None or not isinstance(score, int):
+        return fields
+    previous = current.fit_analysis.recommendation
+    recommendation = "apply" if score >= FIT_APPLY_FLOOR else ("skip" if previous == "skip" else "review")
+    analysis = current.fit_analysis.model_copy(update={"score": score, "recommendation": recommendation})
+    return {**fields, "fit_analysis": analysis.model_dump()}
+
+
 def patch_job(
     job_id: str,
     fields: dict,
@@ -432,7 +449,7 @@ def patch_job(
         if current is None:
             return None
         merged = JobWorkspaceInput.model_validate(
-            {**_input_from_job(current).model_dump(), **fields}
+            {**_input_from_job(current).model_dump(), **_with_fit_synced(current, fields)}
         )
         return update_job(
             job_id, merged, reason=reason, activity_kind=activity_kind, session=session

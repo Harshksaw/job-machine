@@ -19,7 +19,7 @@ from app.models import FormField, JobActivityInput, Link, PersonInput, ReviewIss
 from app.pipeline import rules
 from app.pipeline.runner import StepContext, StepResult, StepSpec
 
-FIT_FLOOR = 6  # rule 2: below this the run ends "retained_for_review"
+FIT_FLOOR = job_store.FIT_APPLY_FLOOR  # rule 2: below this the run ends "retained_for_review"
 TIER_A2_FIT_FLOOR = 7  # AGENTS.md discovery sources: Tier A2 needs fit 7+
 PEOPLE_FLOOR = 8  # rule 2: 8+ is people mining eligible
 MAX_PEOPLE = 3
@@ -105,13 +105,7 @@ def _finish_fit_score(out: FitScoreOutput, ctx: StepContext) -> StepResult:
         "fit_score": out.score,
         "notes": _append_note(ctx, f"{_prefix(ctx)} fit {out.score}/10, {out.reason}{gaps}"),
     }
-    if ctx.job.fit_analysis is not None:
-        # update_job copies fit_analysis.score into fit_score, so the analysis must
-        # carry the new score too or the old one silently wins.
-        writes["fit_analysis"] = ctx.job.fit_analysis.model_copy(update={
-            "score": out.score,
-            "recommendation": "apply" if out.score >= FIT_FLOOR else "review",
-        }).model_dump()
+    # job_store.patch_job moves a stored fit_analysis to this score in the same write.
     output = out.model_dump()
     tier_a2 = bool((ctx.outputs.get("eligibility") or {}).get("tier_a2"))
     floor = TIER_A2_FIT_FLOOR if tier_a2 else FIT_FLOOR

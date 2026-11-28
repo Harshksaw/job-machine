@@ -385,3 +385,19 @@ def test_patch_rejects_unknown_fields_and_bad_values(monkeypatch, tmp_path):
 def test_patch_missing_dossier_returns_none(monkeypatch, tmp_path):
     _use_temp_store(monkeypatch, tmp_path)
     assert job_store.patch_job("0" * 32, {"notes": "x"}) is None
+
+
+def test_patching_fit_score_alone_moves_the_fit_analysis_with_it(monkeypatch, tmp_path):
+    _use_temp_store(monkeypatch, tmp_path)
+    created = job_store.add_job(JobWorkspaceInput(
+        company="Acme", role="Backend Engineer",
+        fit_analysis=FitAnalysis(score=8, recommendation="apply", verdict="Good match"),
+    ))
+
+    patched = job_store.patch_job(created.id, {"fit_score": 4})
+
+    assert patched.fit_score == 4
+    assert patched.fit_analysis.score == 4 and patched.fit_analysis.recommendation == "review"
+    assert patched.fit_analysis.verdict == "Good match"
+    raised = job_store.patch_job(created.id, {"fit_score": 7})
+    assert raised.fit_score == 7 and raised.fit_analysis.recommendation == "apply"
